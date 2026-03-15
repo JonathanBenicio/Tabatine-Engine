@@ -1,0 +1,187 @@
+{
+    "pagina": 1,
+    "total_de_paginas": 2090,
+    "registros": 1,
+    "total_de_registros": 2090,
+    "nfCadastro": [
+        {
+            "compl": {
+                "cChaveNFe": "35230344191892000120550010000001541854390309",
+                "cCodCateg": "1.01.03",
+                "cModFrete": "0",
+                "nIdNF": 8155879113,
+                "nIdPedido": 0,
+                "nIdReceb": 0,
+                "nIdTransp": 0
+            },
+            "det": [
+                {
+                    "nfProdInt": {
+                        "cCodItemInt": "",
+                        "cCodProdInt": "",
+                        "nCodItem": 8155879117,
+                        "nCodProd": 8155879116
+                    },
+                    "prod": {
+                        "CFOP": "5.102",
+                        "EXTIPI": "",
+                        "NCM": "3915.90.00",
+                        "cCOFINSRetido": "N",
+                        "cCSLLRetido": "N",
+                        "cEAN": "SEM GTIN",
+                        "cEANTrib": "",
+                        "cINSSRetido": "N",
+                        "cIRRetido": "N",
+                        "cISSRetido": "N",
+                        "cOrigem": "0",
+                        "cPISRetido": "N",
+                        "cProd": "0003",
+                        "cProdOrig": "",
+                        "codigo_local_estoque": 8153515750,
+                        "indTot": "1",
+                        "nCMCTotal": 0,
+                        "nCMCUnitario": 0,
+                        "pIcmsInterest": 0,
+                        "pIcmsUfDest": 0,
+                        "pMVAST": 0,
+                        "pRedBC": 0,
+                        "pRedBcICMDest": 0,
+                        "qCom": 480,
+                        "qTrib": 0,
+                        "uCom": "KG",
+                        "uTrib": "",
+                        "vBC": 0,
+                        "vBCCOFINS": 0,
+                        "vBCIPI": 0,
+                        "vBCISS": 0,
+                        "vBCPIS": 0,
+                        "vBCST": 0,
+                        "vBCUFDest": 0,
+                        "vDesc": 0,
+                        "vFrete": 0,
+                        "vICMDest": 0,
+                        "vICMRemet": 0,
+                        "vOutro": 0,
+                        "vProd": 15840,
+                        "vSeg": 0,
+                        "vTotItem": 15840,
+                        "vUnCom": 33,
+                        "vUnTrib": 0,
+                        "xProd": "MACROFIBRA ESTRUTURAL",
+                        "xProdOrig": ""
+                    },
+                    "rastreabilidade": {}
+                }
+            ],
+            "ide": {
+                "cDeneg": "N",
+                "dCan": "",
+                "dEmi": "01/03/2023",
+                "dInut": "",
+                "dReg": "01/03/2023",
+                "dSaiEnt": "",
+                "finNFe": "1",
+                "hEmi": "14:12:00",
+                "hSaiEnt": "",
+                "indPag": "",
+                "mod": "55",
+                "nNF": "000000154",
+                "serie": "1",
+                "tpAmb": "1",
+                "tpNF": "1"
+            },
+            "info": {
+                "cImpAPI": "N",
+                "dAlt": "25/04/2023",
+                "dInc": "25/04/2023",
+                "hAlt": "14:28:10",
+                "hInc": "14:28:10",
+                "uAlt": "P000571178",
+                "uInc": "P000571178"
+            },
+            "nfDestInt": {
+                "cCodCliInt": "",
+                "cRazao": "VILLA MAGARI INCORPORADORA SPE LTDA",
+                "cnpj_cpf": "42.864.547/0001-85",
+                "nCodCli": 8155856402
+            },
+            "nfEmitInt": {
+                "cCodEmpInt": "",
+                "nCodEmp": 8153515739
+            },
+            "pedido": {},
+            "titulos": [
+                {
+                    "cCodCateg": "1.01.03",
+                    "cCodIntTitulo": "",
+                    "cDoc": "NFE",
+                    "cNumTitulo": "000000154",
+                    "cPagForma": "",
+                    "dDtEmissao": "01/03/2023",
+                    "dDtPrevisao": "17/04/2023",
+                    "dDtVenc": "17/04/2023",
+                    "dReg": "01/03/2023",
+                    "nCodComprador": 0,
+                    "nCodProjeto": 0,
+                    "nCodTitRepet": 8155879119,
+                    "nCodTitulo": 8155879119,
+                    "nCodVendedor": 0,
+                    "nParcela": 1,
+                    "nTotParc": 1,
+                    "nValorTitulo": 15840
+                }
+            ],
+            "total": {
+                "CBSTot": {
+                    "vCBCbs": 0,
+                    "vCbs": 0,
+                    "vCbsCred": 0,
+                    "vCbsDif": 0
+                },
+                "IBSTot": {
+                    "vBCIbs ": 0,
+                    "vIbs": 0,
+                    "vIbsCred": 0,
+                    "vIbsMun": 0,
+                    "vIbsMunDif ": 0,
+                    "vIbsUf": 0,
+                    "vIbsUfDif ": 0
+                },
+                "ICMSTot": {
+                    "vBC": 0,
+                    "vBCST": 0,
+                    "vCOFINS": 0,
+                    "vDesc": 0,
+                    "vFrete": 0,
+                    "vICMS": 0,
+                    "vICMSDesonerado": 0,
+                    "vII": 0,
+                    "vIPI": 0,
+                    "vNF": 15840,
+                    "vOutro": 0,
+                    "vPIS": 0,
+                    "vProd": 15840,
+                    "vST": 0,
+                    "vSeg": 0,
+                    "vTotTrib": 5083.06
+                },
+                "ISSQNtot": {
+                    "vBC": 0,
+                    "vCOFINS": 0,
+                    "vISS": 0,
+                    "vPIS": 0,
+                    "vServ": 0
+                },
+                "retTrib": {
+                    "vBCIRRF": 0,
+                    "vBCRetPrev": 0,
+                    "vIRRF": 0,
+                    "vRetCOFINS": 0,
+                    "vRetCSLL": 0,
+                    "vRetPIS": 0,
+                    "vRetPrev ": 0
+                }
+            }
+        }
+    ]
+}

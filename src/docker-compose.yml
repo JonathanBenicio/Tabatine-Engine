@@ -1,0 +1,26 @@
+services:
+  tabatine-redis:
+    image: redis:7-alpine
+    container_name: tabatine_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+
+  tabatine-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tabatine_worker
+    depends_on:
+      - tabatine-redis
+    environment:
+      # Exemplo de variáveis de ambiente para o appsettings.json do Worker Service
+      - ConnectionStrings__Redis=tabatine-redis:6379,abortConnect=false
+      - DOTNET_ENVIRONMENT=Development
+    restart: unless-stopped
+
+volumes:
+  redis_data:

@@ -1,0 +1,990 @@
+{
+	"info": {
+		"_postman_id": "tabatine-omie-collection",
+		"name": "Tabatine — Omie API",
+		"description": "Coleção completa de todas as chamadas à API Omie utilizadas no projeto Tabatine.\n\nTodas as APIs usam JSON via HTTP POST.\n\nVariáveis de ambiente necessárias:\n- {{OMIE_BASE_URL}} = https://app.omie.com.br/api/v1\n- {{APP_KEY}} = Sua app_key\n- {{APP_SECRET}} = Sua app_secret",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "OMIE_BASE_URL",
+			"value": "https://app.omie.com.br/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "APP_KEY",
+			"value": "SUA_APP_KEY",
+			"type": "string"
+		},
+		{
+			"key": "APP_SECRET",
+			"value": "SUA_APP_SECRET",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Pedidos de Venda (Vendas)",
+			"description": "Endpoint: /produtos/pedido/\nRoute local: src/app/api/omie/vendas/route.ts\nDocumentação: https://app.omie.com.br/api/v1/produtos/pedido/",
+			"item": [
+				{
+					"name": "ListarPedidos",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarPedidos\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/pedido/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"pedido",
+								""
+							]
+						},
+						"description": "Lista pedidos de venda com paginação.\n\nCampos importantes da resposta:\n- cabecalho (dados do pedido)\n- det[] (itens/produtos)\n- frete\n- lista_parcelas\n- infoCadastro"
+					}
+				},
+				{
+					"name": "ListarPedidos (com filtro de data)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarPedidos\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50,\n      \"filtrar_por_data_de\": \"01/01/2026\",\n      \"filtrar_por_data_ate\": \"31/12/2026\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/pedido/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"pedido",
+								""
+							]
+						},
+						"description": "Lista pedidos de venda filtrados por intervalo de datas."
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Pedidos de Venda — Faturamento",
+			"description": "Endpoint: /produtos/pedidovendafat/\nDocumentação: https://app.omie.com.br/api/v1/produtos/pedidovendafat/",
+			"item": [
+				{
+					"name": "ObterPedidosVenda",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ObterPedidosVenda\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50,\n      \"cEtapa\": \"20\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/pedidovendafat/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"pedidovendafat",
+								""
+							]
+						},
+						"description": "Lista pedidos a serem faturados, filtrados por etapa.\n\nEtapas comuns:\n- 10 = Pedido\n- 20 = Separar\n- 30 = Faturar\n- 50 = Faturado"
+					}
+				},
+				{
+					"name": "FaturarPedidoVenda",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"FaturarPedidoVenda\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"nCodPed\": 0\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/pedidovendafat/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"pedidovendafat",
+								""
+							]
+						},
+						"description": "Fatura um pedido de venda. Substitua nCodPed pelo código do pedido."
+					}
+				},
+				{
+					"name": "CancelarPedidoVenda",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"CancelarPedidoVenda\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"nCodPed\": 0\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/pedidovendafat/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"pedidovendafat",
+								""
+							]
+						},
+						"description": "Cancela um pedido de venda."
+					}
+				},
+				{
+					"name": "ValidarPedidoVenda",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ValidarPedidoVenda\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"nCodPed\": 0\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/pedidovendafat/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"pedidovendafat",
+								""
+							]
+						},
+						"description": "Valida um pedido para faturamento."
+					}
+				},
+				{
+					"name": "DuplicarPedidoVenda",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"DuplicarPedidoVenda\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"nCodPed\": 0\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/pedidovendafat/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"pedidovendafat",
+								""
+							]
+						},
+						"description": "Duplica um pedido de venda existente."
+					}
+				},
+				{
+					"name": "AssociarCodIntPedidoVenda",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"AssociarCodIntPedidoVenda\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"nCodPed\": 0,\n      \"cCodIntPed\": \"\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/pedidovendafat/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"pedidovendafat",
+								""
+							]
+						},
+						"description": "Associa um código de integração a um pedido de venda."
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Notas Fiscais (NF)",
+			"description": "Endpoint: /produtos/nfconsultar/\nRoute local: src/app/api/omie/nf/route.ts\nDocumentação: https://app.omie.com.br/api/v1/produtos/nfconsultar/",
+			"item": [
+				{
+					"name": "ListarNF",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarNF\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 20,\n      \"ordenar_por\": \"CODIGO\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/nfconsultar/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"nfconsultar",
+								""
+							]
+						},
+						"description": "Lista notas fiscais com paginação.\n\nEstrutura da resposta (nfCadastro):\n- ide (identificação)\n- nfDestInt (destinatário)\n- detArray (itens)\n- total (totais/impostos)\n- info\n- compl\n- titulosArray\n- pedido"
+					}
+				},
+				{
+					"name": "ConsultarNF",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ConsultarNF\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"nCodNF\": 0\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/nfconsultar/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"nfconsultar",
+								""
+							]
+						},
+						"description": "Consulta uma NF específica por nCodNF ou nNF."
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Clientes",
+			"description": "Endpoint: /geral/clientes/\nRoute local: src/app/api/omie/clientes/route.ts\nDocumentação: https://app.omie.com.br/api/v1/geral/clientes/",
+			"item": [
+				{
+					"name": "ListarClientes",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarClientes\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50,\n      \"clientesFiltro\": {}\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/clientes/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"clientes",
+								""
+							]
+						},
+						"description": "Lista clientes com paginação e filtro opcional."
+					}
+				},
+				{
+					"name": "ConsultarCliente",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ConsultarCliente\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"codigo_cliente_omie\": 0\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/clientes/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"clientes",
+								""
+							]
+						},
+						"description": "Consulta um cliente específico pelo código."
+					}
+				},
+				{
+					"name": "IncluirCliente",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"IncluirCliente\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"codigo_cliente_integracao\": \"\",\n      \"razao_social\": \"\",\n      \"cnpj_cpf\": \"\",\n      \"nome_fantasia\": \"\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/clientes/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"clientes",
+								""
+							]
+						},
+						"description": "Inclui um novo cliente no cadastro."
+					}
+				},
+				{
+					"name": "AlterarCliente",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"AlterarCliente\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"codigo_cliente_omie\": 0,\n      \"razao_social\": \"\",\n      \"cnpj_cpf\": \"\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/clientes/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"clientes",
+								""
+							]
+						},
+						"description": "Altera dados de um cliente existente."
+					}
+				},
+				{
+					"name": "UpsertCliente",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"UpsertCliente\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"codigo_cliente_integracao\": \"\",\n      \"razao_social\": \"\",\n      \"cnpj_cpf\": \"\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/clientes/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"clientes",
+								""
+							]
+						},
+						"description": "Insere ou atualiza um cliente (upsert)."
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Vendedores",
+			"description": "Endpoint: /geral/vendedores/\nRoute local: src/app/api/omie/vendedores/route.ts\nDocumentação: https://app.omie.com.br/api/v1/geral/vendedores/",
+			"item": [
+				{
+					"name": "ListarVendedores",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarVendedores\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 100,\n      \"apenas_importado_api\": \"N\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/vendedores/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"vendedores",
+								""
+							]
+						},
+						"description": "Lista vendedores com paginação.\n\nCampos do cadastro: codigo, codInt, nome, inativo, email, fatura_pedido, visualiza_pedido, comissao"
+					}
+				},
+				{
+					"name": "ConsultarVendedor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ConsultarVendedor\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"codigo\": 0\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/vendedores/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"vendedores",
+								""
+							]
+						},
+						"description": "Consulta um vendedor por código ou codInt."
+					}
+				},
+				{
+					"name": "IncluirVendedor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"IncluirVendedor\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"codInt\": \"\",\n      \"nome\": \"\",\n      \"email\": \"\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/vendedores/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"vendedores",
+								""
+							]
+						},
+						"description": "Inclui um novo vendedor."
+					}
+				},
+				{
+					"name": "AlterarVendedor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"AlterarVendedor\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"codigo\": 0,\n      \"nome\": \"\",\n      \"email\": \"\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/vendedores/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"vendedores",
+								""
+							]
+						},
+						"description": "Altera dados de um vendedor existente."
+					}
+				},
+				{
+					"name": "ExcluirVendedor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ExcluirVendedor\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"codigo\": 0\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/vendedores/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"vendedores",
+								""
+							]
+						},
+						"description": "Exclui um vendedor pelo código."
+					}
+				},
+				{
+					"name": "UpsertVendedor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"UpsertVendedor\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"codInt\": \"\",\n      \"nome\": \"\",\n      \"email\": \"\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/vendedores/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"vendedores",
+								""
+							]
+						},
+						"description": "Insere ou atualiza um vendedor (upsert)."
+					}
+				}
+			]
+		},
+		{
+			"name": "5.1. Produtos",
+			"description": "Endpoint: /geral/produtos/\nRoute local: src/app/api/omie/produtos/route.ts\nDocumentação: https://app.omie.com.br/api/v1/geral/produtos/",
+			"item": [
+				{
+					"name": "ListarProdutos",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarProdutos\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50,\n      \"apenas_importado_api\": \"N\",\n      \"filtrar_apenas_omiepdv\": \"N\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/produtos/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"produtos",
+								""
+							]
+						},
+						"description": "Lista produtos com paginação."
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Usuários CRM",
+			"description": "Endpoint: /crm/usuarios/\nDocumentação: https://app.omie.com.br/api/v1/crm/usuarios/",
+			"item": [
+				{
+					"name": "ListarUsuarios",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarUsuarios\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/crm/usuarios/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"crm",
+								"usuarios",
+								""
+							]
+						},
+						"description": "Lista paginada de usuários do CRM."
+					}
+				},
+				{
+					"name": "ObterUsuarios",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ObterUsuarios\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"cExibirTodos\": \"S\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/crm/usuarios/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"crm",
+								"usuarios",
+								""
+							]
+						},
+						"description": "Obtém todos os usuários do CRM.\n\ncExibirTodos: \"S\" para exibir todos, \"N\" para filtrar."
+					}
+				}
+			]
+		},
+		{
+			"name": "7. Contas Correntes",
+			"description": "Endpoint: /geral/contacorrente/\nRoute local: src/app/api/omie/contas/route.ts\nDocumentação: https://app.omie.com.br/api/v1/geral/contacorrente/",
+			"item": [
+				{
+					"name": "ListarContasCorrentes",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarContasCorrentes\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 100,\n      \"apenas_contas_ativas\": \"S\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/contacorrente/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"contacorrente",
+								""
+							]
+						},
+						"description": "Lista contas correntes (bancos) com paginação."
+					}
+				},
+				{
+					"name": "ConsultarContaCorrente",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ConsultarContaCorrente\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"nCodCC\": 0\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/contacorrente/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"contacorrente",
+								""
+							]
+						},
+						"description": "Consulta uma conta corrente específica por nCodCC."
+					}
+				}
+			]
+		},
+		{
+			"name": "8. Webhooks",
+			"description": "Endpoints para recebimento e consulta de Webhooks do Omie.\n\nRoute local (Receber): src/app/api/webhooks/omie/route.ts\nRoute local (Consultar): src/app/api/webhooks/recent/route.ts",
+			"item": [
+				{
+					"name": "Receber Webhook (Proxy)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message\": {\n    \"topic\": \"venda.pago\",\n    \"payload\": {}\n  }\n}"
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/webhooks/omie",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"webhooks",
+								"omie"
+							]
+						},
+						"description": "Simula o recebimento de um webhook do Omie na rota local."
+					}
+				},
+				{
+					"name": "Listar Webhooks Recebidos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/webhooks/recent",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"webhooks",
+								"recent"
+							]
+						},
+						"description": "Lista os últimos webhooks recebidos e armazenados em memória no servidor local (apenas desenvolvimento)."
+					}
+				}
+			]
+		}
+	]
+}

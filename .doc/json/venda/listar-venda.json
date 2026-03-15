@@ -1,0 +1,313 @@
+{
+    "pagina": 1,
+    "total_de_paginas": 227,
+    "registros": 1,
+    "total_de_registros": 227,
+    "pedido_venda_produto": [
+        {
+            "cabecalho": {
+                "bloqueado": "",
+                "codigo_cenario_impostos": "8156421580",
+                "codigo_cliente": 8247456178,
+                "codigo_empresa": 8153515739,
+                "codigo_parcela": "S01",
+                "codigo_pedido": 8392390662,
+                "codigo_pedido_integracao": "",
+                "data_previsao": "27/03/2025",
+                "enc_data": "",
+                "enc_hora": "",
+                "enc_motivo": "",
+                "enc_user": "",
+                "encerrado": "",
+                "etapa": "00",
+                "importado_api": "",
+                "numero_pedido": "754",
+                "origem_pedido": "ERP",
+                "qtde_parcelas": 2,
+                "quantidade_itens": 1
+            },
+            "departamentos": [],
+            "det": [
+                {
+                    "combustivel": {},
+                    "ide": {
+                        "codigo_item": 8392390663,
+                        "codigo_item_integracao": "",
+                        "simples_nacional": "N"
+                    },
+                    "imposto": {
+                        "cbs": {
+                            "aliquota_cbs": 0.9,
+                            "perc_dif_cbs": 0,
+                            "perc_red_cbs": 0,
+                            "valor_cbs": 93.93,
+                            "valor_dif_cbs": 0
+                        },
+                        "cofins_padrao": {
+                            "aliq_cofins": 7.6,
+                            "base_cofins": 11500,
+                            "cod_sit_trib_cofins": "01",
+                            "qtde_unid_trib_cofins": 0,
+                            "tipo_calculo_cofins": "B",
+                            "valor_cofins": 874,
+                            "valor_unid_trib_cofins": 0
+                        },
+                        "cofins_st": {
+                            "aliq_cofins_st": 0,
+                            "base_cofins_st": 0,
+                            "cod_sit_trib_cofins_st": "01",
+                            "margem_cofins_st": 0,
+                            "qtde_unid_trib_cofins_st": 0,
+                            "tipo_calculo_cofins_st": "",
+                            "valor_cofins_st": 0,
+                            "valor_unid_trib_cofins_st": 0
+                        },
+                        "csll": {
+                            "aliq_csll": 0,
+                            "valor_csll": 0
+                        },
+                        "ibs": {
+                            "aliquota_ibs_mu": 0,
+                            "aliquota_ibs_uf": 0.1,
+                            "perc_dif_ibs_mu": 0,
+                            "perc_dif_ibs_uf": 0,
+                            "perc_red_ibs_mu": 0,
+                            "perc_red_ibs_uf": 0,
+                            "valor_dif_ibs_mu": 0,
+                            "valor_dif_ibs_uf": 0,
+                            "valor_ibs": 10.44,
+                            "valor_ibs_mu": 0,
+                            "valor_ibs_uf": 10.44
+                        },
+                        "ibs_cbs": {
+                            "base_ibs_cbs": 10436.25,
+                            "class_trib": "000001",
+                            "cst_ibs_cbs": "000"
+                        },
+                        "icms": {},
+                        "icms_efet": {},
+                        "icms_ie": {
+                            "aliq_icms_FCP": 0,
+                            "aliq_interestadual": 0,
+                            "aliq_interna_uf_destino": 0,
+                            "aliq_partilha_icms": 100,
+                            "base_icms_uf_destino": 0,
+                            "valor_fcp_icms_inter": 0,
+                            "valor_icms_uf_dest": 0,
+                            "valor_icms_uf_remet": 0
+                        },
+                        "icms_sn": {},
+                        "icms_st": {
+                            "aliq_icms_opprop": 0,
+                            "aliq_icms_st": 0,
+                            "base_icms_st": 0,
+                            "cest": "",
+                            "cod_sit_trib_icms_st": "",
+                            "margem_icms_st": 0,
+                            "modalidade_icms_st": "",
+                            "perc_red_base_icms_op": 0,
+                            "perc_red_base_icms_st": 0,
+                            "valor_icms_st": 0
+                        },
+                        "inss": {
+                            "aliq_inss": 0,
+                            "valor_inss": 0
+                        },
+                        "ipi": {
+                            "aliq_ipi": 0,
+                            "base_ipi": 0,
+                            "cod_sit_trib_ipi": "53",
+                            "enquadramento_ipi": "999",
+                            "qtde_unid_trib_ipi": 0,
+                            "tipo_calculo_ipi": "",
+                            "valor_ipi": 0,
+                            "valor_unid_trib_ipi": 0
+                        },
+                        "irrf": {
+                            "aliq_irrf": 0,
+                            "valor_irrf": 0
+                        },
+                        "iss": {
+                            "aliq_iss": 0,
+                            "base_iss": 0,
+                            "retem_iss": "",
+                            "valor_iss": 0
+                        },
+                        "pis_padrao": {
+                            "aliq_pis": 1.65,
+                            "base_pis": 11500,
+                            "cod_sit_trib_pis": "01",
+                            "qtde_unid_trib_pis": 0,
+                            "tipo_calculo_pis": "B",
+                            "valor_pis": 189.75,
+                            "valor_unid_trib_pis": 0
+                        },
+                        "pis_st": {
+                            "aliq_pis_st": 0,
+                            "base_pis_st": 0,
+                            "cod_sit_trib_pis_st": "01",
+                            "margem_pis_st": 0,
+                            "qtde_unid_trib_pis_st": 0,
+                            "tipo_calculo_pis_st": "",
+                            "valor_pis_st": 0,
+                            "valor_unid_trib_pis_st": 0
+                        },
+                        "trib_reg": {
+                            "aliquota_reg_cbs": 0,
+                            "aliquota_reg_ibs_mu": 0,
+                            "aliquota_reg_ibs_uf": 0,
+                            "class_trib_reg": "",
+                            "cst_reg_ibs_cst": "",
+                            "valor_reg_cbs": 0,
+                            "valor_reg_ibs_mu": 0,
+                            "valor_reg_ibs_uf": 0
+                        }
+                    },
+                    "inf_adic": {
+                        "codigo_categoria_item": "1.01.01",
+                        "codigo_cenario_impostos_item": "8156421580",
+                        "codigo_local_estoque": 8153515750,
+                        "dados_adicionais_item": "",
+                        "item_pedido_compra": 0,
+                        "nao_gerar_financeiro": "N",
+                        "nao_movimentar_estoque": "N",
+                        "nao_somar_total": "N",
+                        "numero_pedido_compra": "",
+                        "peso_bruto": 0,
+                        "peso_liquido": 10
+                    },
+                    "observacao": {},
+                    "produto": {
+                        "cfop": "",
+                        "cnpj_fabricante": "",
+                        "codigo": "PRD00014",
+                        "codigo_produto": 8156142004,
+                        "codigo_tabela_preco": 2,
+                        "descricao": "ECOMIX",
+                        "ean": "",
+                        "indicador_escala": "",
+                        "motivo_icms_desonerado": "",
+                        "ncm": "7019.19.00",
+                        "percentual_desconto": 0,
+                        "quantidade": 500,
+                        "reservado": "N",
+                        "tipo_desconto": "P",
+                        "unidade": "KG",
+                        "valor_deducao": 0,
+                        "valor_desconto": 0,
+                        "valor_icms_desonerado": 0,
+                        "valor_mercadoria": 11500,
+                        "valor_total": 11500,
+                        "valor_unitario": 23
+                    },
+                    "rastreabilidade": {},
+                    "tributavel": {}
+                }
+            ],
+            "exportacao": {
+                "nao_exportacao": "N"
+            },
+            "frete": {
+                "codigo_rastreio": "",
+                "codigo_tipo_entrega": 0,
+                "codigo_transportadora": 0,
+                "especie_volumes": "",
+                "link_rastreio": "",
+                "marca_volumes": "",
+                "modalidade": "9",
+                "numeracao_volumes": "",
+                "numero_lacre": "",
+                "outras_despesas": 0,
+                "peso_bruto": 0,
+                "peso_liquido": 5000,
+                "placa": "",
+                "placa_estado": "",
+                "previsao_entrega": "",
+                "quantidade_volumes": 0,
+                "registro_transportador": "",
+                "valor_frete": 0,
+                "valor_seguro": 0,
+                "veiculo_proprio": ""
+            },
+            "infoCadastro": {
+                "autorizado": "N",
+                "cImpAPI": "N",
+                "cancelado": "N",
+                "dAlt": "12/03/2026",
+                "dInc": "27/03/2025",
+                "denegado": "N",
+                "devolvido": "N",
+                "devolvido_parcial": "N",
+                "faturado": "N",
+                "hAlt": "08:57:14",
+                "hInc": "15:59:00",
+                "uAlt": "WEBSERVICE",
+                "uInc": "P000571178"
+            },
+            "informacoes_adicionais": {
+                "codProj": 0,
+                "codVend": 8154346990,
+                "codigo_categoria": "1.01.01",
+                "codigo_conta_corrente": 8155853591,
+                "consumidor_final": "S",
+                "contato": "GABRIEL",
+                "dados_adicionais_nf": "ENTREGA DE 80 KG NO DIA 11/11/2024|ENTREGA DE 400 KG NO DIA 13/11/2024|EMPRESA HOBIMIX CONCRETO E ARGAMASSAS|ENDEREÇO: RODOVIA BR 376 KM 504 - DISTRITO INDUSTRIAL - PONTA GROSSA - PR  CEP: 84043-450",
+                "enviar_email": "N",
+                "enviar_pix": "N",
+                "numero_contrato": "",
+                "numero_pedido_cliente": "",
+                "outros_detalhes": {},
+                "utilizar_emails": "gabriel@construtorapatria.com.br, representacoesdanielle@gmail.com"
+            },
+            "lista_parcelas": {
+                "parcela": [
+                    {
+                        "data_vencimento": "26/04/2025",
+                        "numero_parcela": 1,
+                        "parcela_adiantamento": "N",
+                        "percentual": 50,
+                        "quantidade_dias": 30,
+                        "valor": 5750
+                    },
+                    {
+                        "data_vencimento": "26/05/2025",
+                        "numero_parcela": 2,
+                        "parcela_adiantamento": "N",
+                        "percentual": 50,
+                        "quantidade_dias": 60,
+                        "valor": 5750
+                    }
+                ]
+            },
+            "observacoes": {
+                "obs_venda": "Pedido reprocessado ao alterar dados do cliente 12/03/2026 08:57:07 usuário: Kelly Bandeira|PEDIDO DO DIA 11/11/2024 - 80 KG DE ECOMIX NA HOBIMIX|PEDIDO DO DIA 13/11/2024 - 400 KG DE ECOMIX NA HOBMIX - ENTREGA HOJE PELO CAMINHÃO DA EMPRESA"
+            },
+            "total_pedido": {
+                "base_calculo_icms": 0,
+                "base_calculo_st": 0,
+                "base_ibs_cbs": 10436.25,
+                "valor_IPI": 0,
+                "valor_cbs": 93.93,
+                "valor_cofins": 874,
+                "valor_csll": 0,
+                "valor_deducoes": 0,
+                "valor_descontos": 0,
+                "valor_dif_cbs": 0,
+                "valor_dif_ibs_mu": 0,
+                "valor_dif_ibs_uf": 0,
+                "valor_ibs": 10.44,
+                "valor_ibs_mu": 0,
+                "valor_ibs_uf": 10.44,
+                "valor_icms": 0,
+                "valor_inss": 0,
+                "valor_ir": 0,
+                "valor_iss": 0,
+                "valor_mercadorias": 11500,
+                "valor_pis": 189.75,
+                "valor_st": 0,
+                "valor_tot_ibs_cbs_is": 11500,
+                "valor_total_pedido": 11500
+            }
+        }
+    ]
+}
