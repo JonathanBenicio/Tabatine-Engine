@@ -17,8 +17,5 @@ namespace Tabatine.Core.Entities
 
         public Guid? ContaCorrenteId { get; set; }
         public ContaCorrente? ContaCorrente { get; set; }
-        
-        // ID da Conta Corrente na Omie
-        public long? CodigoContaCorrente { get; set; }
     }
 }

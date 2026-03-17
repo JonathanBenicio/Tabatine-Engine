@@ -116,8 +116,6 @@ namespace Tabatine.Infrastructure.Services
                             Transportadora = omiePedido.Frete?.Transportadora,
                             QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0,
                             ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda,
-                            CodigoVendedor = omiePedido.InformacoesAdicionais?.CodigoVendedor,
-                            CodigoContaCorrente = omiePedido.Cabecalho.CodigoContaCorrente,
                             VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vNovo) ? vNovo.Id : null,
                             ContaCorrenteId = omiePedido.Cabecalho.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.Cabecalho.CodigoContaCorrente.Value, out var ccNovo) ? ccNovo.Id : null,
                             UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao,
@@ -144,8 +142,6 @@ namespace Tabatine.Infrastructure.Services
                         existingPedido.Transportadora = omiePedido.Frete?.Transportadora;
                         existingPedido.QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0;
                         existingPedido.ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda;
-                        existingPedido.CodigoVendedor = omiePedido.InformacoesAdicionais?.CodigoVendedor;
-                        existingPedido.CodigoContaCorrente = omiePedido.Cabecalho.CodigoContaCorrente;
                         existingPedido.VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vEx) ? vEx.Id : null;
                         existingPedido.ContaCorrenteId = omiePedido.Cabecalho.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.Cabecalho.CodigoContaCorrente.Value, out var ccEx) ? ccEx.Id : null;
                         existingPedido.UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao;
@@ -210,7 +206,8 @@ namespace Tabatine.Infrastructure.Services
                                     NumeroParcela = parcela.NumeroParcela,
                                     Valor = parcela.Valor,
                                     DataVencimento = DateTime.SpecifyKind(dtVenc, DateTimeKind.Utc),
-                                    Percentual = parcela.Percentual
+                                    Percentual = parcela.Percentual,
+                                    ContaCorrenteId = existingPedido.ContaCorrenteId
                                 });
                             }
                         }

@@ -182,8 +182,7 @@ namespace Tabatine.Infrastructure.Services
                           NumeroParcela = tit.Parcela,
                           Valor = tit.Valor,
                           DataVencimento = DateTime.SpecifyKind(dtVenc, DateTimeKind.Utc),
-                          ContaCorrenteId = pedido?.ContaCorrenteId,
-                          CodigoContaCorrente = pedido?.CodigoContaCorrente
+                          ContaCorrenteId = pedido?.ContaCorrenteId
                       });
                       titulosMapeados++;
                   }

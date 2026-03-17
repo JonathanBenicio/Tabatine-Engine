@@ -12,5 +12,9 @@ namespace Tabatine.Core.Entities
         public decimal Valor { get; set; }
         public DateTime DataVencimento { get; set; }
         public decimal Percentual { get; set; }
+
+        // Conta Corrente onde esta parcela será recebida
+        public Guid? ContaCorrenteId { get; set; }
+        public ContaCorrente? ContaCorrente { get; set; }
     }
 }

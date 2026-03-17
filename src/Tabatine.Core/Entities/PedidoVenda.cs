@@ -17,7 +17,6 @@ namespace Tabatine.Core.Entities
 
         // Metadados
         public string? ObservacoesVenda { get; set; }
-        public long? CodigoVendedor { get; set; }
         public string? UsuarioInclusao { get; set; }
         public bool Faturado { get; set; }
 
@@ -32,7 +31,6 @@ namespace Tabatine.Core.Entities
         // Relacionamento com Conta Corrente
         public Guid? ContaCorrenteId { get; set; }
         public ContaCorrente? ContaCorrente { get; set; }
-        public long? CodigoContaCorrente { get; set; }
 
         // Relacionamento 1:N com Itens do Pedido
         public ICollection<ItemPedido> Itens { get; set; } = new List<ItemPedido>();
