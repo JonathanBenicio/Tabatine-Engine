@@ -15,12 +15,14 @@ namespace Tabatine.Infrastructure.Services
     {
         private readonly IOmieClient _omieClient;
         private readonly AppDbContext _dbContext;
+        private readonly ISyncStateRepository _syncState;
         private readonly ILogger<ClienteSyncService> _logger;
 
-        public ClienteSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<ClienteSyncService> logger)
+        public ClienteSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<ClienteSyncService> logger)
         {
             _omieClient = omieClient;
             _dbContext = dbContext;
+            _syncState = syncState;
             _logger = logger;
         }
 
@@ -28,19 +30,27 @@ namespace Tabatine.Infrastructure.Services
         {
             _logger.LogInformation("Iniciando sincronização de Clientes...");
 
+            var lastSyncDate = await _syncState.GetLastSyncDateAsync("Clientes", ct);
+            var syncStartTime = DateTime.UtcNow;
+
             int pagina = 1;
             bool temMais = true;
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarClientesAsync(pagina, ct);
+                var response = await _omieClient.ListarClientesAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
                 
-                if (response.ClientesCadastro.Count == 0) break;
+                // Resposta nula = sem registros (Client-5113)
+                if (response == null || response.ClientesCadastro == null || response.ClientesCadastro.Count == 0) break;
+
+                var omieIds = response.ClientesCadastro.Select(c => c.CodigoClienteOmie).ToList();
+                var existingClientes = await _dbContext.Clientes
+                    .Where(c => omieIds.Contains(c.OmieId))
+                    .ToDictionaryAsync(c => c.OmieId, ct);
 
                 foreach (var omieCliente in response.ClientesCadastro)
                 {
-                    var existing = await _dbContext.Clientes
-                        .FirstOrDefaultAsync(c => c.OmieId == omieCliente.CodigoClienteOmie, ct);
+                    existingClientes.TryGetValue(omieCliente.CodigoClienteOmie, out var existing);
 
                     if (existing == null)
                     {
@@ -52,6 +62,17 @@ namespace Tabatine.Infrastructure.Services
                             NomeFantasia = omieCliente.NomeFantasia,
                             CnpjCpf = omieCliente.CnpjCpf,
                             Email = omieCliente.Email,
+                            Telefone = omieCliente.Telefone,
+                            Endereco = omieCliente.Endereco,
+                            EnderecoNumero = omieCliente.EnderecoNumero,
+                            EnderecoComplemento = omieCliente.Complemento,
+                            Bairro = omieCliente.Bairro,
+                            Cep = omieCliente.Cep,
+                            Estado = omieCliente.Estado,
+                            Cidade = omieCliente.Cidade,
+                            InscricaoEstadual = omieCliente.InscricaoEstadual,
+                            InscricaoMunicipal = omieCliente.InscricaoMunicipal,
+                            OptanteSimplesNacional = omieCliente.OptanteSimplesNacional == "S",
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
                         });
@@ -62,6 +83,17 @@ namespace Tabatine.Infrastructure.Services
                         existing.NomeFantasia = omieCliente.NomeFantasia;
                         existing.CnpjCpf = omieCliente.CnpjCpf;
                         existing.Email = omieCliente.Email;
+                        existing.Telefone = omieCliente.Telefone;
+                        existing.Endereco = omieCliente.Endereco;
+                        existing.EnderecoNumero = omieCliente.EnderecoNumero;
+                        existing.EnderecoComplemento = omieCliente.Complemento;
+                        existing.Bairro = omieCliente.Bairro;
+                        existing.Cep = omieCliente.Cep;
+                        existing.Estado = omieCliente.Estado;
+                        existing.Cidade = omieCliente.Cidade;
+                        existing.InscricaoEstadual = omieCliente.InscricaoEstadual;
+                        existing.InscricaoMunicipal = omieCliente.InscricaoMunicipal;
+                        existing.OptanteSimplesNacional = omieCliente.OptanteSimplesNacional == "S";
                         existing.UpdatedAt = DateTime.UtcNow;
                     }
                 }
@@ -73,6 +105,7 @@ namespace Tabatine.Infrastructure.Services
                 pagina++;
             }
 
+            await _syncState.SetLastSyncDateAsync("Clientes", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Clientes finalizada.");
         }
     }

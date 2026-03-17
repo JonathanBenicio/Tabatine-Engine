@@ -16,6 +16,8 @@ namespace Tabatine.Infrastructure.Data.Configurations
             builder.Property(p => p.CodigoProduto).HasMaxLength(50).IsRequired();
             builder.Property(p => p.Descricao).HasMaxLength(255).IsRequired();
             builder.Property(p => p.PrecoUnitario).HasColumnType("numeric(18,2)");
+            builder.Property(p => p.PesoLiquido).HasColumnType("numeric(18,4)");
+            builder.Property(p => p.PesoBruto).HasColumnType("numeric(18,4)");
         }
     }
 }

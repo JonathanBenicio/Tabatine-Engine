@@ -27,6 +27,12 @@ namespace Tabatine.Infrastructure.Data.Configurations
 
             builder.Property(n => n.ValorTotal)
                    .HasColumnType("numeric(18,2)");
+
+            builder.Property(n => n.ValorIss).HasColumnType("numeric(18,2)");
+            builder.Property(n => n.ValorIr).HasColumnType("numeric(18,2)");
+            builder.Property(n => n.ValorCsll).HasColumnType("numeric(18,2)");
+            builder.Property(n => n.ValorPisRetido).HasColumnType("numeric(18,2)");
+            builder.Property(n => n.ValorCofinsRetido).HasColumnType("numeric(18,2)");
         }
     }
 }

@@ -17,9 +17,10 @@ services:
     depends_on:
       - tabatine-redis
     environment:
-      # Exemplo de variáveis de ambiente para o appsettings.json do Worker Service
-      - ConnectionStrings__Redis=tabatine-redis:6379,abortConnect=false
       - DOTNET_ENVIRONMENT=Development
+      - ConnectionStrings__Redis=tabatine-redis:6379,abortConnect=false
+    env_file:
+      - .env.local
     restart: unless-stopped
 
 volumes:

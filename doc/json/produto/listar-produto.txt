@@ -1,0 +1,43 @@
+https://app.omie.com.br/api/v1/geral/produtos/#ListarProdutos
+
+request
+
+Lista os produtos cadastrados
+
+pagina	integer	Número da página retornada
+registros_por_pagina	integer	Número de registros retornados na página.
+apenas_importado_api	string1	Exibir apenas os registros gerados pela API.+
+ordenar_por	string100	Ordem de exibição dos dados. Padrão: Código.
+ordem_decrescente	string1	Se a lista será apresentada em ordem decrescente (S/N).+
+filtrar_por_data_de	string10	Filtrar os registros a partir de uma data.+
+filtrar_por_hora_de	string8	Filtrar a partir da hora.+
+filtrar_por_data_ate	string10	Filtrar os registros até uma data.+
+filtrar_por_hora_ate	string8	Filtrar até a hora.+
+filtrar_apenas_inclusao	string1	Filtrar apenas os registros incluídos (S/N).+
+filtrar_apenas_alteracao	string1	Filtrar apenas os registros alterados (S/N).+
+filtrar_apenas_omiepdv	string1	Filtrar apenas produtos marcados para venda via PDV.+
+filtrar_apenas_familia	string50	Filtrar por ID da Familia de Produto.+
+filtrar_apenas_tipo	string2	Código do Tipo do Item para o SPED.+
+filtrar_apenas_descricao	string200	Filtro pela descrição do produto.+
+filtrar_apenas_marketplace	string1	Filtrar apenas produtos marcados para venda via Market Place ou e-Commerce.+
+filtrar_apenas_pdv	string1	Filtrar apenas produtos marcados para venda via Ponto de Venda (PDV).+
+exibir_caracteristicas	string1	Exibir as características do produto (S/N).+
+exibir_tabelas_preco	string1	Exibir as tabelas de preço do produto (S/N).+
+caracteristicas	caracteristicasArray	lista de caracteristicas do produto.
+produtosPorCodigo	produtosPorCodigoArray	Filtro por código do produto.+
+inativo	string1	Indica se o cadastro do produto está inativo (S/N).+
+ncm	string13	Código da Nomenclatura Comum do Mercosul (NCM).+
+ean	string14	Código EAN (GTIN - Global Trade Item Number).+
+ordem_descrescente	string1	DEPRECATED.
+exibir_obs	string1	Exibir as observações do produto (S/N).+
+exibir_kit	string1	Exibir os componentes do KIT (S/N).+
+exibir_info_variacoes	string1	Opcional. Indica se deve retornar informações sobre as variações de produto. +
+
+response
+Lista completa de produtos encontrados no omie.
+
+pagina	integer	Número da página retornada
+total_de_paginas	integer	Número total de páginas
+registros	integer	Número de registros retornados na página.
+total_de_registros	integer	total de registros encontrados
+produto_servico_cadastro	produto_servico_cadastroArray	Cadastro completo de produtos

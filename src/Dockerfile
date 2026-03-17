@@ -31,6 +31,7 @@ RUN dotnet publish "./Tabatine.Worker.csproj" -c $BUILD_CONFIGURATION -o /app/pu
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
+RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "Tabatine.Worker.dll"]

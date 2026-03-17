@@ -1,0 +1,238 @@
+{
+    "pagina": 1,
+    "total_de_paginas": 1,
+    "registros": 23,
+    "total_de_registros": 23,
+    "cadastro": [
+        {
+            "codInt": "",
+            "codigo": 8154346990,
+            "comissao": 4,
+            "email": "representacoesdanielle@gmail.com",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "Danielle Garcia Arantes Abdalla",
+            "visualiza_pedido": "S"
+        },
+        {
+            "codInt": "",
+            "codigo": 8154347039,
+            "comissao": 0,
+            "email": "jhtuco@gmail.com",
+            "fatura_pedido": "S",
+            "inativo": "N",
+            "nome": "João Henrique Pessoa",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8156429104,
+            "comissao": 0,
+            "email": "bruno@tabatinisengenharia.com",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "Bruno Henrique Rodrigues",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8182694517,
+            "comissao": 0,
+            "email": "confibrassudeste@gmail.com",
+            "fatura_pedido": "N",
+            "inativo": "S",
+            "nome": "Roni Aparecido Ferrare",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8206645973,
+            "comissao": 0,
+            "email": "moacirgodoy2015@gmail.com",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "Moacir Godoy Filho",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8208279229,
+            "comissao": 0,
+            "email": "rafael.ecofrepresentacoes@gmail.com",
+            "fatura_pedido": "N",
+            "inativo": "S",
+            "nome": "RAFAEL MUNIZ",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8258509054,
+            "comissao": 0,
+            "email": "",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "Mônica Yamamoto",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8264553664,
+            "comissao": 0,
+            "email": "",
+            "fatura_pedido": "N",
+            "inativo": "S",
+            "nome": "Antônio Marcos de Sousa",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8456948849,
+            "comissao": 0,
+            "email": "fabiorcuenca@gmail.com",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "FABIO CUENCA",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8457071712,
+            "comissao": 0,
+            "email": "",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "Rodrigo Piucci",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8499499402,
+            "comissao": 0,
+            "email": "diegotoledopereiradasilva@gmail.com",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "Diego Toledo Pereira da Silva",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8559522417,
+            "comissao": 0,
+            "email": "",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "Roberto Farias",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8561460772,
+            "comissao": 0,
+            "email": "alcpisoind@hotmail.com",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "ANDRE LUIS COSTA",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8588848916,
+            "comissao": 0,
+            "email": "vendas@ecorepresentacoes.com.br",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "FATIMA",
+            "visualiza_pedido": "S"
+        },
+        {
+            "codInt": "",
+            "codigo": 8607597651,
+            "comissao": 0,
+            "email": "",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "farias",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8614876979,
+            "comissao": 0,
+            "email": "",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "José Guilherme",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8614877482,
+            "comissao": 0,
+            "email": "",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "João Henrique",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8623052143,
+            "comissao": 0,
+            "email": "",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "SUPERLOG",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8641903641,
+            "comissao": 0,
+            "email": "reinaldo.balbino36@gmail.com",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "Reinaldo Balbino Ourinho",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8661577939,
+            "comissao": 0,
+            "email": "",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "REINALDO",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8693942539,
+            "comissao": 0,
+            "email": "alexandrepierroti@yahoo.com.br",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "Alexandre Pierroti",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 8730112205,
+            "comissao": 0,
+            "email": "",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "CLAUDIO RAIMUNDO CLARET SILVA",
+            "visualiza_pedido": "N"
+        },
+        {
+            "codInt": "",
+            "codigo": 12301465509,
+            "comissao": 0,
+            "email": "",
+            "fatura_pedido": "N",
+            "inativo": "N",
+            "nome": "MAURO",
+            "visualiza_pedido": "N"
+        }
+    ]
+}

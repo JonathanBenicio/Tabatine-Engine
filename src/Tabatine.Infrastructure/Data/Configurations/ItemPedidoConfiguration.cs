@@ -26,6 +26,12 @@ namespace Tabatine.Infrastructure.Data.Configurations
                    
             builder.Property(i => i.ValorUnitario).HasColumnType("numeric(18,2)");
             builder.Property(i => i.ValorTotal).HasColumnType("numeric(18,2)");
+            builder.Property(i => i.ValorIcms).HasColumnType("numeric(18,2)");
+            builder.Property(i => i.ValorIpi).HasColumnType("numeric(18,2)");
+            builder.Property(i => i.ValorPis).HasColumnType("numeric(18,2)");
+            builder.Property(i => i.ValorCofins).HasColumnType("numeric(18,2)");
+            builder.Property(i => i.PercentualDesconto).HasColumnType("numeric(5,2)");
+            builder.Property(i => i.ValorDesconto).HasColumnType("numeric(18,2)");
         }
     }
 }

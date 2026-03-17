@@ -7,6 +7,7 @@ using Microsoft.Extensions.Http.Resilience;
 using Polly;
 using Tabatine.Infrastructure.Services;
 using Tabatine.Core.Interfaces;
+using Tabatine.Infrastructure.Repositories;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -21,6 +22,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Configure Omie Options
 builder.Services.Configure<OmieOptions>(builder.Configuration.GetSection("Omie"));
 
+// Configure Redis
+builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(sp =>
+{
+    var configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    return StackExchange.Redis.ConnectionMultiplexer.Connect(configuration);
+});
+
 // Configure HttpClient with Resilience
 builder.Services.AddHttpClient<IOmieClient, OmieClient>(client =>
 {
@@ -31,33 +39,55 @@ builder.Services.AddHttpClient<IOmieClient, OmieClient>(client =>
 {
     pipelineBuilder.AddRetry(new HttpRetryStrategyOptions
     {
-        MaxRetryAttempts = 3,
+        MaxRetryAttempts = 1,  // Reduzido: 3 retries * N serviços tripavm o circuit breaker
         BackoffType = DelayBackoffType.Exponential,
         UseJitter = true,
-        Delay = TimeSpan.FromSeconds(2)
+        Delay = TimeSpan.FromSeconds(3),
+        ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+            .Handle<HttpRequestException>()
+            .HandleResult(r => (int)r.StatusCode >= 500)
     });
 
     pipelineBuilder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
     {
-        SamplingDuration = TimeSpan.FromSeconds(30),
-        FailureRatio = 0.5,
-        MinimumThroughput = 10,
-        BreakDuration = TimeSpan.FromSeconds(30)
+        SamplingDuration = TimeSpan.FromSeconds(60),
+        FailureRatio = 0.8,   // Abrir só quando 80% das chamadas falharem
+        MinimumThroughput = 20, // Exige ao menos 20 chamadas antes de avaliar
+        BreakDuration = TimeSpan.FromSeconds(60)
     });
+
+    pipelineBuilder.AddRateLimiter(new System.Threading.RateLimiting.FixedWindowRateLimiter(new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+    {
+        PermitLimit = 200,
+        Window = TimeSpan.FromMinutes(1),
+        QueueLimit = 50,
+        QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst
+    }));
 
     pipelineBuilder.AddConcurrencyLimiter(4);
     
     pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(60));
 });
 
+builder.Services.AddScoped<ISyncStateRepository, SyncStateRepository>();
 builder.Services.AddScoped<ClienteSyncService>();
 builder.Services.AddScoped<ProdutoSyncService>();
 builder.Services.AddScoped<PedidoSyncService>();
 builder.Services.AddScoped<NotaFiscalSyncService>();
+builder.Services.AddScoped<VendedorSyncService>();
+builder.Services.AddScoped<ContaCorrenteSyncService>();
 
 builder.Services.AddScoped<ISyncService, SyncManager>();
 
 builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();
+
+// Migrate database on startup
+using (var scope = host.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
+
 host.Run();

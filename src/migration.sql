@@ -110,3 +110,89 @@ VALUES ('20260315203515_InitialCreate', '10.0.5');
 
 COMMIT;
 
+START TRANSACTION;
+CREATE TABLE "IntegrationSyncStates" (
+    "Id" uuid NOT NULL,
+    "ModuleName" text NOT NULL,
+    "LastSyncDate" timestamp with time zone NOT NULL,
+    "UpdatedAt" timestamp with time zone NOT NULL,
+    CONSTRAINT "PK_IntegrationSyncStates" PRIMARY KEY ("Id")
+);
+
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260315214210_AddSyncState', '10.0.5');
+
+COMMIT;
+
+START TRANSACTION;
+ALTER TABLE "Produtos" ADD "FamiliaProduto" text;
+
+ALTER TABLE "Produtos" ADD "PesoBruto" numeric(18,4) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "Produtos" ADD "PesoLiquido" numeric(18,4) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "Produtos" ADD "UnidadeMedida" text;
+
+ALTER TABLE "PedidosVenda" ALTER COLUMN "DataPrevisao" DROP NOT NULL;
+
+ALTER TABLE "PedidosVenda" ADD "CodigoVendedor" bigint;
+
+ALTER TABLE "PedidosVenda" ADD "Faturado" boolean NOT NULL DEFAULT FALSE;
+
+ALTER TABLE "PedidosVenda" ADD "ObservacoesVenda" text;
+
+ALTER TABLE "PedidosVenda" ADD "QuantidadeVolumes" integer NOT NULL DEFAULT 0;
+
+ALTER TABLE "PedidosVenda" ADD "Transportadora" text;
+
+ALTER TABLE "PedidosVenda" ADD "UsuarioInclusao" text;
+
+ALTER TABLE "PedidosVenda" ADD "ValorFrete" numeric(18,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "NotasFiscais" ADD "HoraEmissao" interval;
+
+ALTER TABLE "NotasFiscais" ADD "ValorCofinsRetido" numeric(18,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "NotasFiscais" ADD "ValorCsll" numeric(18,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "NotasFiscais" ADD "ValorIr" numeric(18,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "NotasFiscais" ADD "ValorIss" numeric(18,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "NotasFiscais" ADD "ValorPisRetido" numeric(18,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "ItensPedido" ADD "PercentualDesconto" numeric(5,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "ItensPedido" ADD "ValorCofins" numeric(18,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "ItensPedido" ADD "ValorDesconto" numeric(18,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "ItensPedido" ADD "ValorIcms" numeric(18,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "ItensPedido" ADD "ValorIpi" numeric(18,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "ItensPedido" ADD "ValorPis" numeric(18,2) NOT NULL DEFAULT 0.0;
+
+ALTER TABLE "Clientes" ALTER COLUMN "InscricaoEstadual" TYPE character varying(50);
+
+ALTER TABLE "Clientes" ALTER COLUMN "Estado" TYPE character varying(2);
+
+ALTER TABLE "Clientes" ALTER COLUMN "Cep" TYPE character varying(10);
+
+ALTER TABLE "Clientes" ADD "Bairro" character varying(100);
+
+ALTER TABLE "Clientes" ADD "Endereco" character varying(255);
+
+ALTER TABLE "Clientes" ADD "EnderecoComplemento" text;
+
+ALTER TABLE "Clientes" ADD "EnderecoNumero" text;
+
+ALTER TABLE "Clientes" ADD "InscricaoMunicipal" character varying(50);
+
+ALTER TABLE "Clientes" ADD "OptanteSimplesNacional" boolean NOT NULL DEFAULT FALSE;
+
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260317163152_ExpandEntitiesWithFullData', '10.0.5');
+
+COMMIT;
+

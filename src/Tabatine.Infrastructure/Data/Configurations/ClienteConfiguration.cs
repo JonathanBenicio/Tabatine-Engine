@@ -15,6 +15,12 @@ namespace Tabatine.Infrastructure.Data.Configurations
             
             builder.Property(c => c.CnpjCpf).HasMaxLength(20);
             builder.Property(c => c.RazaoSocial).HasMaxLength(255).IsRequired();
+            builder.Property(c => c.Cep).HasMaxLength(10);
+            builder.Property(c => c.Estado).HasMaxLength(2);
+            builder.Property(c => c.InscricaoEstadual).HasMaxLength(50);
+            builder.Property(c => c.InscricaoMunicipal).HasMaxLength(50);
+            builder.Property(c => c.Endereco).HasMaxLength(255);
+            builder.Property(c => c.Bairro).HasMaxLength(100);
         }
     }
 }

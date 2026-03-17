@@ -1,0 +1,23 @@
+https://app.omie.com.br/api/v1/geral/contacorrente/#ListarContasCorrentes
+
+request
+codigo	integer	Código da conta corrente no Omie.
+codigo_integracao	string20	Código de Integração do Parceiro.
+pagina	integer	Número da página que será listada.
+registros_por_pagina	integer	Número de registros retornados
+apenas_importado_api	string1	Tipo de Cartão para Administradoras de Cartão.+
+ordenar_por	string100	Ordenar o resultado da página por:+
+ordem_descrescente	string1	Indica se a ordem de exibição é decrescente caso seja informado "S".
+filtrar_por_data_de	string10	Filtrar lançamentos incluídos e/ou alterados até a data
+filtrar_por_data_ate	string10	Filtrar lançamentos incluídos e/ou alterados até a data
+filtrar_apenas_inclusao	string1	Filtrar apenas registros incluídos (S/N)
+filtrar_apenas_alteracao	string1	Filtrar apenas registros alterados (S/N)
+filtrar_apenas_ativo	string1	Filtrar apenas contas correntes ativas
+
+
+response
+pagina	integer	Número da página que será listada.
+total_de_paginas	integer	Total de páginas encontradas.
+registros	integer	Número de registros retornados
+total_de_registros	integer	Total de registros encontrados.
+ListarContasCorrentes	ListarContasCorrentesArray	Lista de contas correntes.

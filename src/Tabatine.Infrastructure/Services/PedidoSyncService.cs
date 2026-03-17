@@ -16,90 +16,209 @@ namespace Tabatine.Infrastructure.Services
     {
         private readonly IOmieClient _omieClient;
         private readonly AppDbContext _dbContext;
+        private readonly ISyncStateRepository _syncState;
         private readonly ILogger<PedidoSyncService> _logger;
 
-        public PedidoSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<PedidoSyncService> logger)
+        public PedidoSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<PedidoSyncService> logger)
         {
             _omieClient = omieClient;
             _dbContext = dbContext;
+            _syncState = syncState;
             _logger = logger;
         }
 
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
             _logger.LogInformation("Iniciando sincronização de Pedidos de Venda...");
+            
+            var lastSyncDate = await _syncState.GetLastSyncDateAsync("Pedidos", ct);
+            var syncStartTime = DateTime.UtcNow;
+
+            // Rastreia OmieIds já processados neste ciclo para evitar duplicatas
+            var processedOmieIds = new HashSet<long>();
+
             int pagina = 1;
             bool temMais = true;
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarPedidosAsync(pagina, ct);
-                if (response.PedidosVenda.Count == 0) break;
+                var response = await _omieClient.ListarPedidosAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                
+                // Resposta nula = sem registros (Client-5113)
+                if (response == null || response.PedidosVenda == null || response.PedidosVenda.Count == 0) break;
+
+                var omiePedidoIds = response.PedidosVenda.Select(p => p.Cabecalho.CodigoPedido).ToList();
+                var omieClienteIds = response.PedidosVenda.Select(p => p.Cabecalho.CodigoCliente).Distinct().ToList();
+                var omieProdutoIds = response.PedidosVenda.SelectMany(p => p.Det.Select(d => d.Produto.CodigoProduto)).Distinct().ToList();
+
+                var existingPedidos = await _dbContext.PedidosVenda
+                    .Include(p => p.Itens)
+                    .Include(p => p.Parcelas)
+                    .Where(p => omiePedidoIds.Contains(p.OmieId))
+                    .ToDictionaryAsync(p => p.OmieId, ct);
+
+                var clientes = await _dbContext.Clientes
+                    .Where(c => omieClienteIds.Contains(c.OmieId))
+                    .ToDictionaryAsync(c => c.OmieId, ct);
+
+                var produtos = await _dbContext.Produtos
+                    .Where(p => omieProdutoIds.Contains(p.OmieId))
+                    .ToDictionaryAsync(p => p.OmieId, ct);
 
                 foreach (var omiePedido in response.PedidosVenda)
                 {
-                    var existing = await _dbContext.PedidosVenda
-                        .Include(p => p.Itens)
-                        .FirstOrDefaultAsync(p => p.OmieId == omiePedido.Cabecalho.CodigoPedidoOmie, ct);
+                    var omieId = omiePedido.Cabecalho.CodigoPedido;
 
-                    var cliente = await _dbContext.Clientes
-                        .FirstOrDefaultAsync(c => c.OmieId == omiePedido.Cabecalho.CodigoCliente, ct);
+                    // Pula se já processamos este OmieId neste ciclo
+                    if (!processedOmieIds.Add(omieId))
+                    {
+                        _logger.LogDebug("Pedido OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
+                        continue;
+                    }
 
-                    if (cliente == null)
+                    if (!clientes.TryGetValue(omiePedido.Cabecalho.CodigoCliente, out var cliente))
                     {
                         _logger.LogWarning("Cliente {Id} não encontrado. Pulando pedido {Ped}.", omiePedido.Cabecalho.CodigoCliente, omiePedido.Cabecalho.NumeroPedido);
                         continue;
                     }
 
-                    if (existing == null)
+                    existingPedidos.TryGetValue(omieId, out var existingPedido);
+
+                    if (existingPedido == null)
                     {
                         var novoPedido = new PedidoVenda
                         {
                             Id = Guid.NewGuid(),
-                            OmieId = omiePedido.Cabecalho.CodigoPedidoOmie,
+                            OmieId = omieId,
                             NumeroPedido = omiePedido.Cabecalho.NumeroPedido,
                             Etapa = omiePedido.Cabecalho.Etapa,
-                            ValorTotal = omiePedido.Cabecalho.ValorTotal,
+                            ValorTotal = omiePedido.TotalPedido.ValorTotalPedido,
                             ClienteId = cliente.Id,
+                            ValorFrete = omiePedido.Frete?.ValorFrete ?? 0,
+                            Transportadora = omiePedido.Frete?.Transportadora,
+                            QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0,
+                            ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda,
+                            CodigoVendedor = omiePedido.InformacoesAdicionais?.CodigoVendedor,
+                            UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao,
+                            Faturado = omiePedido.InfoCadastro?.Faturado == "S",
                             CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
+                            UpdatedAt = DateTime.UtcNow,
+                            Itens = new List<ItemPedido>(),
+                            Parcelas = new List<PedidoParcela>()
                         };
 
-                        foreach (var item in omiePedido.Detalhe)
+                        if (DateTime.TryParseExact(omiePedido.Cabecalho.DataPrevisao, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtPrev))
                         {
-                            var produto = await _dbContext.Produtos
-                                .FirstOrDefaultAsync(p => p.OmieId == item.Produto.CodigoProduto, ct);
-                            
-                            if (produto == null) continue;
-
-                            novoPedido.Itens.Add(new ItemPedido
-                            {
-                                Id = Guid.NewGuid(),
-                                PedidoVendaId = novoPedido.Id,
-                                ProdutoId = produto.Id,
-                                Quantidade = (int)item.Produto.Quantidade,
-                                ValorUnitario = item.Produto.ValorUnitario,
-                                ValorTotal = item.Produto.Quantidade * item.Produto.ValorUnitario,
-                                CreatedAt = DateTime.UtcNow
-                            });
+                            novoPedido.DataPrevisao = DateTime.SpecifyKind(dtPrev, DateTimeKind.Utc);
                         }
 
                         _dbContext.PedidosVenda.Add(novoPedido);
+                        existingPedido = novoPedido;
                     }
                     else
                     {
-                        existing.Etapa = omiePedido.Cabecalho.Etapa;
-                        existing.ValorTotal = omiePedido.Cabecalho.ValorTotal;
-                        existing.UpdatedAt = DateTime.UtcNow;
-                        // Simplificação: Itens de pedido geralmente não mudam drasticamente após criados,
-                        // mas em um sistema real, você deveria sincronizar itens também.
+                        existingPedido.Etapa = omiePedido.Cabecalho.Etapa;
+                        existingPedido.ValorTotal = omiePedido.TotalPedido.ValorTotalPedido;
+                        existingPedido.ValorFrete = omiePedido.Frete?.ValorFrete ?? 0;
+                        existingPedido.Transportadora = omiePedido.Frete?.Transportadora;
+                        existingPedido.QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0;
+                        existingPedido.ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda;
+                        existingPedido.CodigoVendedor = omiePedido.InformacoesAdicionais?.CodigoVendedor;
+                        existingPedido.UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao;
+                        existingPedido.Faturado = omiePedido.InfoCadastro?.Faturado == "S";
+                        existingPedido.UpdatedAt = DateTime.UtcNow;
+
+                        if (DateTime.TryParseExact(omiePedido.Cabecalho.DataPrevisao, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtPrev))
+                        {
+                            existingPedido.DataPrevisao = DateTime.SpecifyKind(dtPrev, DateTimeKind.Utc);
+                        }
+                    }
+
+                    // Reconciliação unificada de itens e parcelas
+                    
+                    // Itens
+                    foreach (var currentItem in existingPedido.Itens.ToList())
+                    {
+                        _dbContext.ItensPedido.Remove(currentItem);
+                    }
+                    existingPedido.Itens.Clear();
+
+                    foreach (var item in omiePedido.Det)
+                    {
+                        if (produtos.TryGetValue(item.Produto.CodigoProduto, out var produto))
+                        {
+                            existingPedido.Itens.Add(new ItemPedido
+                            {
+                                Id = Guid.NewGuid(),
+                                PedidoVendaId = existingPedido.Id,
+                                ProdutoId = produto.Id,
+                                Quantidade = (int)item.Produto.Quantidade,
+                                ValorUnitario = item.Produto.ValorUnitario,
+                                ValorTotal = item.Produto.ValorTotal,
+                                ValorIcms = item.Imposto?.Icms?.ValorIcms ?? 0,
+                                ValorIpi = item.Imposto?.Ipi?.ValorIpi ?? 0,
+                                ValorPis = item.Imposto?.Pis?.ValorPis ?? 0,
+                                ValorCofins = item.Imposto?.Cofins?.ValorCofins ?? 0,
+                                PercentualDesconto = item.Produto.PercentualDesconto,
+                                ValorDesconto = item.Produto.ValorDesconto,
+                                CreatedAt = DateTime.UtcNow
+                            });
+                        }
+                    }
+
+                    // Parcelas
+                    foreach (var currentParcela in existingPedido.Parcelas.ToList())
+                    {
+                        _dbContext.PedidoParcelas.Remove(currentParcela);
+                    }
+                    existingPedido.Parcelas.Clear();
+
+                    if (omiePedido.ListaParcelas?.Parcelas != null)
+                    {
+                        foreach (var parcela in omiePedido.ListaParcelas.Parcelas)
+                        {
+                            if (DateTime.TryParseExact(parcela.DataVencimento, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtVenc))
+                            {
+                                existingPedido.Parcelas.Add(new PedidoParcela
+                                {
+                                    Id = Guid.NewGuid(),
+                                    PedidoVendaId = existingPedido.Id,
+                                    NumeroParcela = parcela.NumeroParcela,
+                                    Valor = parcela.Valor,
+                                    DataVencimento = DateTime.SpecifyKind(dtVenc, DateTimeKind.Utc),
+                                    Percentual = parcela.Percentual
+                                });
+                            }
+                        }
                     }
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
+                try
+                {
+                    await _dbContext.SaveChangesAsync(ct);
+                    _logger.LogInformation("Página {Pagina} de {Total} de pedidos sincronizada.", pagina, response.TotalDePaginas);
+                }
+                catch (DbUpdateConcurrencyException ex)
+                {
+                    _logger.LogWarning("Concorrência detectada ao salvar página {Pagina} de pedidos. Limpando rastreador e ignorando conflito.", pagina);
+                    
+                    // Crucial: Limpa as entradas rastreadas que falharam para não "poluir" a próxima página
+                    foreach (var entry in _dbContext.ChangeTracker.Entries().ToList())
+                    {
+                        entry.State = EntityState.Detached;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Erro inesperado ao salvar página {Pagina} de pedidos. Abortando ciclo para segurança.", pagina);
+                    throw; // Re-throw para o SyncManager lidar e registrar falha do serviço
+                }
+                
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;
             }
+
+            await _syncState.SetLastSyncDateAsync("Pedidos", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Pedidos finalizada.");
         }
     }

@@ -1,0 +1,22 @@
+https://app.omie.com.br/api/v1/geral/vendedores/#ListarVendedores
+
+Request
+pagina	integer	Número da página que será listada.
+registros_por_pagina	integer	Número de registros retornados
+apenas_importado_api	string1	Exibir apenas os registros gerados pela API
+ordenar_por	string100	Ordenar o resultado da página por:+
+ordem_descrescente	string1	Indica se a ordem de exibição é decrescente caso seja informado "S".
+filtrar_por_data_de	string10	Filtrar lançamentos incluídos e/ou alterados até a data
+filtrar_por_data_ate	string10	Filtrar lançamentos incluídos e/ou alterados até a data
+filtrar_apenas_inclusao	string1	Filtrar apenas registros incluídos (S/N)
+filtrar_apenas_alteracao	string1	Filtrar apenas registros alterados (S/N)
+filtrar_por_email	string100	Filtrar os vendedores por e-mail
+
+Response
+Resposta da listagem de Vendedores
+
+pagina	integer	Número da página que será listada.
+total_de_paginas	integer	Total de páginas encontradas.
+registros	integer	Número de registros retornados
+total_de_registros	integer	Total de registros encontrados.
+cadastro	cadastroArray	Cadastro de Vendedores

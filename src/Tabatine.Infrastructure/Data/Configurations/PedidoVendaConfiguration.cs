@@ -19,6 +19,9 @@ namespace Tabatine.Infrastructure.Data.Configurations
                    
             builder.Property(p => p.ValorTotal)
                    .HasColumnType("numeric(18,2)");
+
+            builder.Property(p => p.ValorFrete)
+                   .HasColumnType("numeric(18,2)");
         }
     }
 }

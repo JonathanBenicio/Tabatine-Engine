@@ -8,6 +8,10 @@ namespace Tabatine.Core.Entities
         public string Descricao { get; set; } = string.Empty;
         public string Ncm { get; set; } = string.Empty;
         public string? Ean { get; set; }
+        public string? UnidadeMedida { get; set; }
+        public decimal PesoLiquido { get; set; }
+        public decimal PesoBruto { get; set; }
+        public string? FamiliaProduto { get; set; }
         public decimal PrecoUnitario { get; set; }
         public bool Ativo { get; set; }
     }

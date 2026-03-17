@@ -8,10 +8,19 @@ namespace Tabatine.Omie.Client.Models.Produtos
         public int Pagina { get; set; } = 1;
 
         [JsonPropertyName("registros_por_pagina")]
-        public int RegistrosPorPagina { get; set; } = 100;
+        public int RegistrosPorPagina { get; set; } = 500;
 
         [JsonPropertyName("apenas_importado_api")]
         public string ApenasImportadoApi { get; set; } = "N";
+
+        [JsonPropertyName("filtrar_apenas_omiepdv")]
+        public string FiltrarApenasOmiepdv { get; set; } = "N";
+
+        [JsonPropertyName("filtrar_por_data_de")]
+        public string? FiltrarPorDataDe { get; set; }
+
+        [JsonPropertyName("filtrar_por_data_ate")]
+        public string? FiltrarPorDataAte { get; set; }
     }
 
     public class OmieProduto
@@ -30,7 +39,19 @@ namespace Tabatine.Omie.Client.Models.Produtos
 
         [JsonPropertyName("ncm")]
         public string Ncm { get; set; } = string.Empty;
-        
+
+        [JsonPropertyName("unidade")]
+        public string? Unidade { get; set; }
+
+        [JsonPropertyName("peso_liquido")]
+        public decimal PesoLiquido { get; set; }
+
+        [JsonPropertyName("peso_bruto")]
+        public decimal PesoBruto { get; set; }
+
+        [JsonPropertyName("descr_familia")]
+        public string? FamiliaProduto { get; set; }
+
         [JsonPropertyName("inativo")]
         public string Inativo { get; set; } = "N";
     }

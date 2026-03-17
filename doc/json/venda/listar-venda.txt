@@ -1,0 +1,42 @@
+https://app.omie.com.br/api/v1/produtos/pedido/#ListarPedidos
+
+Request
+pagina	integer	Número da página que será listada.
+registros_por_pagina	integer	Número de registros retornados
+apenas_importado_api	string1	DEPRECATED
+ordenar_por	string100	Ordem de exibição dos dados. Padrão: Código.
+filtrar_por_data_de	string10	Filtra os registros a partir da data.
+filtrar_por_data_ate	string10	Filtrar lançamentos incluídos e/ou alterados até a data
+filtrar_por_hora_de	string8	Filtra os registros a partir da hora específicada.
+filtrar_por_hora_ate	string8	Filtra os registros até a hora específicada.
+filtrar_apenas_inclusao	string1	Filtrar apenas registros incluídos (S/N)
+filtrar_apenas_alteracao	string1	Filtrar apenas registros alterados (S/N)
+filtrar_por_cliente	integer	Filtra os registros do cliente específicado.
+filtrar_por_vendedor	integer	Filtra os registros do vendedor específicado.
+filtrar_por_projeto	integer	Filtra os registros do projeto específicado.
+etapa	string2	Etapa do pedido de venda.+
+numero_pedido_de	integer	Filtra os registros a partir do número do pedido específicado.
+numero_pedido_ate	integer	Filtra os registros até o número do pedido específicado.
+apenas_resumo	string1	Exibir apenas o resumo do pedido de vendas.+
+data_previsao_de	string10	Data de Previsão do faturamento inicio.
+data_previsao_ate	string10	Data de Previsão do faturamento final.
+data_faturamento_de	string10	Data de Faturamento inicial.
+data_faturamento_ate	string10	Data de Faturamento final.
+data_emissao_de	string10	DEPRECATED
+data_emissao_ate	string10	DEPRECATED
+data_cancelamento_de	string10	Data de Cancelamento inicial.
+data_cancelamento_ate	string10	Data de Cancelamento final.
+status_pedido	string100	Status do Pedido.+FATURADO
+CANCELADO
+AUTORIZADO
+DENEGADO
+DEVOLVIDO
+ordem_descrescente	string1	DEPRECATED
+
+
+Response
+pagina	integer	Número da página que será listada.
+total_de_paginas	integer	Total de páginas encontradas.
+registros	integer	Número de registros retornados
+total_de_registros	integer	Total de registros encontrados.
+pedido_venda_produto	pedido_venda_produtoArray	Estrutura do Pedido de Vendas de Produtos.+

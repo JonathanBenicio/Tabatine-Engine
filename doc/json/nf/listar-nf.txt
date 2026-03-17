@@ -1,0 +1,47 @@
+https://app.omie.com.br/api/v1/produtos/nfconsultar/#ListarNF
+
+Request
+pagina	integer	Número da página que será listada.
+registros_por_pagina	integer	Número de registros retornados
+apenas_importado_api	string1	DEPRECATED
+ordenar_por	string100	Ordenar o resultado da página por:+
+ordem_decrescente	string1	Ordem decrescente.
+filtrar_por_data_de	string10	Filtra os registros a partir da data.
+filtrar_por_data_ate	string10	Filtrar lançamentos incluídos e/ou alterados até a data
+filtrar_apenas_inclusao	string1	Filtrar apenas registros incluídos (S/N)
+filtrar_apenas_alteracao	string1	Filtrar apenas registros alterados (S/N)
+filtrar_por_status	string1	Status da NF:+
+dEmiInicial	string10	Data de Emissão inicial.
+hEmiInicial	string8	Hora de Emissão inicial.
+dEmiFinal	string10	Data de Emissão final.
+hEmiFinal	string8	Hora de Emissão final.
+dSaiEntInicial	string10	Data de Saida inicial.
+dSaiEntFinal	string10	Data de Saida final.
+dRegInicial	string10	Data de Registro inicial.
+dRegFinal	string10	Data de Registro final.
+dCanInicial	string10	Data de Cancelamento inicial.
+dCanFinal	string10	Data de Cancelamento final.
+dInutInicial	string10	Data de Inutilização inicial.
+dInutFinal	string10	Data de Inutilização final.
+tpNF	string1	Tipo de Operação: 0-entrada / 1-saída
+tpAmb	string1	Tipo de Ambiente = 1-Produção / 2-Homologação
+cSerie	string5	Série da NF-e
+nNFInicial	integer	Número da Nota Fiscal inicial.
+nNFFinal	integer	Número da Nota Fiscal final.
+cDetalhesPedido	string1	Exibe os detalhes do pedido que originou a Nota Fiscal.+
+cApenasResumo	string1	Exibe apenas a resumo da Nota Fiscal.+
+opPedido	string2	Operação do Pedido de venda que originou a NF.+
+cNumeroPedidoCliente	string30	Pesquisa pelo numero do Pedido do Cliente.
+nIdCliente	integer	ID do Cliente.
+cnpj_cpf	string100	CNPJ / CPF.
+ordem_descrescente	string1	DEPRECATED
+
+
+Response
+Resposta da listagem de Notas Fiscais
+
+pagina	integer	Número da página que será listada.
+total_de_paginas	integer	Total de páginas encontradas.
+registros	integer	Número de registros retornados
+total_de_registros	integer	Total de registros encontrados.
+nfCadastro	nfCadastroArray	Dados da Nota Fiscal 

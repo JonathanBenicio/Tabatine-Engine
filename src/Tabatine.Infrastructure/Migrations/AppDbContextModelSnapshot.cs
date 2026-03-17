@@ -28,8 +28,13 @@ namespace Tabatine.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Bairro")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("Cep")
-                        .HasColumnType("text");
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<string>("Cidade")
                         .HasColumnType("text");
@@ -45,11 +50,27 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Property<string>("Email")
                         .HasColumnType("text");
 
-                    b.Property<string>("Estado")
+                    b.Property<string>("Endereco")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("EnderecoComplemento")
                         .HasColumnType("text");
 
-                    b.Property<string>("InscricaoEstadual")
+                    b.Property<string>("EnderecoNumero")
                         .HasColumnType("text");
+
+                    b.Property<string>("Estado")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<string>("InscricaoEstadual")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("InscricaoMunicipal")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("NomeFantasia")
                         .IsRequired()
@@ -60,6 +81,9 @@ namespace Tabatine.Infrastructure.Migrations
 
                     b.Property<DateTime?>("OmieUpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("OptanteSimplesNacional")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("RazaoSocial")
                         .IsRequired()
@@ -80,6 +104,106 @@ namespace Tabatine.Infrastructure.Migrations
                     b.ToTable("Clientes", (string)null);
                 });
 
+            modelBuilder.Entity("Tabatine.Core.Entities.ContaCorrente", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodigoIntegracao")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("Inativa")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("OmieId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("OmieUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OmieId")
+                        .IsUnique();
+
+                    b.ToTable("ContasCorrente");
+                });
+
+            modelBuilder.Entity("Tabatine.Core.Entities.IntegrationSyncState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LastSyncDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModuleName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("IntegrationSyncStates");
+                });
+
+            modelBuilder.Entity("Tabatine.Core.Entities.ItemNotaFiscal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Cfop")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Ncm")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("NotaFiscalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProdutoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Quantidade")
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("ValorTotal")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorUnitario")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NotaFiscalId");
+
+                    b.HasIndex("ProdutoId");
+
+                    b.ToTable("ItensNotaFiscal", (string)null);
+                });
+
             modelBuilder.Entity("Tabatine.Core.Entities.ItemPedido", b =>
                 {
                     b.Property<Guid>("Id")
@@ -98,6 +222,9 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Property<Guid>("PedidoVendaId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("PercentualDesconto")
+                        .HasColumnType("numeric(5,2)");
+
                     b.Property<Guid>("ProdutoId")
                         .HasColumnType("uuid");
 
@@ -106,6 +233,21 @@ namespace Tabatine.Infrastructure.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("ValorCofins")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorDesconto")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorIcms")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorIpi")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorPis")
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<decimal>("ValorTotal")
                         .HasColumnType("numeric(18,2)");
@@ -142,6 +284,9 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Property<DateTime>("DataEmissao")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<TimeSpan?>("HoraEmissao")
+                        .HasColumnType("interval");
+
                     b.Property<string>("NumeroNf")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -163,6 +308,21 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal>("ValorCofinsRetido")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorCsll")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorIr")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorIss")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorPisRetido")
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<decimal>("ValorTotal")
                         .HasColumnType("numeric(18,2)");
 
@@ -178,6 +338,62 @@ namespace Tabatine.Infrastructure.Migrations
                     b.ToTable("NotasFiscais", (string)null);
                 });
 
+            modelBuilder.Entity("Tabatine.Core.Entities.NotaFiscalTitulo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("DataVencimento")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("NotaFiscalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("NumeroParcela")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("OmieIdTitulo")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NotaFiscalId");
+
+                    b.ToTable("NotaFiscalTitulos", (string)null);
+                });
+
+            modelBuilder.Entity("Tabatine.Core.Entities.PedidoParcela", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("DataVencimento")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("NumeroParcela")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("PedidoVendaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Percentual")
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PedidoVendaId");
+
+                    b.ToTable("PedidoParcelas", (string)null);
+                });
+
             modelBuilder.Entity("Tabatine.Core.Entities.PedidoVenda", b =>
                 {
                     b.Property<Guid>("Id")
@@ -187,18 +403,27 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Property<Guid>("ClienteId")
                         .HasColumnType("uuid");
 
+                    b.Property<long?>("CodigoVendedor")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("DataPrevisao")
+                    b.Property<DateTime?>("DataPrevisao")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Etapa")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("Faturado")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("NumeroPedido")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ObservacoesVenda")
                         .HasColumnType("text");
 
                     b.Property<long>("OmieId")
@@ -207,8 +432,20 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Property<DateTime?>("OmieUpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("QuantidadeVolumes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Transportadora")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UsuarioInclusao")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("ValorFrete")
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<decimal>("ValorTotal")
                         .HasColumnType("numeric(18,2)");
@@ -248,6 +485,9 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Property<string>("Ean")
                         .HasColumnType("text");
 
+                    b.Property<string>("FamiliaProduto")
+                        .HasColumnType("text");
+
                     b.Property<string>("Ncm")
                         .IsRequired()
                         .HasColumnType("text");
@@ -258,8 +498,17 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Property<DateTime?>("OmieUpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal>("PesoBruto")
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("PesoLiquido")
+                        .HasColumnType("numeric(18,4)");
+
                     b.Property<decimal>("PrecoUnitario")
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("UnidadeMedida")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -270,6 +519,67 @@ namespace Tabatine.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Produtos", (string)null);
+                });
+
+            modelBuilder.Entity("Tabatine.Core.Entities.Vendedor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Comissao")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("Inativo")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<long>("OmieId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("OmieUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OmieId")
+                        .IsUnique();
+
+                    b.ToTable("Vendedores");
+                });
+
+            modelBuilder.Entity("Tabatine.Core.Entities.ItemNotaFiscal", b =>
+                {
+                    b.HasOne("Tabatine.Core.Entities.NotaFiscal", "NotaFiscal")
+                        .WithMany("Itens")
+                        .HasForeignKey("NotaFiscalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Tabatine.Core.Entities.Produto", "Produto")
+                        .WithMany()
+                        .HasForeignKey("ProdutoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("NotaFiscal");
+
+                    b.Navigation("Produto");
                 });
 
             modelBuilder.Entity("Tabatine.Core.Entities.ItemPedido", b =>
@@ -309,6 +619,28 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Navigation("PedidoVenda");
                 });
 
+            modelBuilder.Entity("Tabatine.Core.Entities.NotaFiscalTitulo", b =>
+                {
+                    b.HasOne("Tabatine.Core.Entities.NotaFiscal", "NotaFiscal")
+                        .WithMany("Titulos")
+                        .HasForeignKey("NotaFiscalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("NotaFiscal");
+                });
+
+            modelBuilder.Entity("Tabatine.Core.Entities.PedidoParcela", b =>
+                {
+                    b.HasOne("Tabatine.Core.Entities.PedidoVenda", "PedidoVenda")
+                        .WithMany("Parcelas")
+                        .HasForeignKey("PedidoVendaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PedidoVenda");
+                });
+
             modelBuilder.Entity("Tabatine.Core.Entities.PedidoVenda", b =>
                 {
                     b.HasOne("Tabatine.Core.Entities.Cliente", "Cliente")
@@ -325,9 +657,18 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Navigation("Pedidos");
                 });
 
+            modelBuilder.Entity("Tabatine.Core.Entities.NotaFiscal", b =>
+                {
+                    b.Navigation("Itens");
+
+                    b.Navigation("Titulos");
+                });
+
             modelBuilder.Entity("Tabatine.Core.Entities.PedidoVenda", b =>
                 {
                     b.Navigation("Itens");
+
+                    b.Navigation("Parcelas");
                 });
 #pragma warning restore 612, 618
         }

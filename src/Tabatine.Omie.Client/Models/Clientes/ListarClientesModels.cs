@@ -8,13 +8,22 @@ namespace Tabatine.Omie.Client.Models.Clientes
         public int Pagina { get; set; } = 1;
 
         [JsonPropertyName("registros_por_pagina")]
-        public int RegistrosPorPagina { get; set; } = 100;
+        public int RegistrosPorPagina { get; set; } = 500;
 
-        [JsonPropertyName("apenas_importado_api")]
-        public string ApenasImportadoApi { get; set; } = "N";
-        
-        [JsonPropertyName("exibir_caracteristicas")]
-        public string ExibirCaracteristicas { get; set; } = "N";
+        [JsonPropertyName("filtrar_por_data_de")]
+        public string? FiltrarPorDataDe { get; set; }
+
+        [JsonPropertyName("filtrar_por_data_ate")]
+        public string? FiltrarPorDataAte { get; set; }
+
+        [JsonPropertyName("clientesFiltro")]
+        public ClientesFiltro ClientesFiltro { get; set; } = new();
+    }
+
+    public class ClientesFiltro
+    {
+        // A API Omie não suporta filtro por data no clientesFiltro.
+        // Campos válidos: codigo_cliente_omie, cnpj_cpf, razao_social, etc.
     }
 
     public class OmieCliente
@@ -33,6 +42,39 @@ namespace Tabatine.Omie.Client.Models.Clientes
 
         [JsonPropertyName("email")]
         public string? Email { get; set; }
+
+        [JsonPropertyName("telefone_numero")]
+        public string? Telefone { get; set; }
+
+        [JsonPropertyName("endereco")]
+        public string? Endereco { get; set; }
+
+        [JsonPropertyName("endereco_numero")]
+        public string? EnderecoNumero { get; set; }
+
+        [JsonPropertyName("complemento")]
+        public string? Complemento { get; set; }
+
+        [JsonPropertyName("bairro")]
+        public string? Bairro { get; set; }
+
+        [JsonPropertyName("cep")]
+        public string? Cep { get; set; }
+
+        [JsonPropertyName("estado")]
+        public string? Estado { get; set; }
+
+        [JsonPropertyName("cidade")]
+        public string? Cidade { get; set; }
+
+        [JsonPropertyName("inscricao_estadual")]
+        public string? InscricaoEstadual { get; set; }
+
+        [JsonPropertyName("inscricao_municipal")]
+        public string? InscricaoMunicipal { get; set; }
+
+        [JsonPropertyName("optante_simples_nacional")]
+        public string? OptanteSimplesNacional { get; set; }
     }
 
     public class ListarClientesResponse : OmieResponse<OmieCliente>

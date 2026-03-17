@@ -1,0 +1,31 @@
+https://app.omie.com.br/api/v1/geral/clientes/#ListarClientes
+
+clientes_list_request
+Lista os clientes cadastrados
+
+pagina	integer	Número da página retornada
+registros_por_pagina	integer	Número de registros retornados na página.
+apenas_importado_api	string1	Exibir apenas os registros gerados pela API
+ordenar_por	string100	DEPRECATED
+ordem_decrescente	string1	DEPRECATED
+filtrar_por_data_de	string10	Filtrar os registros a partir de uma data.
+filtrar_por_data_ate	string10	Filtrar os registros até uma data.
+filtrar_por_hora_de	string8	Filtro por hora a apartir de.
+filtrar_por_hora_ate	string8	Filtro por hora até.
+filtrar_apenas_inclusao	string1	Filtrar apenas os registros incluídos.
+filtrar_apenas_alteracao	string1	Filtrar apenas os registros alterados.
+clientesFiltro	clientesFiltro	Filtrar cadastro de clientes  
+clientesPorCodigo	clientesPorCodigoArray	Lista de Códigos para filtro de clientes
+exibir_caracteristicas	string1	Exibe as caracteristicas do cliente.
+exibir_obs	string1	Exibir as observações do cliente (S/N).+
+ordem_descrescente	string1	DEPRECATED
+
+
+clientes_listfull_response
+Lista de clientes cadastrados no omie.
+
+pagina	integer	Número da página retornada
+total_de_paginas	integer	Número total de páginas
+registros	integer	Número de registros retornados na página.
+total_de_registros	integer	total de registros encontrados
+clientes_cadastro	clientes_cadastroArray	Cadastro reduzido de produtos
