@@ -6,7 +6,8 @@ namespace Tabatine.Core.Entities
     {
         public string NumeroNf { get; set; } = string.Empty;
         public string ChaveAcesso { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty; // Autorizado, Cancelado
+        public string Status { get; set; } = string.Empty; // Autorizado, Cancelado, Denegada
+        public int CodigoStatus { get; set; } // 100, 101, 110, 301
         public DateTime DataEmissao { get; set; }
         public TimeSpan? HoraEmissao { get; set; }
         public decimal ValorTotal { get; set; }
@@ -17,6 +18,7 @@ namespace Tabatine.Core.Entities
         public decimal ValorCsll { get; set; }
         public decimal ValorPisRetido { get; set; }
         public decimal ValorCofinsRetido { get; set; }
+        public bool Denegada { get; set; }
 
         public Guid? PedidoVendaId { get; set; }
         public PedidoVenda? PedidoVenda { get; set; }

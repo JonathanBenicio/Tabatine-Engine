@@ -126,6 +126,7 @@ namespace Tabatine.Infrastructure.Services
               NumeroNf = omieNf.Ide.Numero,
               ChaveAcesso = omieNf.Compl.ChaveNfe,
               Status = status,
+              CodigoStatus = int.Parse(omieNf.Ide.Situacao),
               DataEmissao = dataEmissao,
               HoraEmissao = horaEmissao,
               ValorTotal = omieNf.Total.IcmsTot.ValorNota,
@@ -134,6 +135,7 @@ namespace Tabatine.Infrastructure.Services
               ValorCsll = omieNf.Total.RetTrib?.ValorCsll ?? 0,
               ValorPisRetido = omieNf.Total.RetTrib?.ValorPis ?? 0,
               ValorCofinsRetido = omieNf.Total.RetTrib?.ValorCofins ?? 0,
+              Denegada = omieNf.Ide.Denegada == "S",
               ClienteId = cliente.Id,
               PedidoVendaId = pedido?.Id,
               VendedorId = pedido?.VendedorId,
@@ -148,6 +150,7 @@ namespace Tabatine.Infrastructure.Services
           else
           {
             existing.Status = status;
+            existing.CodigoStatus = int.Parse(omieNf.Ide.Situacao);
             existing.ChaveAcesso = omieNf.Compl.ChaveNfe;
             existing.HoraEmissao = horaEmissao;
             existing.ValorIss = omieNf.Total.IssqnTot?.ValorIss ?? 0;
@@ -155,6 +158,7 @@ namespace Tabatine.Infrastructure.Services
             existing.ValorCsll = omieNf.Total.RetTrib?.ValorCsll ?? 0;
             existing.ValorPisRetido = omieNf.Total.RetTrib?.ValorPis ?? 0;
             existing.ValorCofinsRetido = omieNf.Total.RetTrib?.ValorCofins ?? 0;
+            existing.Denegada = omieNf.Ide.Denegada == "S";
             existing.VendedorId = pedido?.VendedorId;
             existing.ContaCorrenteId = pedido?.ContaCorrenteId;
             existing.UpdatedAt = DateTime.UtcNow;

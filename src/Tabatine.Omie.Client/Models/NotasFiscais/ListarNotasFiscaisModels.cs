@@ -25,6 +25,9 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("dEmiFinal")]
         public string? DataEmissaoAte { get; set; }
+
+        [JsonPropertyName("apenas_importado_api")]
+        public string ApenasImportadoApi { get; set; } = "N";
     }
 
     public class OmieNotaFiscal

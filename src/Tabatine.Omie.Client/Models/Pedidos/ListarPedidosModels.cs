@@ -16,6 +16,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("filtrar_por_data_ate")]
         public string? FiltrarPorDataAte { get; set; }
+
+        [JsonPropertyName("apenas_importado_api")]
+        public string ApenasImportadoApi { get; set; } = "N";
     }
 
     public class OmiePedido
