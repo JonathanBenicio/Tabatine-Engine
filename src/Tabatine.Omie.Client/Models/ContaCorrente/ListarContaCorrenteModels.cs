@@ -23,13 +23,13 @@ namespace Tabatine.Omie.Client.Models.ContaCorrente
 
     public class OmieContaCorrente
     {
-        [JsonPropertyName("codigo_contacorrente")]
+        [JsonPropertyName("nCodCC")]
         public long Codigo { get; set; }
 
         [JsonPropertyName("descricao")]
         public string Descricao { get; set; } = string.Empty;
 
-        [JsonPropertyName("codigo_integracao")]
+        [JsonPropertyName("cCodCCInt")]
         public string? CodigoIntegracao { get; set; }
 
         [JsonPropertyName("inativo")]

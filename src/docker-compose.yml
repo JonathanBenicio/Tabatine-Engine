@@ -1,3 +1,4 @@
+name: tabatine-engine
 services:
   tabatine-redis:
     image: redis:7-alpine

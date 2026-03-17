@@ -65,6 +65,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
         [JsonPropertyName("data_previsao")]
         public string? DataPrevisao { get; set; }
 
+        [JsonPropertyName("codigo_parcela")]
+        public string? CodigoParcela { get; set; }
+
         [JsonPropertyName("codigo_conta_corrente")]
         public long? CodigoContaCorrente { get; set; }
     }
@@ -138,6 +141,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("codVend")]
         public long? CodigoVendedor { get; set; }
+
+        [JsonPropertyName("contato")]
+        public string? Contato { get; set; }
     }
 
     public class OmiePedidoParcelas
@@ -169,6 +175,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
     public class OmieInfoCadastro
     {
+        [JsonPropertyName("dInc")]
+        public string? DInc { get; set; }
+
         [JsonPropertyName("dAlt")]
         public string? DAlt { get; set; }
 
@@ -178,8 +187,23 @@ namespace Tabatine.Omie.Client.Models.Pedidos
         [JsonPropertyName("uInc")]
         public string? UsuarioInclusao { get; set; }
 
+        [JsonPropertyName("uAlt")]
+        public string? UsuarioAlteracao { get; set; }
+
         [JsonPropertyName("faturado")]
         public string? Faturado { get; set; }
+
+        [JsonPropertyName("cancelado")]
+        public string? Cancelado { get; set; }
+
+        [JsonPropertyName("devolvido")]
+        public string? Devolvido { get; set; }
+
+        [JsonPropertyName("autorizado")]
+        public string? Autorizado { get; set; }
+
+        [JsonPropertyName("denegado")]
+        public string? Denegado { get; set; }
     }
 
     public class ListarPedidosResponse : OmieResponse<OmiePedido>

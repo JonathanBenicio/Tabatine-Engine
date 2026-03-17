@@ -15,10 +15,22 @@ namespace Tabatine.Core.Entities
         public string? Transportadora { get; set; }
         public int QuantidadeVolumes { get; set; }
 
+        // Condição de pagamento
+        public string? CodigoParcela { get; set; }
+
+        // Contato do pedido
+        public string? Contato { get; set; }
+
         // Metadados
         public string? ObservacoesVenda { get; set; }
+        public DateTime? DataInclusao { get; set; }
         public string? UsuarioInclusao { get; set; }
+        public string? UsuarioAlteracao { get; set; }
         public bool Faturado { get; set; }
+        public bool Cancelado { get; set; }
+        public bool Devolvido { get; set; }
+        public bool Autorizado { get; set; }
+        public bool Denegado { get; set; }
 
         // Relacionamento com Cliente
         public Guid ClienteId { get; set; }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Tabatine.Infrastructure.Data;
@@ -11,9 +12,11 @@ using Tabatine.Infrastructure.Data;
 namespace Tabatine.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317210545_PendingChanges")]
+    partial class PendingChanges
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -431,38 +434,17 @@ namespace Tabatine.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("Autorizado")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("Cancelado")
-                        .HasColumnType("boolean");
-
                     b.Property<Guid>("ClienteId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("CodigoParcela")
-                        .HasColumnType("text");
 
                     b.Property<Guid?>("ContaCorrenteId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Contato")
-                        .HasColumnType("text");
-
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DataInclusao")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("DataPrevisao")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("Denegado")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("Devolvido")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Etapa")
                         .IsRequired()
@@ -492,9 +474,6 @@ namespace Tabatine.Infrastructure.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UsuarioAlteracao")
-                        .HasColumnType("text");
 
                     b.Property<string>("UsuarioInclusao")
                         .HasColumnType("text");

@@ -112,14 +112,21 @@ namespace Tabatine.Infrastructure.Services
                             Etapa = omiePedido.Cabecalho.Etapa,
                             ValorTotal = omiePedido.TotalPedido.ValorTotalPedido,
                             ClienteId = cliente.Id,
+                            CodigoParcela = omiePedido.Cabecalho.CodigoParcela,
                             ValorFrete = omiePedido.Frete?.ValorFrete ?? 0,
                             Transportadora = omiePedido.Frete?.Transportadora,
                             QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0,
                             ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda,
+                            Contato = omiePedido.InformacoesAdicionais?.Contato,
                             VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vNovo) ? vNovo.Id : null,
                             ContaCorrenteId = omiePedido.Cabecalho.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.Cabecalho.CodigoContaCorrente.Value, out var ccNovo) ? ccNovo.Id : null,
                             UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao,
+                            UsuarioAlteracao = omiePedido.InfoCadastro?.UsuarioAlteracao,
                             Faturado = omiePedido.InfoCadastro?.Faturado == "S",
+                            Cancelado = omiePedido.InfoCadastro?.Cancelado == "S",
+                            Devolvido = omiePedido.InfoCadastro?.Devolvido == "S",
+                            Autorizado = omiePedido.InfoCadastro?.Autorizado == "S",
+                            Denegado = omiePedido.InfoCadastro?.Denegado == "S",
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow,
                             Itens = new List<ItemPedido>(),
@@ -138,14 +145,21 @@ namespace Tabatine.Infrastructure.Services
                     {
                         existingPedido.Etapa = omiePedido.Cabecalho.Etapa;
                         existingPedido.ValorTotal = omiePedido.TotalPedido.ValorTotalPedido;
+                        existingPedido.CodigoParcela = omiePedido.Cabecalho.CodigoParcela;
                         existingPedido.ValorFrete = omiePedido.Frete?.ValorFrete ?? 0;
                         existingPedido.Transportadora = omiePedido.Frete?.Transportadora;
                         existingPedido.QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0;
                         existingPedido.ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda;
+                        existingPedido.Contato = omiePedido.InformacoesAdicionais?.Contato;
                         existingPedido.VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vEx) ? vEx.Id : null;
                         existingPedido.ContaCorrenteId = omiePedido.Cabecalho.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.Cabecalho.CodigoContaCorrente.Value, out var ccEx) ? ccEx.Id : null;
                         existingPedido.UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao;
+                        existingPedido.UsuarioAlteracao = omiePedido.InfoCadastro?.UsuarioAlteracao;
                         existingPedido.Faturado = omiePedido.InfoCadastro?.Faturado == "S";
+                        existingPedido.Cancelado = omiePedido.InfoCadastro?.Cancelado == "S";
+                        existingPedido.Devolvido = omiePedido.InfoCadastro?.Devolvido == "S";
+                        existingPedido.Autorizado = omiePedido.InfoCadastro?.Autorizado == "S";
+                        existingPedido.Denegado = omiePedido.InfoCadastro?.Denegado == "S";
                         existingPedido.UpdatedAt = DateTime.UtcNow;
 
                         if (DateTime.TryParseExact(omiePedido.Cabecalho.DataPrevisao, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtPrev))

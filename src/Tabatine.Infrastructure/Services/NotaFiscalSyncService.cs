@@ -126,7 +126,7 @@ namespace Tabatine.Infrastructure.Services
               NumeroNf = omieNf.Ide.Numero,
               ChaveAcesso = omieNf.Compl.ChaveNfe,
               Status = status,
-              CodigoStatus = int.Parse(omieNf.Ide.Situacao),
+              CodigoStatus = int.TryParse(omieNf.Ide.Situacao, out int csCriacao) ? csCriacao : 0,
               DataEmissao = dataEmissao,
               HoraEmissao = horaEmissao,
               ValorTotal = omieNf.Total.IcmsTot.ValorNota,
@@ -150,7 +150,7 @@ namespace Tabatine.Infrastructure.Services
           else
           {
             existing.Status = status;
-            existing.CodigoStatus = int.Parse(omieNf.Ide.Situacao);
+            existing.CodigoStatus = int.TryParse(omieNf.Ide.Situacao, out int csAtualizacao) ? csAtualizacao : 0;
             existing.ChaveAcesso = omieNf.Compl.ChaveNfe;
             existing.HoraEmissao = horaEmissao;
             existing.ValorIss = omieNf.Total.IssqnTot?.ValorIss ?? 0;
