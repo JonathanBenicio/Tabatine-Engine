@@ -25,6 +25,15 @@ namespace Tabatine.Core.Entities
         public Guid ClienteId { get; set; }
         public Cliente Cliente { get; set; } = null!;
 
+        // Relacionamento com Vendedor
+        public Guid? VendedorId { get; set; }
+        public Vendedor? Vendedor { get; set; }
+
+        // Relacionamento com Conta Corrente
+        public Guid? ContaCorrenteId { get; set; }
+        public ContaCorrente? ContaCorrente { get; set; }
+        public long? CodigoContaCorrente { get; set; }
+
         // Relacionamento 1:N com Itens do Pedido
         public ICollection<ItemPedido> Itens { get; set; } = new List<ItemPedido>();
 

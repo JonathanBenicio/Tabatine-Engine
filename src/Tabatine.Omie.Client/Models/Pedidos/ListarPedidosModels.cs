@@ -61,6 +61,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("data_previsao")]
         public string? DataPrevisao { get; set; }
+
+        [JsonPropertyName("codigo_conta_corrente")]
+        public long? CodigoContaCorrente { get; set; }
     }
 
     public class OmiePedidoItem

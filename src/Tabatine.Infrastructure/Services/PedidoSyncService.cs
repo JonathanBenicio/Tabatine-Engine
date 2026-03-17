@@ -50,6 +50,16 @@ namespace Tabatine.Infrastructure.Services
                 var omiePedidoIds = response.PedidosVenda.Select(p => p.Cabecalho.CodigoPedido).ToList();
                 var omieClienteIds = response.PedidosVenda.Select(p => p.Cabecalho.CodigoCliente).Distinct().ToList();
                 var omieProdutoIds = response.PedidosVenda.SelectMany(p => p.Det.Select(d => d.Produto.CodigoProduto)).Distinct().ToList();
+                
+                var omieVendedorIds = response.PedidosVenda
+                    .Where(p => p.InformacoesAdicionais?.CodigoVendedor > 0)
+                    .Select(p => p.InformacoesAdicionais!.CodigoVendedor!.Value)
+                    .Distinct().ToList();
+
+                var omieContaCorrenteIds = response.PedidosVenda
+                    .Where(p => p.Cabecalho.CodigoContaCorrente > 0)
+                    .Select(p => p.Cabecalho.CodigoContaCorrente!.Value)
+                    .Distinct().ToList();
 
                 var existingPedidos = await _dbContext.PedidosVenda
                     .Include(p => p.Itens)
@@ -64,6 +74,14 @@ namespace Tabatine.Infrastructure.Services
                 var produtos = await _dbContext.Produtos
                     .Where(p => omieProdutoIds.Contains(p.OmieId))
                     .ToDictionaryAsync(p => p.OmieId, ct);
+
+                var vendedores = await _dbContext.Vendedores
+                    .Where(v => omieVendedorIds.Contains(v.OmieId))
+                    .ToDictionaryAsync(v => v.OmieId, ct);
+
+                var contasCorrente = await _dbContext.ContasCorrente
+                    .Where(c => omieContaCorrenteIds.Contains(c.OmieId))
+                    .ToDictionaryAsync(c => c.OmieId, ct);
 
                 foreach (var omiePedido in response.PedidosVenda)
                 {
@@ -99,6 +117,9 @@ namespace Tabatine.Infrastructure.Services
                             QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0,
                             ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda,
                             CodigoVendedor = omiePedido.InformacoesAdicionais?.CodigoVendedor,
+                            CodigoContaCorrente = omiePedido.Cabecalho.CodigoContaCorrente,
+                            VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vNovo) ? vNovo.Id : null,
+                            ContaCorrenteId = omiePedido.Cabecalho.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.Cabecalho.CodigoContaCorrente.Value, out var ccNovo) ? ccNovo.Id : null,
                             UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao,
                             Faturado = omiePedido.InfoCadastro?.Faturado == "S",
                             CreatedAt = DateTime.UtcNow,
@@ -124,6 +145,9 @@ namespace Tabatine.Infrastructure.Services
                         existingPedido.QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0;
                         existingPedido.ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda;
                         existingPedido.CodigoVendedor = omiePedido.InformacoesAdicionais?.CodigoVendedor;
+                        existingPedido.CodigoContaCorrente = omiePedido.Cabecalho.CodigoContaCorrente;
+                        existingPedido.VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vEx) ? vEx.Id : null;
+                        existingPedido.ContaCorrenteId = omiePedido.Cabecalho.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.Cabecalho.CodigoContaCorrente.Value, out var ccEx) ? ccEx.Id : null;
                         existingPedido.UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao;
                         existingPedido.Faturado = omiePedido.InfoCadastro?.Faturado == "S";
                         existingPedido.UpdatedAt = DateTime.UtcNow;

@@ -14,5 +14,11 @@ namespace Tabatine.Core.Entities
         
         // ID do título na Omie (opcional, para reconciliação)
         public long? OmieIdTitulo { get; set; }
+
+        public Guid? ContaCorrenteId { get; set; }
+        public ContaCorrente? ContaCorrente { get; set; }
+        
+        // ID da Conta Corrente na Omie
+        public long? CodigoContaCorrente { get; set; }
     }
 }

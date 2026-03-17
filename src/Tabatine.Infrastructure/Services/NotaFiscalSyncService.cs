@@ -181,7 +181,9 @@ namespace Tabatine.Infrastructure.Services
                           NotaFiscalId = existing.Id,
                           NumeroParcela = tit.Parcela,
                           Valor = tit.Valor,
-                          DataVencimento = DateTime.SpecifyKind(dtVenc, DateTimeKind.Utc)
+                          DataVencimento = DateTime.SpecifyKind(dtVenc, DateTimeKind.Utc),
+                          ContaCorrenteId = pedido?.ContaCorrenteId,
+                          CodigoContaCorrente = pedido?.CodigoContaCorrente
                       });
                       titulosMapeados++;
                   }
