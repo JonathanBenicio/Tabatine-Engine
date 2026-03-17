@@ -21,6 +21,11 @@ namespace Tabatine.Infrastructure.Data.Configurations
                    .HasForeignKey(t => t.ContaCorrenteId)
                    .OnDelete(DeleteBehavior.Restrict);
 
+            builder.HasOne(t => t.Vendedor)
+                   .WithMany()
+                   .HasForeignKey(t => t.VendedorId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
             builder.Property(t => t.Valor).HasColumnType("numeric(18,2)");
         }
     }

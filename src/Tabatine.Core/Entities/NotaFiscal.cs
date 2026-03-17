@@ -26,5 +26,11 @@ namespace Tabatine.Core.Entities
 
         public ICollection<ItemNotaFiscal> Itens { get; set; } = new List<ItemNotaFiscal>();
         public ICollection<NotaFiscalTitulo> Titulos { get; set; } = new List<NotaFiscalTitulo>();
+
+        public Guid? VendedorId { get; set; }
+        public Vendedor? Vendedor { get; set; }
+
+        public Guid? ContaCorrenteId { get; set; }
+        public ContaCorrente? ContaCorrente { get; set; }
     }
 }

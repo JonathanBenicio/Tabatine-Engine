@@ -80,6 +80,9 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
         [JsonPropertyName("cNumTitulo")]
         public string Numero { get; set; } = string.Empty;
 
+        [JsonPropertyName("nCodTitulo")]
+        public long OmieIdTitulo { get; set; }
+
         [JsonPropertyName("dDtVenc")]
         public string DataVencimento { get; set; } = string.Empty;
 
@@ -88,6 +91,9 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("nParcela")]
         public int Parcela { get; set; }
+
+        [JsonPropertyName("nCodVendedor")]
+        public long CodigoVendedor { get; set; }
     }
 
     public class OmieNfIde

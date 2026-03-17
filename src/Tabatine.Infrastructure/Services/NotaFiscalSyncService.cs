@@ -42,6 +42,14 @@ namespace Tabatine.Infrastructure.Services
         List<long> omieClienteIds = response.NotasFiscais.Select(n => n.Destinatario.CodigoCliente).Distinct().ToList();
         List<long> omiePedidoIds = response.NotasFiscais.Where(n => n.Compl.IdPedido.HasValue).Select(n => n.Compl.IdPedido!.Value).Distinct().ToList();
 
+        // Coleta todos os nCodVendedor distintos dos títulos desta página
+        List<long> omieVendedorIds = response.NotasFiscais
+            .Where(n => n.Titulos != null)
+            .SelectMany(n => n.Titulos!)
+            .Select(t => t.CodigoVendedor)
+            .Where(id => id > 0)
+            .Distinct().ToList();
+
         Dictionary<long, NotaFiscal> existingNfs = await _dbContext.NotasFiscais
                     .Include(n => n.Itens)
                     .Include(n => n.Titulos)
@@ -60,6 +68,11 @@ namespace Tabatine.Infrastructure.Services
         Dictionary<long, PedidoVenda> pedidos = await _dbContext.PedidosVenda
                     .Where(p => omiePedidoIds.Contains(p.OmieId))
                     .ToDictionaryAsync(p => p.OmieId, ct);
+
+        // Busca em lote: Vendedores referenciados nos títulos
+        Dictionary<long, Vendedor> vendedores = await _dbContext.Vendedores
+                    .Where(v => omieVendedorIds.Contains(v.OmieId))
+                    .ToDictionaryAsync(v => v.OmieId, ct);
         
         _logger.LogInformation("Página {Pagina}: Processando {NfCount} notas fiscais, {ProdIdCount} IDs de produtos, {ProdCount} produtos no banco.", pagina, response.NotasFiscais.Count, allOmieProdIds.Count, produtos.Count);
 
@@ -123,6 +136,8 @@ namespace Tabatine.Infrastructure.Services
               ValorCofinsRetido = omieNf.Total.RetTrib?.ValorCofins ?? 0,
               ClienteId = cliente.Id,
               PedidoVendaId = pedido?.Id,
+              VendedorId = pedido?.VendedorId,
+              ContaCorrenteId = pedido?.ContaCorrenteId,
               CreatedAt = DateTime.UtcNow,
               UpdatedAt = DateTime.UtcNow,
               Itens = new List<ItemNotaFiscal>(),
@@ -140,6 +155,8 @@ namespace Tabatine.Infrastructure.Services
             existing.ValorCsll = omieNf.Total.RetTrib?.ValorCsll ?? 0;
             existing.ValorPisRetido = omieNf.Total.RetTrib?.ValorPis ?? 0;
             existing.ValorCofinsRetido = omieNf.Total.RetTrib?.ValorCofins ?? 0;
+            existing.VendedorId = pedido?.VendedorId;
+            existing.ContaCorrenteId = pedido?.ContaCorrenteId;
             existing.UpdatedAt = DateTime.UtcNow;
 
             foreach (var item in existing.Itens.ToList()) _dbContext.ItensNotaFiscal.Remove(item);
@@ -175,14 +192,19 @@ namespace Tabatine.Infrastructure.Services
               {
                   if (DateTime.TryParseExact(tit.DataVencimento, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtVenc))
                   {
+                      // Vendedor do título vem diretamente do JSON; Conta Corrente vem do Pedido vinculado
+                      vendedores.TryGetValue(tit.CodigoVendedor, out var titVendedor);
+
                       existing.Titulos.Add(new NotaFiscalTitulo
                       {
                           Id = Guid.NewGuid(),
                           NotaFiscalId = existing.Id,
+                          OmieIdTitulo = tit.OmieIdTitulo,
                           NumeroParcela = tit.Parcela,
                           Valor = tit.Valor,
                           DataVencimento = DateTime.SpecifyKind(dtVenc, DateTimeKind.Utc),
-                          ContaCorrenteId = pedido?.ContaCorrenteId
+                          ContaCorrenteId = pedido?.ContaCorrenteId,
+                          VendedorId = titVendedor?.Id
                       });
                       titulosMapeados++;
                   }

@@ -17,5 +17,9 @@ namespace Tabatine.Core.Entities
 
         public Guid? ContaCorrenteId { get; set; }
         public ContaCorrente? ContaCorrente { get; set; }
+
+        // Vendedor responsável pelo título (vem do campo nCodVendedor da Omie)
+        public Guid? VendedorId { get; set; }
+        public Vendedor? Vendedor { get; set; }
     }
 }
