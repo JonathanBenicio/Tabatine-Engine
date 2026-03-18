@@ -171,10 +171,10 @@ namespace Tabatine.Omie.Client
             return await SendRequestAsync<ListarBancosParam, ListarBancosResponse>("geral/bancos/", "ListarBancos", param, cancellationToken);
         }
 
-        public async Task<Tabatine.Omie.Client.Models.Geral.MeiosPagamentoListarResponse> ListarMeiosPagamentoAsync(CancellationToken cancellationToken = default)
+        public async Task<Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarResponse> ListarMeiosPagamentoAsync(CancellationToken cancellationToken = default)
         {
-            var param = new Tabatine.Omie.Client.Models.Geral.MeiosPagamentoListarRequest();
-            return await SendRequestAsync<Tabatine.Omie.Client.Models.Geral.MeiosPagamentoListarRequest, Tabatine.Omie.Client.Models.Geral.MeiosPagamentoListarResponse>("geral/meiospagamento/", "ListarMeiosPagamento", param, cancellationToken);
+            var param = new Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarRequest();
+            return await SendRequestAsync<Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarRequest, Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarResponse>("geral/meiospagamento/", "ListarMeiosPagamento", param, cancellationToken);
         }
 
         public async Task<Tabatine.Omie.Client.Models.Geral.CaracteristicasListarResponse> ListarCaracteristicasAsync(int pagina = 1, CancellationToken cancellationToken = default)

@@ -76,6 +76,12 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("vTotItem")]
         public decimal ValorTotal { get; set; }
+
+        [JsonPropertyName("CFOP")]
+        public string Cfop { get; set; } = string.Empty;
+
+        [JsonPropertyName("NCM")]
+        public string Ncm { get; set; } = string.Empty;
     }
 
     public class OmieNfTitulo

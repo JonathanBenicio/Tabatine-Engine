@@ -172,6 +172,8 @@ namespace Tabatine.Infrastructure.Services
             existing.ValorPisRetido = omieNf.Total.RetTrib?.ValorPis ?? 0;
             existing.ValorCofinsRetido = omieNf.Total.RetTrib?.ValorCofins ?? 0;
             
+            existing.NaturezaOperacao = omieNf.Compl.XNatureza;
+            existing.Serie = omieNf.Ide.Serie;
             existing.ValorIpi = omieNf.Total.IcmsTot.ValorIpi;
             existing.ValorPis = omieNf.Total.IcmsTot.ValorPis;
             existing.ValorCofins = omieNf.Total.IcmsTot.ValorCofins;
@@ -203,7 +205,9 @@ namespace Tabatine.Infrastructure.Services
                       ProdutoId = produto.Id,
                       Quantidade = det.Prod.Quantidade,
                       ValorUnitario = det.Prod.ValorUnitario,
-                      ValorTotal = det.Prod.ValorTotal
+                      ValorTotal = det.Prod.ValorTotal,
+                      Cfop = det.Prod.Cfop,
+                      Ncm = det.Prod.Ncm
                   });
                   itensMapeados++;
               }
