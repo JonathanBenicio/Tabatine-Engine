@@ -36,6 +36,14 @@ namespace Tabatine.Core.Entities
         public Guid ClienteId { get; set; }
         public Cliente Cliente { get; set; } = null!;
 
+        // Relacionamento com Etapa de Faturamento
+        public Guid? EtapaFaturamentoId { get; set; }
+        public EtapaFaturamento? EtapaFaturamento { get; set; }
+
+        // Relacionamento com Forma de Pagamento
+        public Guid? FormaPagamentoId { get; set; }
+        public FormaPagamento? FormaPagamento { get; set; }
+
         // Relacionamento com Vendedor
         public Guid? VendedorId { get; set; }
         public Vendedor? Vendedor { get; set; }

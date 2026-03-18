@@ -61,6 +61,9 @@ namespace Tabatine.Infrastructure.Services
                     .Select(p => p.Cabecalho.CodigoContaCorrente!.Value)
                     .Distinct().ToList();
 
+                var omieEtapas = response.PedidosVenda.Select(p => p.Cabecalho.Etapa).Distinct().ToList();
+                var omieFormas = response.PedidosVenda.Where(p => p.Cabecalho.CodigoParcela != null).Select(p => p.Cabecalho.CodigoParcela!).Distinct().ToList();
+
                 var existingPedidos = await _dbContext.PedidosVenda
                     .Include(p => p.Itens)
                     .Include(p => p.Parcelas)
@@ -82,6 +85,18 @@ namespace Tabatine.Infrastructure.Services
                 var contasCorrente = await _dbContext.ContasCorrente
                     .Where(c => omieContaCorrenteIds.Contains(c.OmieId))
                     .ToDictionaryAsync(c => c.OmieId, ct);
+
+                var etapas = (await _dbContext.EtapasFaturamento
+                    .Where(e => omieEtapas.Contains(e.Codigo))
+                    .ToListAsync(ct))
+                    .GroupBy(e => e.Codigo)
+                    .ToDictionary(g => g.Key, g => g.First());
+
+                var formas = (await _dbContext.FormasPagamento
+                    .Where(f => omieFormas.Contains(f.Codigo))
+                    .ToListAsync(ct))
+                    .GroupBy(f => f.Codigo)
+                    .ToDictionary(g => g.Key, g => g.First());
 
                 foreach (var omiePedido in response.PedidosVenda)
                 {
@@ -110,9 +125,11 @@ namespace Tabatine.Infrastructure.Services
                             OmieId = omieId,
                             NumeroPedido = omiePedido.Cabecalho.NumeroPedido,
                             Etapa = omiePedido.Cabecalho.Etapa,
+                            EtapaFaturamentoId = etapas.TryGetValue(omiePedido.Cabecalho.Etapa, out var eNovo) ? eNovo.Id : null,
                             ValorTotal = omiePedido.TotalPedido.ValorTotalPedido,
                             ClienteId = cliente.Id,
                             CodigoParcela = omiePedido.Cabecalho.CodigoParcela,
+                            FormaPagamentoId = omiePedido.Cabecalho.CodigoParcela != null && formas.TryGetValue(omiePedido.Cabecalho.CodigoParcela, out var fNovo) ? fNovo.Id : null,
                             ValorFrete = omiePedido.Frete?.ValorFrete ?? 0,
                             Transportadora = omiePedido.Frete?.Transportadora,
                             QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0,
@@ -144,8 +161,10 @@ namespace Tabatine.Infrastructure.Services
                     else
                     {
                         existingPedido.Etapa = omiePedido.Cabecalho.Etapa;
+                        existingPedido.EtapaFaturamentoId = etapas.TryGetValue(omiePedido.Cabecalho.Etapa, out var eEx) ? eEx.Id : null;
                         existingPedido.ValorTotal = omiePedido.TotalPedido.ValorTotalPedido;
                         existingPedido.CodigoParcela = omiePedido.Cabecalho.CodigoParcela;
+                        existingPedido.FormaPagamentoId = omiePedido.Cabecalho.CodigoParcela != null && formas.TryGetValue(omiePedido.Cabecalho.CodigoParcela, out var fEx) ? fEx.Id : null;
                         existingPedido.ValorFrete = omiePedido.Frete?.ValorFrete ?? 0;
                         existingPedido.Transportadora = omiePedido.Frete?.Transportadora;
                         existingPedido.QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0;

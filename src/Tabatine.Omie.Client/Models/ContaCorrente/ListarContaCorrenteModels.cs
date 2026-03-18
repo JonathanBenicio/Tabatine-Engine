@@ -37,6 +37,9 @@ namespace Tabatine.Omie.Client.Models.ContaCorrente
 
         [JsonPropertyName("tipo")]
         public string Tipo { get; set; } = string.Empty;
+
+        [JsonPropertyName("codigo_banco")]
+        public string? CodigoBanco { get; set; }
     }
 
     public class ListarContaCorrenteResponse : OmieResponse<OmieContaCorrente>

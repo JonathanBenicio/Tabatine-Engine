@@ -47,9 +47,15 @@ namespace Tabatine.Infrastructure.Services
                 if (response == null || response.ContasCorrentes == null || response.ContasCorrentes.Count == 0) break;
 
                 var omieIds = response.ContasCorrentes.Select(c => c.Codigo).ToList();
+                var omieBancoCodigos = response.ContasCorrentes.Where(c => c.CodigoBanco != null).Select(c => c.CodigoBanco!).Distinct().ToList();
+
                 var existingContas = await _dbContext.ContasCorrente
                     .Where(c => omieIds.Contains(c.OmieId))
                     .ToDictionaryAsync(c => c.OmieId, ct);
+
+                var bancos = await _dbContext.Bancos
+                    .Where(b => omieBancoCodigos.Contains(b.CodigoBanco))
+                    .ToDictionaryAsync(b => b.CodigoBanco, ct);
 
                 foreach (var omieItem in response.ContasCorrentes)
                 {
@@ -63,6 +69,7 @@ namespace Tabatine.Infrastructure.Services
                     }
 
                     existingContas.TryGetValue(omieId, out var existing);
+                    bancos.TryGetValue(omieItem.CodigoBanco ?? string.Empty, out var banco);
 
                     if (existing == null)
                     {
@@ -74,6 +81,7 @@ namespace Tabatine.Infrastructure.Services
                             CodigoIntegracao = omieItem.CodigoIntegracao,
                             Tipo = omieItem.Tipo,
                             Inativa = omieItem.Inativo == "S",
+                            BancoId = banco?.Id,
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
                         };
@@ -86,6 +94,7 @@ namespace Tabatine.Infrastructure.Services
                         existing.CodigoIntegracao = omieItem.CodigoIntegracao;
                         existing.Tipo = omieItem.Tipo;
                         existing.Inativa = omieItem.Inativo == "S";
+                        existing.BancoId = banco?.Id;
                         existing.UpdatedAt = DateTime.UtcNow;
                     }
                 }
