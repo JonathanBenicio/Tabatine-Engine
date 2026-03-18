@@ -124,6 +124,9 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("serie")]
         public string Serie { get; set; } = string.Empty;
+
+        [JsonPropertyName("mod")]
+        public string Modelo { get; set; } = "55";
     }
 
     public class OmieNfCompl

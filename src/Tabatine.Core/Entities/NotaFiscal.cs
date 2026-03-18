@@ -13,6 +13,7 @@ namespace Tabatine.Core.Entities
         public decimal ValorTotal { get; set; }
         public string? NaturezaOperacao { get; set; }
         public string? Serie { get; set; }
+        public string? Modelo { get; set; } = "55";
         public bool ImportadoApi { get; set; } = true;
 
         // Impostos e Retenções

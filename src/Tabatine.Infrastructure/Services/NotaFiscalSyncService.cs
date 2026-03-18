@@ -129,9 +129,10 @@ namespace Tabatine.Infrastructure.Services
               CodigoStatus = int.TryParse(omieNf.Ide.Situacao, out int csCriacao) ? csCriacao : 0,
               DataEmissao = dataEmissao,
               HoraEmissao = horaEmissao,
-              NaturezaOperacao = omieNf.Compl.XNatureza,
-              Serie = omieNf.Ide.Serie,
-              ImportadoApi = true,
+               NaturezaOperacao = omieNf.Compl.XNatureza,
+               Serie = omieNf.Ide.Serie,
+               Modelo = omieNf.Ide.Modelo,
+               ImportadoApi = true,
               ValorTotal = omieNf.Total.IcmsTot.ValorNota,
               ValorIss = omieNf.Total.IssqnTot?.ValorIss ?? 0,
               ValorIr = omieNf.Total.RetTrib?.ValorIrrf ?? 0,
@@ -174,6 +175,7 @@ namespace Tabatine.Infrastructure.Services
             
             existing.NaturezaOperacao = omieNf.Compl.XNatureza;
             existing.Serie = omieNf.Ide.Serie;
+            existing.Modelo = omieNf.Ide.Modelo;
             existing.ValorIpi = omieNf.Total.IcmsTot.ValorIpi;
             existing.ValorPis = omieNf.Total.IcmsTot.ValorPis;
             existing.ValorCofins = omieNf.Total.IcmsTot.ValorCofins;

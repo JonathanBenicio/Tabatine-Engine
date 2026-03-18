@@ -6,7 +6,7 @@ namespace Tabatine.Omie.Client.Models.Geral
     public class MeiosPagamentoPesquisarRequest
     {
         [JsonPropertyName("codigo")]
-        public string? Codigo { get; set; }
+        public string? Codigo { get; set; } = string.Empty;
     }
 
     public class OmieMeioPagamento

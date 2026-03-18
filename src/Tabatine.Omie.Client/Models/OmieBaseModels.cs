@@ -7,14 +7,14 @@ namespace Tabatine.Omie.Client.Models
 {
     public class OmieRequest<T>
     {
+        [JsonPropertyName("call")]
+        public string Call { get; set; } = string.Empty;
+
         [JsonPropertyName("app_key")]
         public string AppKey { get; set; } = string.Empty;
 
         [JsonPropertyName("app_secret")]
         public string AppSecret { get; set; } = string.Empty;
-
-        [JsonPropertyName("call")]
-        public string Call { get; set; } = string.Empty;
 
         [JsonPropertyName("param")]
         public List<T> Param { get; set; } = new();
