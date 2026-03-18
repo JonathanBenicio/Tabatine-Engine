@@ -64,6 +64,9 @@ namespace Tabatine.Infrastructure.Services
                 var omieEtapas = response.PedidosVenda.Select(p => p.Cabecalho.Etapa).Distinct().ToList();
                 var omieFormas = response.PedidosVenda.Where(p => p.Cabecalho.CodigoParcela != null).Select(p => p.Cabecalho.CodigoParcela!).Distinct().ToList();
 
+                var omieTabelaIds = response.PedidosVenda.SelectMany(p => p.Det.Where(d => d.Produto.CodigoTabelaPreco > 0).Select(d => d.Produto.CodigoTabelaPreco!.Value)).Distinct().ToList();
+                var omieMeioPagamentoCodigos = response.PedidosVenda.SelectMany(p => p.ListaParcelas?.Parcelas.Where(par => !string.IsNullOrEmpty(par.MeioPagamento)).Select(par => par.MeioPagamento!) ?? Enumerable.Empty<string>()).Distinct().ToList();
+
                 var existingPedidos = await _dbContext.PedidosVenda
                     .Include(p => p.Itens)
                     .Include(p => p.Parcelas)
@@ -86,17 +89,21 @@ namespace Tabatine.Infrastructure.Services
                     .Where(c => omieContaCorrenteIds.Contains(c.OmieId))
                     .ToDictionaryAsync(c => c.OmieId, ct);
 
-                var etapas = (await _dbContext.EtapasFaturamento
+                var etapas = await _dbContext.EtapasFaturamento
                     .Where(e => omieEtapas.Contains(e.Codigo))
-                    .ToListAsync(ct))
-                    .GroupBy(e => e.Codigo)
-                    .ToDictionary(g => g.Key, g => g.First());
+                    .ToDictionaryAsync(e => e.Codigo, ct);
 
-                var formas = (await _dbContext.FormasPagamento
+                var formas = await _dbContext.FormasPagamento
                     .Where(f => omieFormas.Contains(f.Codigo))
-                    .ToListAsync(ct))
-                    .GroupBy(f => f.Codigo)
-                    .ToDictionary(g => g.Key, g => g.First());
+                    .ToDictionaryAsync(f => f.Codigo, ct);
+
+                var tabelas = await _dbContext.TabelasPreco
+                    .Where(t => omieTabelaIds.Contains(t.OmieId))
+                    .ToDictionaryAsync(t => t.OmieId, ct);
+
+                var meiosPagamento = await _dbContext.MeiosPagamento
+                    .Where(m => omieMeioPagamentoCodigos.Contains(m.Codigo))
+                    .ToDictionaryAsync(m => m.Codigo, ct);
 
                 foreach (var omiePedido in response.PedidosVenda)
                 {
@@ -146,6 +153,8 @@ namespace Tabatine.Infrastructure.Services
                             // Auditoria e Status
                             UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao,
                             UsuarioAlteracao = omiePedido.InfoCadastro?.UsuarioAlteracao,
+                            DataInclusao = ParseOmieDateTime(omiePedido.InfoCadastro?.DInc, omiePedido.InfoCadastro?.HInc),
+                            OmieUpdatedAt = ParseOmieDateTime(omiePedido.InfoCadastro?.DAlt, omiePedido.InfoCadastro?.HAlt),
                             Faturado = omiePedido.InfoCadastro?.Faturado == "S",
                             Cancelado = omiePedido.InfoCadastro?.Cancelado == "S",
                             Devolvido = omiePedido.InfoCadastro?.Devolvido == "S",
@@ -176,10 +185,7 @@ namespace Tabatine.Infrastructure.Services
                             novoPedido.PrevisaoEntrega = DateTime.SpecifyKind(dtPrevEnt, DateTimeKind.Utc);
                         }
 
-                        if (DateTime.TryParseExact(omiePedido.InfoCadastro?.DInc, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtInc))
-                        {
-                            novoPedido.DataInclusao = DateTime.SpecifyKind(dtInc, DateTimeKind.Utc);
-                        }
+                        // Removido parsing simples de DataInclusao (já feito acima no construtor)
 
                         _dbContext.PedidosVenda.Add(novoPedido);
                         existingPedido = novoPedido;
@@ -214,6 +220,7 @@ namespace Tabatine.Infrastructure.Services
                         existingPedido.Autorizado = omiePedido.InfoCadastro?.Autorizado == "S";
                         existingPedido.Denegado = omiePedido.InfoCadastro?.Denegado == "S";
                         existingPedido.UsuarioAlteracao = omiePedido.InfoCadastro?.UsuarioAlteracao;
+                        existingPedido.OmieUpdatedAt = ParseOmieDateTime(omiePedido.InfoCadastro?.DAlt, omiePedido.InfoCadastro?.HAlt);
 
                         if (DateTime.TryParseExact(omiePedido.Frete?.PrevisaoEntrega, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtPrevEntEx))
                         {
@@ -257,6 +264,7 @@ namespace Tabatine.Infrastructure.Services
                                 ValorDesconto = item.Produto.ValorDesconto,
                                 PesoBruto = item.InfoAdic?.PesoBruto ?? 0,
                                 PesoLiquido = item.InfoAdic?.PesoLiquido ?? 0,
+                                TabelaPrecoId = item.Produto.CodigoTabelaPreco.HasValue && tabelas.TryGetValue(item.Produto.CodigoTabelaPreco.Value, out var t) ? t.Id : null,
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
                             });
@@ -284,7 +292,8 @@ namespace Tabatine.Infrastructure.Services
                                     Valor = parcela.Valor,
                                     DataVencimento = DateTime.SpecifyKind(dtVenc, DateTimeKind.Utc),
                                     Percentual = parcela.Percentual,
-                                    ContaCorrenteId = existingPedido.ContaCorrenteId
+                                    ContaCorrenteId = existingPedido.ContaCorrenteId,
+                                    MeioPagamentoId = !string.IsNullOrEmpty(parcela.MeioPagamento) && meiosPagamento.TryGetValue(parcela.MeioPagamento, out var m) ? m.Id : null
                                 });
                             }
                         }
@@ -296,7 +305,7 @@ namespace Tabatine.Infrastructure.Services
                     await _dbContext.SaveChangesAsync(ct);
                     _logger.LogInformation("Página {Pagina} de {Total} de pedidos sincronizada.", pagina, response.TotalDePaginas);
                 }
-                catch (DbUpdateConcurrencyException ex)
+                catch (DbUpdateConcurrencyException)
                 {
                     _logger.LogWarning("Concorrência detectada ao salvar página {Pagina} de pedidos. Limpando rastreador e ignorando conflito.", pagina);
                     
@@ -318,6 +327,20 @@ namespace Tabatine.Infrastructure.Services
 
             await _syncState.SetLastSyncDateAsync("Pedidos", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Pedidos finalizada.");
+        }
+        private DateTime? ParseOmieDateTime(string? date, string? time)
+        {
+            if (string.IsNullOrWhiteSpace(date)) return null;
+            
+            var combined = string.IsNullOrWhiteSpace(time) ? date : $"{date} {time}";
+            var format = string.IsNullOrWhiteSpace(time) ? "dd/MM/yyyy" : "dd/MM/yyyy HH:mm:ss";
+
+            if (DateTime.TryParseExact(combined, format, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dt))
+            {
+                return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+            }
+
+            return null;
         }
     }
 }

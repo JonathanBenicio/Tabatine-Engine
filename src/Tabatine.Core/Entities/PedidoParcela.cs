@@ -16,5 +16,8 @@ namespace Tabatine.Core.Entities
         // Conta Corrente onde esta parcela será recebida
         public Guid? ContaCorrenteId { get; set; }
         public ContaCorrente? ContaCorrente { get; set; }
+
+        public Guid? MeioPagamentoId { get; set; }
+        public MeioPagamento? MeioPagamento { get; set; }
     }
 }

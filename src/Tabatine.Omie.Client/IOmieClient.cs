@@ -21,5 +21,9 @@ namespace Tabatine.Omie.Client
         Task<ListarEtapasFaturamentoResponse> ListarEtapasFaturamentoAsync(int pagina = 1, CancellationToken cancellationToken = default);
         Task<ListarFormasPagVendasResponse> ListarFormasPagVendasAsync(int pagina = 1, CancellationToken cancellationToken = default);
         Task<ListarBancosResponse> ListarBancosAsync(int pagina = 1, CancellationToken cancellationToken = default);
+        Task<Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarResponse> ListarMeiosPagamentoAsync(CancellationToken cancellationToken = default);
+        Task<Tabatine.Omie.Client.Models.Geral.CaracteristicasListarResponse> ListarCaracteristicasAsync(int pagina = 1, CancellationToken cancellationToken = default);
+        Task<Tabatine.Omie.Client.Models.Produtos.TabelaPrecosListarResponse> ListarTabelasPrecoAsync(int pagina = 1, CancellationToken cancellationToken = default);
+        Task<Tabatine.Omie.Client.Models.Produtos.TabelaItensListarResponse> ListarTabelaItensAsync(long codigoTabela, int pagina = 1, CancellationToken cancellationToken = default);
     }
 }

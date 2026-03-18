@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Tabatine.Infrastructure.Data;
@@ -11,9 +12,11 @@ using Tabatine.Infrastructure.Data;
 namespace Tabatine.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260318014440_AddTabelaPrecos")]
+    partial class AddTabelaPrecos
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -440,9 +443,6 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Property<int>("Quantidade")
                         .HasColumnType("integer");
 
-                    b.Property<Guid?>("TabelaPrecoId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -472,8 +472,6 @@ namespace Tabatine.Infrastructure.Migrations
                     b.HasIndex("PedidoVendaId");
 
                     b.HasIndex("ProdutoId");
-
-                    b.HasIndex("TabelaPrecoId");
 
                     b.ToTable("ItensPedido", (string)null);
                 });
@@ -654,9 +652,6 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Property<DateTime>("DataVencimento")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("MeioPagamentoId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("NumeroParcela")
                         .HasColumnType("integer");
 
@@ -672,8 +667,6 @@ namespace Tabatine.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ContaCorrenteId");
-
-                    b.HasIndex("MeioPagamentoId");
 
                     b.HasIndex("PedidoVendaId");
 
@@ -875,32 +868,6 @@ namespace Tabatine.Infrastructure.Migrations
                     b.ToTable("Produtos", (string)null);
                 });
 
-            modelBuilder.Entity("Tabatine.Core.Entities.ProdutoCaracteristica", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CaracteristicaId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CaracteristicaValorId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ProdutoId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CaracteristicaId");
-
-                    b.HasIndex("CaracteristicaValorId");
-
-                    b.HasIndex("ProdutoId");
-
-                    b.ToTable("ProdutoCaracteristicas", (string)null);
-                });
-
             modelBuilder.Entity("Tabatine.Core.Entities.TabelaPreco", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1061,15 +1028,9 @@ namespace Tabatine.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Tabatine.Core.Entities.TabelaPreco", "TabelaPreco")
-                        .WithMany()
-                        .HasForeignKey("TabelaPrecoId");
-
                     b.Navigation("PedidoVenda");
 
                     b.Navigation("Produto");
-
-                    b.Navigation("TabelaPreco");
                 });
 
             modelBuilder.Entity("Tabatine.Core.Entities.NotaFiscal", b =>
@@ -1136,10 +1097,6 @@ namespace Tabatine.Infrastructure.Migrations
                         .HasForeignKey("ContaCorrenteId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Tabatine.Core.Entities.MeioPagamento", "MeioPagamento")
-                        .WithMany()
-                        .HasForeignKey("MeioPagamentoId");
-
                     b.HasOne("Tabatine.Core.Entities.PedidoVenda", "PedidoVenda")
                         .WithMany("Parcelas")
                         .HasForeignKey("PedidoVendaId")
@@ -1147,8 +1104,6 @@ namespace Tabatine.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("ContaCorrente");
-
-                    b.Navigation("MeioPagamento");
 
                     b.Navigation("PedidoVenda");
                 });
@@ -1192,33 +1147,6 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Navigation("Vendedor");
                 });
 
-            modelBuilder.Entity("Tabatine.Core.Entities.ProdutoCaracteristica", b =>
-                {
-                    b.HasOne("Tabatine.Core.Entities.Caracteristica", "Caracteristica")
-                        .WithMany()
-                        .HasForeignKey("CaracteristicaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Tabatine.Core.Entities.CaracteristicaValor", "CaracteristicaValor")
-                        .WithMany()
-                        .HasForeignKey("CaracteristicaValorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Tabatine.Core.Entities.Produto", "Produto")
-                        .WithMany("Caracteristicas")
-                        .HasForeignKey("ProdutoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Caracteristica");
-
-                    b.Navigation("CaracteristicaValor");
-
-                    b.Navigation("Produto");
-                });
-
             modelBuilder.Entity("Tabatine.Core.Entities.TabelaPrecoItem", b =>
                 {
                     b.HasOne("Tabatine.Core.Entities.Produto", "Produto")
@@ -1260,11 +1188,6 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Navigation("Itens");
 
                     b.Navigation("Parcelas");
-                });
-
-            modelBuilder.Entity("Tabatine.Core.Entities.Produto", b =>
-                {
-                    b.Navigation("Caracteristicas");
                 });
 
             modelBuilder.Entity("Tabatine.Core.Entities.TabelaPreco", b =>

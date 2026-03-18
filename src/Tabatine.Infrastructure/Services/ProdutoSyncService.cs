@@ -47,9 +47,21 @@ namespace Tabatine.Infrastructure.Services
                 if (response == null || response.ProdutosCadastro == null || response.ProdutosCadastro.Count == 0) break;
 
                 var omieIds = response.ProdutosCadastro.Select(p => p.CodigoProduto).ToList();
+                var caracNames = response.ProdutosCadastro.SelectMany(p => p.Caracteristicas?.Select(c => c.NomeCaracteristica) ?? Enumerable.Empty<string>()).Distinct().ToList();
+                var caracValues = response.ProdutosCadastro.SelectMany(p => p.Caracteristicas?.Select(c => c.ValorCaracteristica) ?? Enumerable.Empty<string>()).Distinct().ToList();
+
                 var existingProdutos = await _dbContext.Produtos
+                    .Include(p => p.Caracteristicas)
                     .Where(p => omieIds.Contains(p.OmieId))
                     .ToDictionaryAsync(p => p.OmieId, ct);
+
+                var caracEntities = await _dbContext.Caracteristicas
+                    .Where(c => caracNames.Contains(c.Nome))
+                    .ToDictionaryAsync(c => c.Nome, ct);
+
+                var caracValEntities = await _dbContext.CaracteristicaValores
+                    .Where(v => caracValues.Contains(v.Valor))
+                    .ToListAsync(ct);
 
                 foreach (var omieItem in response.ProdutosCadastro)
                 {
@@ -97,6 +109,37 @@ namespace Tabatine.Infrastructure.Services
                         existing.FamiliaProduto = omieItem.FamiliaProduto;
                         existing.Ativo = omieItem.Inativo == "N";
                         existing.UpdatedAt = DateTime.UtcNow;
+                    }
+
+                    // Sincroniza Características
+                    var currentProduct = existingProdutos[omieId];
+                    
+                    // Limpa antigas
+                    foreach (var old in currentProduct.Caracteristicas.ToList())
+                    {
+                        _dbContext.ProdutoCaracteristicas.Remove(old);
+                    }
+                    currentProduct.Caracteristicas.Clear();
+
+                    if (omieItem.Caracteristicas != null)
+                    {
+                        foreach (var omieCarac in omieItem.Caracteristicas)
+                        {
+                            if (caracEntities.TryGetValue(omieCarac.NomeCaracteristica, out var carac))
+                            {
+                                var val = caracValEntities.FirstOrDefault(v => v.CaracteristicaId == carac.Id && v.Valor == omieCarac.ValorCaracteristica);
+                                if (val != null)
+                                {
+                                    currentProduct.Caracteristicas.Add(new ProdutoCaracteristica
+                                    {
+                                        Id = Guid.NewGuid(),
+                                        ProdutoId = currentProduct.Id,
+                                        CaracteristicaId = carac.Id,
+                                        CaracteristicaValorId = val.Id
+                                    });
+                                }
+                            }
+                        }
                     }
                 }
 

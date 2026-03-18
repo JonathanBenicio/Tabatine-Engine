@@ -107,6 +107,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
         [JsonPropertyName("valor_total")]
         public decimal ValorTotal { get; set; }
 
+        [JsonPropertyName("codigo_tabela_preco")]
+        public long? CodigoTabelaPreco { get; set; }
+
         [JsonPropertyName("percentual_desconto")]
         public decimal PercentualDesconto { get; set; }
 
@@ -186,6 +189,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("percentual")]
         public decimal Percentual { get; set; }
+
+        [JsonPropertyName("meio_pagamento")]
+        public string? MeioPagamento { get; set; }
     }
 
     public class OmiePedidoTotal
@@ -216,6 +222,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
     {
         [JsonPropertyName("dInc")]
         public string? DInc { get; set; }
+
+        [JsonPropertyName("hInc")]
+        public string? HInc { get; set; }
 
         [JsonPropertyName("dAlt")]
         public string? DAlt { get; set; }

@@ -23,6 +23,10 @@ namespace Tabatine.Infrastructure.Data.Configurations
                    .WithMany()
                    .HasForeignKey(i => i.ProdutoId)
                    .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(i => i.TabelaPreco)
+                   .WithMany()
+                   .HasForeignKey(i => i.TabelaPrecoId);
                    
             builder.Property(i => i.ValorUnitario).HasColumnType("numeric(18,2)");
             builder.Property(i => i.ValorTotal).HasColumnType("numeric(18,2)");

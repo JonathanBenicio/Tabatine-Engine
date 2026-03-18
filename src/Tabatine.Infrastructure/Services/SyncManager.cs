@@ -41,12 +41,15 @@ namespace Tabatine.Infrastructure.Services
         var serviceTypes = new[]
         { 
                 typeof(BancoSyncService),
+                typeof(MeioPagamentoSyncService),
                 typeof(EtapaFaturamentoSyncService),
                 typeof(FormaPagamentoSyncService),
-                typeof(ClienteSyncService), 
                 typeof(VendedorSyncService),
                 typeof(ContaCorrenteSyncService),
+                typeof(CaracteristicaSyncService),
+                typeof(ClienteSyncService), 
                 typeof(ProdutoSyncService),
+                typeof(TabelaPrecoSyncService),
                 typeof(PedidoSyncService),
                 typeof(NotaFiscalSyncService)
             };
