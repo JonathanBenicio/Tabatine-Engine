@@ -91,19 +91,27 @@ namespace Tabatine.Infrastructure.Services
 
                 var etapas = await _dbContext.EtapasFaturamento
                     .Where(e => omieEtapas.Contains(e.Codigo))
-                    .ToDictionaryAsync(e => e.Codigo, ct);
+                    .Select(e => new { e.Codigo, e.Id })
+                    .ToListAsync(ct);
+                var etapasDict = etapas.GroupBy(e => e.Codigo).ToDictionary(g => g.Key, g => g.First().Id);
 
                 var formas = await _dbContext.FormasPagamento
                     .Where(f => omieFormas.Contains(f.Codigo))
-                    .ToDictionaryAsync(f => f.Codigo, ct);
+                    .Select(f => new { f.Codigo, f.Id })
+                    .ToListAsync(ct);
+                var formasDict = formas.GroupBy(f => f.Codigo).ToDictionary(g => g.Key, g => g.First().Id);
 
                 var tabelas = await _dbContext.TabelasPreco
                     .Where(t => omieTabelaIds.Contains(t.OmieId))
-                    .ToDictionaryAsync(t => t.OmieId, ct);
+                    .Select(t => new { t.OmieId, t.Id })
+                    .ToListAsync(ct);
+                var tabelasDict = tabelas.GroupBy(t => t.OmieId).ToDictionary(g => g.Key, g => g.First().Id);
 
-                var meiosPagamento = await _dbContext.MeiosPagamento
+                var meios = await _dbContext.MeiosPagamento
                     .Where(m => omieMeioPagamentoCodigos.Contains(m.Codigo))
-                    .ToDictionaryAsync(m => m.Codigo, ct);
+                    .Select(m => new { m.Codigo, m.Id })
+                    .ToListAsync(ct);
+                var meiosDict = meios.GroupBy(m => m.Codigo).ToDictionary(g => g.Key, g => g.First().Id);
 
                 foreach (var omiePedido in response.PedidosVenda)
                 {
@@ -132,11 +140,11 @@ namespace Tabatine.Infrastructure.Services
                             OmieId = omieId,
                             NumeroPedido = omiePedido.Cabecalho.NumeroPedido,
                             Etapa = omiePedido.Cabecalho.Etapa,
-                            EtapaFaturamentoId = etapas.TryGetValue(omiePedido.Cabecalho.Etapa, out var eNovo) ? eNovo.Id : null,
+                            EtapaFaturamentoId = etapasDict.TryGetValue(omiePedido.Cabecalho.Etapa, out var eNovoId) ? eNovoId : null,
                             ValorTotal = omiePedido.TotalPedido.ValorTotalPedido,
                             ClienteId = cliente.Id,
                             CodigoParcela = omiePedido.Cabecalho.CodigoParcela,
-                            FormaPagamentoId = omiePedido.Cabecalho.CodigoParcela != null && formas.TryGetValue(omiePedido.Cabecalho.CodigoParcela, out var fNovo) ? fNovo.Id : null,
+                            FormaPagamentoId = omiePedido.Cabecalho.CodigoParcela != null && formasDict.TryGetValue(omiePedido.Cabecalho.CodigoParcela, out var fNovoId) ? fNovoId : null,
                             
                             // Frete e Logística
                             ValorFrete = omiePedido.Frete?.ValorFrete ?? 0,
@@ -193,10 +201,10 @@ namespace Tabatine.Infrastructure.Services
                     else
                     {
                         existingPedido.Etapa = omiePedido.Cabecalho.Etapa;
-                        existingPedido.EtapaFaturamentoId = etapas.TryGetValue(omiePedido.Cabecalho.Etapa, out var eEx) ? eEx.Id : null;
+                        existingPedido.EtapaFaturamentoId = etapasDict.TryGetValue(omiePedido.Cabecalho.Etapa, out var eExId) ? eExId : null;
                         existingPedido.ValorTotal = omiePedido.TotalPedido.ValorTotalPedido;
                         existingPedido.CodigoParcela = omiePedido.Cabecalho.CodigoParcela;
-                        existingPedido.FormaPagamentoId = omiePedido.Cabecalho.CodigoParcela != null && formas.TryGetValue(omiePedido.Cabecalho.CodigoParcela, out var fEx) ? fEx.Id : null;
+                        existingPedido.FormaPagamentoId = omiePedido.Cabecalho.CodigoParcela != null && formasDict.TryGetValue(omiePedido.Cabecalho.CodigoParcela, out var fExId) ? fExId : null;
                         
                         // Frete e Logística
                         existingPedido.ValorFrete = omiePedido.Frete?.ValorFrete ?? 0;
@@ -264,7 +272,7 @@ namespace Tabatine.Infrastructure.Services
                                 ValorDesconto = item.Produto.ValorDesconto,
                                 PesoBruto = item.InfoAdic?.PesoBruto ?? 0,
                                 PesoLiquido = item.InfoAdic?.PesoLiquido ?? 0,
-                                TabelaPrecoId = item.Produto.CodigoTabelaPreco.HasValue && tabelas.TryGetValue(item.Produto.CodigoTabelaPreco.Value, out var t) ? t.Id : null,
+                                TabelaPrecoId = item.Produto.CodigoTabelaPreco.HasValue && tabelasDict.TryGetValue(item.Produto.CodigoTabelaPreco.Value, out var tId) ? tId : null,
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
                             });
@@ -293,7 +301,7 @@ namespace Tabatine.Infrastructure.Services
                                     DataVencimento = DateTime.SpecifyKind(dtVenc, DateTimeKind.Utc),
                                     Percentual = parcela.Percentual,
                                     ContaCorrenteId = existingPedido.ContaCorrenteId,
-                                    MeioPagamentoId = !string.IsNullOrEmpty(parcela.MeioPagamento) && meiosPagamento.TryGetValue(parcela.MeioPagamento, out var m) ? m.Id : null
+                                    MeioPagamentoId = !string.IsNullOrEmpty(parcela.MeioPagamento) && meiosDict.TryGetValue(parcela.MeioPagamento, out var mId) ? mId : null
                                 });
                             }
                         }
