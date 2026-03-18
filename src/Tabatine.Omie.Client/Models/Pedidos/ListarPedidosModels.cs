@@ -135,10 +135,32 @@ namespace Tabatine.Omie.Client.Models.Pedidos
         public OmiePedidoItemCofins? Cofins { get; set; }
     }
 
-    public class OmiePedidoItemIcms { [JsonPropertyName("valor_icms")] public decimal ValorIcms { get; set; } }
-    public class OmiePedidoItemIpi { [JsonPropertyName("valor_ipi")] public decimal ValorIpi { get; set; } }
-    public class OmiePedidoItemPis { [JsonPropertyName("valor_pis")] public decimal ValorPis { get; set; } }
-    public class OmiePedidoItemCofins { [JsonPropertyName("valor_cofins")] public decimal ValorCofins { get; set; } }
+    public class OmiePedidoItemIcms 
+    { 
+        [JsonPropertyName("valor_icms")] public decimal ValorIcms { get; set; } 
+        [JsonPropertyName("base_calculo_icms")] public decimal BaseCalculoIcms { get; set; }
+        [JsonPropertyName("aliquota_icms")] public decimal AliquotaIcms { get; set; }
+        [JsonPropertyName("cst_icms")] public string? CstIcms { get; set; }
+    }
+    public class OmiePedidoItemIpi 
+    { 
+        [JsonPropertyName("valor_ipi")] public decimal ValorIpi { get; set; } 
+        [JsonPropertyName("base_calculo_ipi")] public decimal BaseCalculoIpi { get; set; }
+        [JsonPropertyName("aliquota_ipi")] public decimal AliquotaIpi { get; set; }
+        [JsonPropertyName("cst_ipi")] public string? CstIpi { get; set; }
+    }
+    public class OmiePedidoItemPis 
+    { 
+        [JsonPropertyName("valor_pis")] public decimal ValorPis { get; set; } 
+        [JsonPropertyName("base_calculo_pis")] public decimal BaseCalculoPis { get; set; }
+        [JsonPropertyName("aliquota_pis")] public decimal AliquotaPis { get; set; }
+    }
+    public class OmiePedidoItemCofins 
+    { 
+        [JsonPropertyName("valor_cofins")] public decimal ValorCofins { get; set; } 
+        [JsonPropertyName("base_calculo_cofins")] public decimal BaseCalculoCofins { get; set; }
+        [JsonPropertyName("aliquota_cofins")] public decimal AliquotaCofins { get; set; }
+    }
 
     public class OmiePedidoFrete
     {

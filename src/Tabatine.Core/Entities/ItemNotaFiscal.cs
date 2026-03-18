@@ -17,5 +17,18 @@ namespace Tabatine.Core.Entities
         
         public string? Cfop { get; set; }
         public string? Ncm { get; set; }
+
+        // Detalhamento de Impostos
+        public decimal BaseIcms { get; set; }
+        public decimal AliqIcms { get; set; }
+        public string? CstIcms { get; set; }
+        
+        public decimal ValorIpi { get; set; }
+        public decimal BaseIpi { get; set; }
+        public decimal AliqIpi { get; set; }
+        public string? CstIpi { get; set; }
+
+        public decimal ValorPis { get; set; }
+        public decimal ValorCofins { get; set; }
     }
 }

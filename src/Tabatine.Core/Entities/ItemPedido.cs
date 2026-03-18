@@ -26,6 +26,21 @@ namespace Tabatine.Core.Entities
         public decimal PercentualDesconto { get; set; }
         public decimal ValorDesconto { get; set; }
 
+        // Detalhamento de Impostos (Bases e Alíquotas)
+        public decimal BaseIcms { get; set; }
+        public decimal AliqIcms { get; set; }
+        public string? CstIcms { get; set; }
+
+        public decimal BaseIpi { get; set; }
+        public decimal AliqIpi { get; set; }
+        public string? CstIpi { get; set; }
+
+        public decimal BasePis { get; set; }
+        public decimal AliqPis { get; set; }
+
+        public decimal BaseCofins { get; set; }
+        public decimal AliqCofins { get; set; }
+
         // Pesos
         public decimal PesoBruto { get; set; }
         public decimal PesoLiquido { get; set; }

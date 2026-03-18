@@ -288,10 +288,25 @@ namespace Tabatine.Infrastructure.Services
                                 ValorUnitario = item.Produto.ValorUnitario,
                                 ValorTotal = item.Produto.ValorTotal,
                                 UnidadeMedida = item.Produto.Unidade,
+
                                 ValorIcms = item.Imposto?.Icms?.ValorIcms ?? 0,
+                                BaseIcms = item.Imposto?.Icms?.BaseCalculoIcms ?? 0,
+                                AliqIcms = item.Imposto?.Icms?.AliquotaIcms ?? 0,
+                                CstIcms = item.Imposto?.Icms?.CstIcms,
+
                                 ValorIpi = item.Imposto?.Ipi?.ValorIpi ?? 0,
+                                BaseIpi = item.Imposto?.Ipi?.BaseCalculoIpi ?? 0,
+                                AliqIpi = item.Imposto?.Ipi?.AliquotaIpi ?? 0,
+                                CstIpi = item.Imposto?.Ipi?.CstIpi,
+
                                 ValorPis = item.Imposto?.Pis?.ValorPis ?? 0,
+                                BasePis = item.Imposto?.Pis?.BaseCalculoPis ?? 0,
+                                AliqPis = item.Imposto?.Pis?.AliquotaPis ?? 0,
+
                                 ValorCofins = item.Imposto?.Cofins?.ValorCofins ?? 0,
+                                BaseCofins = item.Imposto?.Cofins?.BaseCalculoCofins ?? 0,
+                                AliqCofins = item.Imposto?.Cofins?.AliquotaCofins ?? 0,
+
                                 PercentualDesconto = item.Produto.PercentualDesconto,
                                 ValorDesconto = item.Produto.ValorDesconto,
                                 PesoBruto = item.InfoAdic?.PesoBruto ?? 0,

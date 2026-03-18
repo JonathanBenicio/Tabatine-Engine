@@ -53,12 +53,48 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
         [JsonPropertyName("info")]
         public OmieInfoCadastro? Info { get; set; }
     }
-
     public class OmieNfDet
     {
         [JsonPropertyName("prod")]
         public OmieNfDetProd Prod { get; set; } = new();
+
+        [JsonPropertyName("imposto")]
+        public OmieNfDetImposto? Imposto { get; set; }
     }
+
+    public class OmieNfDetImposto
+    {
+        [JsonPropertyName("ICMS")]
+        public OmieNfDetIcms? Icms { get; set; }
+
+        [JsonPropertyName("IPI")]
+        public OmieNfDetIpi? Ipi { get; set; }
+
+        [JsonPropertyName("PIS")]
+        public OmieNfDetPis? Pis { get; set; }
+
+        [JsonPropertyName("COFINS")]
+        public OmieNfDetCofins? Cofins { get; set; }
+    }
+
+    public class OmieNfDetIcms
+    {
+        [JsonPropertyName("vBC")] public decimal Base { get; set; }
+        [JsonPropertyName("pICMS")] public decimal Aliquota { get; set; }
+        [JsonPropertyName("vICMS")] public decimal Valor { get; set; }
+        [JsonPropertyName("CST")] public string? Cst { get; set; }
+    }
+
+    public class OmieNfDetIpi
+    {
+        [JsonPropertyName("vBC")] public decimal Base { get; set; }
+        [JsonPropertyName("pIPI")] public decimal Aliquota { get; set; }
+        [JsonPropertyName("vIPI")] public decimal Valor { get; set; }
+        [JsonPropertyName("CST")] public string? Cst { get; set; }
+    }
+
+    public class OmieNfDetPis { [JsonPropertyName("vPIS")] public decimal Valor { get; set; } }
+    public class OmieNfDetCofins { [JsonPropertyName("vCOFINS")] public decimal Valor { get; set; } }
 
     public class OmieNfDetProd
     {

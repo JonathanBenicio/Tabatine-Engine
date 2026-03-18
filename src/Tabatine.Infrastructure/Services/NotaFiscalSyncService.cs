@@ -229,7 +229,18 @@ namespace Tabatine.Infrastructure.Services
                       ValorUnitario = det.Prod.ValorUnitario,
                       ValorTotal = det.Prod.ValorTotal,
                       Cfop = det.Prod.Cfop,
-                      Ncm = det.Prod.Ncm
+                      Ncm = det.Prod.Ncm,
+
+                      // Detalhamento de Impostos
+                      BaseIcms = det.Imposto?.Icms?.Base ?? 0,
+                      AliqIcms = det.Imposto?.Icms?.Aliquota ?? 0,
+                      CstIcms = det.Imposto?.Icms?.Cst,
+                      BaseIpi = det.Imposto?.Ipi?.Base ?? 0,
+                      AliqIpi = det.Imposto?.Ipi?.Aliquota ?? 0,
+                      CstIpi = det.Imposto?.Ipi?.Cst,
+                      ValorIpi = det.Imposto?.Ipi?.Valor ?? 0,
+                      ValorPis = det.Imposto?.Pis?.Valor ?? 0,
+                      ValorCofins = det.Imposto?.Cofins?.Valor ?? 0
                   });
                   itensMapeados++;
               }
