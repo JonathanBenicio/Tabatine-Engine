@@ -194,5 +194,11 @@ namespace Tabatine.Omie.Client
             var param = new Tabatine.Omie.Client.Models.Produtos.TabelaItensListarRequest { Pagina = pagina, CodigoTabelaPreco = codigoTabela };
             return await SendRequestAsync<Tabatine.Omie.Client.Models.Produtos.TabelaItensListarRequest, Tabatine.Omie.Client.Models.Produtos.TabelaItensListarResponse>("produtos/tabelaprecos/", "ListarTabelaItens", param, cancellationToken);
         }
+
+        public async Task<Tabatine.Omie.Client.Models.Geral.ListarParcelasResponse> ListarParcelasAsync(int pagina = 1, CancellationToken cancellationToken = default)
+        {
+            var param = new Tabatine.Omie.Client.Models.Geral.ListarParcelasParam { Pagina = pagina };
+            return await SendRequestAsync<Tabatine.Omie.Client.Models.Geral.ListarParcelasParam, Tabatine.Omie.Client.Models.Geral.ListarParcelasResponse>("geral/parcelas/", "ListarParcelas", param, cancellationToken);
+        }
     }
 }

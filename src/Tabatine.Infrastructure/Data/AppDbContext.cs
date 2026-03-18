@@ -21,6 +21,7 @@ namespace Tabatine.Infrastructure.Data
         public DbSet<PedidoParcela> PedidoParcelas => Set<PedidoParcela>();
         public DbSet<EtapaFaturamento> EtapasFaturamento => Set<EtapaFaturamento>();
         public DbSet<FormaPagamento> FormasPagamento => Set<FormaPagamento>();
+        public DbSet<CondicaoPagamento> CondicoesPagamento => Set<CondicaoPagamento>();
         public DbSet<Banco> Bancos => Set<Banco>();
         public DbSet<MeioPagamento> MeiosPagamento => Set<MeioPagamento>();
         public DbSet<Caracteristica> Caracteristicas => Set<Caracteristica>();

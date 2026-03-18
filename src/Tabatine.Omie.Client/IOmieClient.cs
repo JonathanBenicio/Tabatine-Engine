@@ -25,5 +25,6 @@ namespace Tabatine.Omie.Client
         Task<Tabatine.Omie.Client.Models.Geral.CaracteristicasListarResponse> ListarCaracteristicasAsync(int pagina = 1, CancellationToken cancellationToken = default);
         Task<Tabatine.Omie.Client.Models.Produtos.TabelaPrecosListarResponse> ListarTabelasPrecoAsync(int pagina = 1, CancellationToken cancellationToken = default);
         Task<Tabatine.Omie.Client.Models.Produtos.TabelaItensListarResponse> ListarTabelaItensAsync(long codigoTabela, int pagina = 1, CancellationToken cancellationToken = default);
+        Task<Tabatine.Omie.Client.Models.Geral.ListarParcelasResponse> ListarParcelasAsync(int pagina = 1, CancellationToken cancellationToken = default);
     }
 }

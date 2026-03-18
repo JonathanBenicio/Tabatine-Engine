@@ -44,6 +44,7 @@ namespace Tabatine.Infrastructure.Services
                 typeof(MeioPagamentoSyncService),
                 typeof(EtapaFaturamentoSyncService),
                 typeof(FormaPagamentoSyncService),
+                typeof(CondicaoPagamentoSyncService),
                 typeof(VendedorSyncService),
                 typeof(ContaCorrenteSyncService),
                 typeof(CaracteristicaSyncService),
