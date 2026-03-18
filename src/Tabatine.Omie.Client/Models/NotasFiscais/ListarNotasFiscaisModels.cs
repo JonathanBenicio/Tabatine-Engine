@@ -151,6 +151,24 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
     {
         [JsonPropertyName("vNF")]
         public decimal ValorNota { get; set; }
+
+        [JsonPropertyName("vBC")]
+        public decimal BaseCalculoIcms { get; set; }
+
+        [JsonPropertyName("vICMS")]
+        public decimal ValorIcms { get; set; }
+
+        [JsonPropertyName("vIPI")]
+        public decimal ValorIpi { get; set; }
+
+        [JsonPropertyName("vPIS")]
+        public decimal ValorPis { get; set; }
+
+        [JsonPropertyName("vCOFINS")]
+        public decimal ValorCofins { get; set; }
+
+        [JsonPropertyName("vProd")]
+        public decimal ValorProdutos { get; set; }
     }
 
     public class OmieNfIssqntot

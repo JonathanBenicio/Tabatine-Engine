@@ -176,7 +176,15 @@ namespace Tabatine.Infrastructure.Services
                             ValorCofins = omiePedido.TotalPedido.ValorCofins,
                             BaseCalculoIcms = omiePedido.TotalPedido.BaseCalculoIcms,
                             ValorMercadorias = omiePedido.TotalPedido.ValorMercadorias,
+
+                            // Retenções no Pedido
+                            ValorIss = omiePedido.TotalPedido.ValorIss,
+                            ValorIr = omiePedido.TotalPedido.ValorIr,
+                            ValorCsll = omiePedido.TotalPedido.ValorCsll,
+                            ValorInss = omiePedido.TotalPedido.ValorInss,
+
                             ComissaoVendedor = omiePedido.InformacoesAdicionais?.PercComissao ?? 0,
+                            FreteModalidade = omiePedido.Frete?.Modalidade,
 
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow,
@@ -221,7 +229,15 @@ namespace Tabatine.Infrastructure.Services
                         existingPedido.ValorCofins = omiePedido.TotalPedido.ValorCofins;
                         existingPedido.BaseCalculoIcms = omiePedido.TotalPedido.BaseCalculoIcms;
                         existingPedido.ValorMercadorias = omiePedido.TotalPedido.ValorMercadorias;
+                        
+                        // Retenções no Pedido
+                        existingPedido.ValorIss = omiePedido.TotalPedido.ValorIss;
+                        existingPedido.ValorIr = omiePedido.TotalPedido.ValorIr;
+                        existingPedido.ValorCsll = omiePedido.TotalPedido.ValorCsll;
+                        existingPedido.ValorInss = omiePedido.TotalPedido.ValorInss;
+
                         existingPedido.ComissaoVendedor = omiePedido.InformacoesAdicionais?.PercComissao ?? 0;
+                        existingPedido.FreteModalidade = omiePedido.Frete?.Modalidade;
 
                         // Auditoria e Status
                         existingPedido.Faturado = omiePedido.InfoCadastro?.Faturado == "S";

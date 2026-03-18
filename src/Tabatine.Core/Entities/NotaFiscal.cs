@@ -21,6 +21,13 @@ namespace Tabatine.Core.Entities
         public decimal ValorCsll { get; set; }
         public decimal ValorPisRetido { get; set; }
         public decimal ValorCofinsRetido { get; set; }
+
+        public decimal ValorIpi { get; set; }
+        public decimal ValorPis { get; set; }
+        public decimal ValorCofins { get; set; }
+        public decimal ValorProd { get; set; }
+        public decimal IcmsBaseCalculo { get; set; }
+        public decimal IcmsValor { get; set; }
         public bool Denegada { get; set; }
 
         public Guid? PedidoVendaId { get; set; }

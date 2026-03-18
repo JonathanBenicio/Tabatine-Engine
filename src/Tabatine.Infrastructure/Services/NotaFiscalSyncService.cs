@@ -138,6 +138,14 @@ namespace Tabatine.Infrastructure.Services
               ValorCsll = omieNf.Total.RetTrib?.ValorCsll ?? 0,
               ValorPisRetido = omieNf.Total.RetTrib?.ValorPis ?? 0,
               ValorCofinsRetido = omieNf.Total.RetTrib?.ValorCofins ?? 0,
+
+              ValorIpi = omieNf.Total.IcmsTot.ValorIpi,
+              ValorPis = omieNf.Total.IcmsTot.ValorPis,
+              ValorCofins = omieNf.Total.IcmsTot.ValorCofins,
+              ValorProd = omieNf.Total.IcmsTot.ValorProdutos,
+              IcmsBaseCalculo = omieNf.Total.IcmsTot.BaseCalculoIcms,
+              IcmsValor = omieNf.Total.IcmsTot.ValorIcms,
+
               Denegada = omieNf.Ide.Denegada == "S",
               ClienteId = cliente.Id,
               PedidoVendaId = pedido?.Id,
@@ -163,6 +171,14 @@ namespace Tabatine.Infrastructure.Services
             existing.ValorCsll = omieNf.Total.RetTrib?.ValorCsll ?? 0;
             existing.ValorPisRetido = omieNf.Total.RetTrib?.ValorPis ?? 0;
             existing.ValorCofinsRetido = omieNf.Total.RetTrib?.ValorCofins ?? 0;
+            
+            existing.ValorIpi = omieNf.Total.IcmsTot.ValorIpi;
+            existing.ValorPis = omieNf.Total.IcmsTot.ValorPis;
+            existing.ValorCofins = omieNf.Total.IcmsTot.ValorCofins;
+            existing.ValorProd = omieNf.Total.IcmsTot.ValorProdutos;
+            existing.IcmsBaseCalculo = omieNf.Total.IcmsTot.BaseCalculoIcms;
+            existing.IcmsValor = omieNf.Total.IcmsTot.ValorIcms;
+
             existing.Denegada = omieNf.Ide.Denegada == "S";
             existing.VendedorId = pedido?.VendedorId;
             existing.ContaCorrenteId = pedido?.ContaCorrenteId;

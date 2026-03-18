@@ -156,6 +156,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("previsao_entrega")]
         public string? PrevisaoEntrega { get; set; }
+
+        [JsonPropertyName("modalidade")]
+        public string? Modalidade { get; set; }
     }
 
     public class OmiePedidoInfoAdic
@@ -222,6 +225,18 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("valor_mercadorias")]
         public decimal ValorMercadorias { get; set; }
+
+        [JsonPropertyName("valor_iss")]
+        public decimal ValorIss { get; set; }
+
+        [JsonPropertyName("valor_ir")]
+        public decimal ValorIr { get; set; }
+
+        [JsonPropertyName("valor_csll")]
+        public decimal ValorCsll { get; set; }
+
+        [JsonPropertyName("valor_inss")]
+        public decimal ValorInss { get; set; }
     }
 
     public class OmieInfoCadastro

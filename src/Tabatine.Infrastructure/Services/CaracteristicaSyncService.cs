@@ -87,14 +87,10 @@ namespace Tabatine.Infrastructure.Services
                     }
                 }
 
-                if (int.TryParse(response.TotalDePaginas, out int totalPaginas))
-                {
-                    temMais = pagina < totalPaginas;
-                }
-                else
-                {
-                    temMais = false;
-                }
+                await _dbContext.SaveChangesAsync(ct);
+                _logger.LogInformation("Página {Pagina} de Características sincronizada.", pagina);
+
+                temMais = pagina < response.TotalDePaginas;
                 pagina++;
             }
 

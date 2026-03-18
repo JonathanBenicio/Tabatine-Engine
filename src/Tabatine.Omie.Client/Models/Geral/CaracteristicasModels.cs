@@ -36,10 +36,12 @@ namespace Tabatine.Omie.Client.Models.Geral
     public class CaracteristicasListarResponse
     {
         [JsonPropertyName("nPagina")]
-        public string Pagina { get; set; } = "1";
+        [JsonConverter(typeof(OmieFlexibleIntConverter))]
+        public int Pagina { get; set; }
 
         [JsonPropertyName("nTotPaginas")]
-        public string TotalDePaginas { get; set; } = "1";
+        [JsonConverter(typeof(OmieFlexibleIntConverter))]
+        public int TotalDePaginas { get; set; }
 
         [JsonPropertyName("nRegistros")]
         public int Registros { get; set; }

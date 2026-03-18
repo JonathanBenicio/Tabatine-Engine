@@ -8,6 +8,7 @@ using Polly;
 using Tabatine.Infrastructure.Services;
 using Tabatine.Core.Interfaces;
 using Tabatine.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -16,7 +17,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         b => b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
-    )
+    ).ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
 );
 
 // Configure Omie Options
