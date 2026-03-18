@@ -14,6 +14,17 @@ namespace Tabatine.Core.Entities
         public decimal ValorFrete { get; set; }
         public string? Transportadora { get; set; }
         public int QuantidadeVolumes { get; set; }
+        public decimal PesoBruto { get; set; }
+        public decimal PesoLiquido { get; set; }
+        public DateTime? PrevisaoEntrega { get; set; }
+
+        // Impostos Totais
+        public decimal ValorIcms { get; set; }
+        public decimal ValorIpi { get; set; }
+        public decimal ValorPis { get; set; }
+        public decimal ValorCofins { get; set; }
+        public decimal BaseCalculoIcms { get; set; }
+        public decimal ValorMercadorias { get; set; }
 
         // Condição de pagamento
         public string? CodigoParcela { get; set; }

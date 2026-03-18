@@ -21,5 +21,9 @@ namespace Tabatine.Core.Entities
         public decimal ValorCofins { get; set; }
         public decimal PercentualDesconto { get; set; }
         public decimal ValorDesconto { get; set; }
+
+        // Pesos
+        public decimal PesoBruto { get; set; }
+        public decimal PesoLiquido { get; set; }
     }
 }

@@ -130,13 +130,20 @@ namespace Tabatine.Infrastructure.Services
                             ClienteId = cliente.Id,
                             CodigoParcela = omiePedido.Cabecalho.CodigoParcela,
                             FormaPagamentoId = omiePedido.Cabecalho.CodigoParcela != null && formas.TryGetValue(omiePedido.Cabecalho.CodigoParcela, out var fNovo) ? fNovo.Id : null,
+                            
+                            // Frete e Logística
                             ValorFrete = omiePedido.Frete?.ValorFrete ?? 0,
-                            Transportadora = omiePedido.Frete?.Transportadora,
                             QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0,
+                            PesoBruto = omiePedido.Frete?.PesoBruto ?? 0,
+                            PesoLiquido = omiePedido.Frete?.PesoLiquido ?? 0,
+                            Transportadora = omiePedido.Frete?.Transportadora,
+
                             ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda,
                             Contato = omiePedido.InformacoesAdicionais?.Contato,
                             VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vNovo) ? vNovo.Id : null,
                             ContaCorrenteId = omiePedido.Cabecalho.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.Cabecalho.CodigoContaCorrente.Value, out var ccNovo) ? ccNovo.Id : null,
+                            
+                            // Auditoria e Status
                             UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao,
                             UsuarioAlteracao = omiePedido.InfoCadastro?.UsuarioAlteracao,
                             Faturado = omiePedido.InfoCadastro?.Faturado == "S",
@@ -144,6 +151,15 @@ namespace Tabatine.Infrastructure.Services
                             Devolvido = omiePedido.InfoCadastro?.Devolvido == "S",
                             Autorizado = omiePedido.InfoCadastro?.Autorizado == "S",
                             Denegado = omiePedido.InfoCadastro?.Denegado == "S",
+
+                            // Impostos Totais
+                            ValorIcms = omiePedido.TotalPedido.ValorIcms,
+                            ValorIpi = omiePedido.TotalPedido.ValorIpi,
+                            ValorPis = omiePedido.TotalPedido.ValorPis,
+                            ValorCofins = omiePedido.TotalPedido.ValorCofins,
+                            BaseCalculoIcms = omiePedido.TotalPedido.BaseCalculoIcms,
+                            ValorMercadorias = omiePedido.TotalPedido.ValorMercadorias,
+
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow,
                             Itens = new List<ItemPedido>(),
@@ -153,6 +169,16 @@ namespace Tabatine.Infrastructure.Services
                         if (DateTime.TryParseExact(omiePedido.Cabecalho.DataPrevisao, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtPrev))
                         {
                             novoPedido.DataPrevisao = DateTime.SpecifyKind(dtPrev, DateTimeKind.Utc);
+                        }
+
+                        if (DateTime.TryParseExact(omiePedido.Frete?.PrevisaoEntrega, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtPrevEnt))
+                        {
+                            novoPedido.PrevisaoEntrega = DateTime.SpecifyKind(dtPrevEnt, DateTimeKind.Utc);
+                        }
+
+                        if (DateTime.TryParseExact(omiePedido.InfoCadastro?.DInc, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtInc))
+                        {
+                            novoPedido.DataInclusao = DateTime.SpecifyKind(dtInc, DateTimeKind.Utc);
                         }
 
                         _dbContext.PedidosVenda.Add(novoPedido);
@@ -165,26 +191,41 @@ namespace Tabatine.Infrastructure.Services
                         existingPedido.ValorTotal = omiePedido.TotalPedido.ValorTotalPedido;
                         existingPedido.CodigoParcela = omiePedido.Cabecalho.CodigoParcela;
                         existingPedido.FormaPagamentoId = omiePedido.Cabecalho.CodigoParcela != null && formas.TryGetValue(omiePedido.Cabecalho.CodigoParcela, out var fEx) ? fEx.Id : null;
+                        
+                        // Frete e Logística
                         existingPedido.ValorFrete = omiePedido.Frete?.ValorFrete ?? 0;
-                        existingPedido.Transportadora = omiePedido.Frete?.Transportadora;
                         existingPedido.QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0;
-                        existingPedido.ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda;
-                        existingPedido.Contato = omiePedido.InformacoesAdicionais?.Contato;
-                        existingPedido.VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vEx) ? vEx.Id : null;
-                        existingPedido.ContaCorrenteId = omiePedido.Cabecalho.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.Cabecalho.CodigoContaCorrente.Value, out var ccEx) ? ccEx.Id : null;
-                        existingPedido.UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao;
-                        existingPedido.UsuarioAlteracao = omiePedido.InfoCadastro?.UsuarioAlteracao;
+                        existingPedido.PesoBruto = omiePedido.Frete?.PesoBruto ?? 0;
+                        existingPedido.PesoLiquido = omiePedido.Frete?.PesoLiquido ?? 0;
+                        existingPedido.Transportadora = omiePedido.Frete?.Transportadora;
+
+                        // Impostos Totais
+                        existingPedido.ValorIcms = omiePedido.TotalPedido.ValorIcms;
+                        existingPedido.ValorIpi = omiePedido.TotalPedido.ValorIpi;
+                        existingPedido.ValorPis = omiePedido.TotalPedido.ValorPis;
+                        existingPedido.ValorCofins = omiePedido.TotalPedido.ValorCofins;
+                        existingPedido.BaseCalculoIcms = omiePedido.TotalPedido.BaseCalculoIcms;
+                        existingPedido.ValorMercadorias = omiePedido.TotalPedido.ValorMercadorias;
+
+                        // Auditoria e Status
                         existingPedido.Faturado = omiePedido.InfoCadastro?.Faturado == "S";
                         existingPedido.Cancelado = omiePedido.InfoCadastro?.Cancelado == "S";
                         existingPedido.Devolvido = omiePedido.InfoCadastro?.Devolvido == "S";
                         existingPedido.Autorizado = omiePedido.InfoCadastro?.Autorizado == "S";
                         existingPedido.Denegado = omiePedido.InfoCadastro?.Denegado == "S";
-                        existingPedido.UpdatedAt = DateTime.UtcNow;
+                        existingPedido.UsuarioAlteracao = omiePedido.InfoCadastro?.UsuarioAlteracao;
 
-                        if (DateTime.TryParseExact(omiePedido.Cabecalho.DataPrevisao, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtPrev))
+                        if (DateTime.TryParseExact(omiePedido.Frete?.PrevisaoEntrega, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtPrevEntEx))
                         {
-                            existingPedido.DataPrevisao = DateTime.SpecifyKind(dtPrev, DateTimeKind.Utc);
+                            existingPedido.PrevisaoEntrega = DateTime.SpecifyKind(dtPrevEntEx, DateTimeKind.Utc);
                         }
+
+                        if (DateTime.TryParseExact(omiePedido.Cabecalho.DataPrevisao, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtPrevEx))
+                        {
+                            existingPedido.DataPrevisao = DateTime.SpecifyKind(dtPrevEx, DateTimeKind.Utc);
+                        }
+
+                        existingPedido.UpdatedAt = DateTime.UtcNow;
                     }
 
                     // Reconciliação unificada de itens e parcelas
@@ -214,7 +255,10 @@ namespace Tabatine.Infrastructure.Services
                                 ValorCofins = item.Imposto?.Cofins?.ValorCofins ?? 0,
                                 PercentualDesconto = item.Produto.PercentualDesconto,
                                 ValorDesconto = item.Produto.ValorDesconto,
-                                CreatedAt = DateTime.UtcNow
+                                PesoBruto = item.InfoAdic?.PesoBruto ?? 0,
+                                PesoLiquido = item.InfoAdic?.PesoLiquido ?? 0,
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow
                             });
                         }
                     }

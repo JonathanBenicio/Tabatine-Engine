@@ -42,6 +42,30 @@ namespace Tabatine.Infrastructure.Data.Configurations
 
             builder.Property(p => p.ValorFrete)
                    .HasColumnType("numeric(18,2)");
+
+            builder.Property(p => p.PesoBruto)
+                   .HasColumnType("numeric(18,3)");
+
+            builder.Property(p => p.PesoLiquido)
+                   .HasColumnType("numeric(18,3)");
+
+            builder.Property(p => p.ValorIcms)
+                   .HasColumnType("numeric(18,2)");
+
+            builder.Property(p => p.ValorIpi)
+                   .HasColumnType("numeric(18,2)");
+
+            builder.Property(p => p.ValorPis)
+                   .HasColumnType("numeric(18,2)");
+
+            builder.Property(p => p.ValorCofins)
+                   .HasColumnType("numeric(18,2)");
+
+            builder.Property(p => p.BaseCalculoIcms)
+                   .HasColumnType("numeric(18,2)");
+
+            builder.Property(p => p.ValorMercadorias)
+                   .HasColumnType("numeric(18,2)");
         }
     }
 }

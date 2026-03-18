@@ -79,6 +79,18 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("imposto")]
         public OmiePedidoItemImposto? Imposto { get; set; }
+
+        [JsonPropertyName("inf_adic")]
+        public OmiePedidoItemInfoAdic? InfoAdic { get; set; }
+    }
+
+    public class OmiePedidoItemInfoAdic
+    {
+        [JsonPropertyName("peso_bruto")]
+        public decimal PesoBruto { get; set; }
+
+        [JsonPropertyName("peso_liquido")]
+        public decimal PesoLiquido { get; set; }
     }
 
     public class OmiePedidoItemProduto
@@ -132,6 +144,15 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("registro_transportador")]
         public string? Transportadora { get; set; }
+
+        [JsonPropertyName("peso_bruto")]
+        public decimal PesoBruto { get; set; }
+
+        [JsonPropertyName("peso_liquido")]
+        public decimal PesoLiquido { get; set; }
+
+        [JsonPropertyName("previsao_entrega")]
+        public string? PrevisaoEntrega { get; set; }
     }
 
     public class OmiePedidoInfoAdic
@@ -171,6 +192,24 @@ namespace Tabatine.Omie.Client.Models.Pedidos
     {
         [JsonPropertyName("valor_total_pedido")]
         public decimal ValorTotalPedido { get; set; }
+
+        [JsonPropertyName("valor_icms")]
+        public decimal ValorIcms { get; set; }
+
+        [JsonPropertyName("valor_IPI")]
+        public decimal ValorIpi { get; set; }
+
+        [JsonPropertyName("valor_pis")]
+        public decimal ValorPis { get; set; }
+
+        [JsonPropertyName("valor_cofins")]
+        public decimal ValorCofins { get; set; }
+
+        [JsonPropertyName("base_calculo_icms")]
+        public decimal BaseCalculoIcms { get; set; }
+
+        [JsonPropertyName("valor_mercadorias")]
+        public decimal ValorMercadorias { get; set; }
     }
 
     public class OmieInfoCadastro
