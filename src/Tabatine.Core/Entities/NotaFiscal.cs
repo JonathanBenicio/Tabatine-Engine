@@ -23,6 +23,18 @@ namespace Tabatine.Core.Entities
         public decimal ValorPisRetido { get; set; }
         public decimal ValorCofinsRetido { get; set; }
 
+        public decimal ValorFrete { get; set; }
+        public decimal ValorSeguro { get; set; }
+        public decimal ValorDesconto { get; set; }
+        public decimal ValorOutrasDespesas { get; set; }
+        public decimal IssqnBaseCalculo { get; set; }
+
+        public string? TipoOperacao { get; set; }
+        public string? Finalidade { get; set; }
+        public string? Ambiente { get; set; }
+        public string? InformacoesComplementares { get; set; }
+        public string? InformacoesFisco { get; set; }
+
         public decimal ValorIpi { get; set; }
         public decimal ValorPis { get; set; }
         public decimal ValorCofins { get; set; }

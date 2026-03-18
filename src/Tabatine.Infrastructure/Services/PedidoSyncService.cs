@@ -154,6 +154,8 @@ namespace Tabatine.Infrastructure.Services
                             Transportadora = omiePedido.Frete?.Transportadora,
 
                             ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda,
+                            ObservacoesInternas = omiePedido.InformacoesAdicionais?.ObservacoesInternas,
+                            MeioPagamento = omiePedido.Cabecalho.MeioPagamento,
                             Contato = omiePedido.InformacoesAdicionais?.Contato,
                             VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vNovo) ? vNovo.Id : null,
                             ContaCorrenteId = omiePedido.InformacoesAdicionais?.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.InformacoesAdicionais.CodigoContaCorrente.Value, out var ccNovo) ? ccNovo.Id : null,
@@ -238,6 +240,9 @@ namespace Tabatine.Infrastructure.Services
 
                         existingPedido.ComissaoVendedor = omiePedido.InformacoesAdicionais?.PercComissao ?? 0;
                         existingPedido.FreteModalidade = omiePedido.Frete?.Modalidade;
+                        existingPedido.ObservacoesInternas = omiePedido.InformacoesAdicionais?.ObservacoesInternas;
+                        existingPedido.MeioPagamento = omiePedido.Cabecalho.MeioPagamento;
+                        existingPedido.ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda;
 
                         // Auditoria e Status
                         existingPedido.Faturado = omiePedido.InfoCadastro?.Faturado == "S";

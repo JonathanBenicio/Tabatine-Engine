@@ -132,8 +132,18 @@ namespace Tabatine.Infrastructure.Services
                NaturezaOperacao = omieNf.Compl.XNatureza,
                Serie = omieNf.Ide.Serie,
                Modelo = omieNf.Ide.Modelo,
+               TipoOperacao = omieNf.Ide.TipoNf,
+               Finalidade = omieNf.Ide.Finalidade,
+               Ambiente = omieNf.Ide.Ambiente,
+               InformacoesComplementares = omieNf.Compl.InformacoesComplementares,
+               InformacoesFisco = omieNf.Compl.InformacoesFisco,
                ImportadoApi = true,
               ValorTotal = omieNf.Total.IcmsTot.ValorNota,
+              ValorFrete = omieNf.Total.IcmsTot.ValorFrete,
+              ValorSeguro = omieNf.Total.IcmsTot.ValorSeguro,
+              ValorDesconto = omieNf.Total.IcmsTot.ValorDesconto,
+              ValorOutrasDespesas = omieNf.Total.IcmsTot.ValorOutrasDespesas,
+              IssqnBaseCalculo = omieNf.Total.IssqnTot?.BaseCalculo ?? 0,
               ValorIss = omieNf.Total.IssqnTot?.ValorIss ?? 0,
               ValorIr = omieNf.Total.RetTrib?.ValorIrrf ?? 0,
               ValorCsll = omieNf.Total.RetTrib?.ValorCsll ?? 0,
@@ -165,8 +175,6 @@ namespace Tabatine.Infrastructure.Services
             existing.CodigoStatus = int.TryParse(omieNf.Ide.Situacao, out int csAtualizacao) ? csAtualizacao : 0;
             existing.ChaveAcesso = omieNf.Compl.ChaveNfe;
             existing.HoraEmissao = horaEmissao;
-            existing.NaturezaOperacao = omieNf.Compl.XNatureza;
-            existing.Serie = omieNf.Ide.Serie;
             existing.ValorIss = omieNf.Total.IssqnTot?.ValorIss ?? 0;
             existing.ValorIr = omieNf.Total.RetTrib?.ValorIrrf ?? 0;
             existing.ValorCsll = omieNf.Total.RetTrib?.ValorCsll ?? 0;
@@ -176,6 +184,18 @@ namespace Tabatine.Infrastructure.Services
             existing.NaturezaOperacao = omieNf.Compl.XNatureza;
             existing.Serie = omieNf.Ide.Serie;
             existing.Modelo = omieNf.Ide.Modelo;
+            existing.TipoOperacao = omieNf.Ide.TipoNf;
+            existing.Finalidade = omieNf.Ide.Finalidade;
+            existing.Ambiente = omieNf.Ide.Ambiente;
+            existing.InformacoesComplementares = omieNf.Compl.InformacoesComplementares;
+            existing.InformacoesFisco = omieNf.Compl.InformacoesFisco;
+
+            existing.ValorFrete = omieNf.Total.IcmsTot.ValorFrete;
+            existing.ValorSeguro = omieNf.Total.IcmsTot.ValorSeguro;
+            existing.ValorDesconto = omieNf.Total.IcmsTot.ValorDesconto;
+            existing.ValorOutrasDespesas = omieNf.Total.IcmsTot.ValorOutrasDespesas;
+            existing.IssqnBaseCalculo = omieNf.Total.IssqnTot?.BaseCalculo ?? 0;
+
             existing.ValorIpi = omieNf.Total.IcmsTot.ValorIpi;
             existing.ValorPis = omieNf.Total.IcmsTot.ValorPis;
             existing.ValorCofins = omieNf.Total.IcmsTot.ValorCofins;

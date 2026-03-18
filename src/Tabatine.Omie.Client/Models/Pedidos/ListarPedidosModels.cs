@@ -67,6 +67,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("codigo_parcela")]
         public string? CodigoParcela { get; set; }
+
+        [JsonPropertyName("meio_pagamento")]
+        public string? MeioPagamento { get; set; }
     }
 
     public class OmiePedidoItem
@@ -165,6 +168,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
     {
         [JsonPropertyName("dados_adicionais_nf")]
         public string? ObservacoesVenda { get; set; }
+
+        [JsonPropertyName("obs_interna")]
+        public string? ObservacoesInternas { get; set; }
 
         [JsonPropertyName("codVend")]
         public long? CodigoVendedor { get; set; }

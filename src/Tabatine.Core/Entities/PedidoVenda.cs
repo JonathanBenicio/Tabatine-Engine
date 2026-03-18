@@ -43,6 +43,8 @@ namespace Tabatine.Core.Entities
 
         // Metadados
         public string? ObservacoesVenda { get; set; }
+        public string? ObservacoesInternas { get; set; }
+        public string? MeioPagamento { get; set; }
         public DateTime? DataInclusao { get; set; }
         public string? UsuarioInclusao { get; set; }
         public string? UsuarioAlteracao { get; set; }

@@ -127,6 +127,15 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("mod")]
         public string Modelo { get; set; } = "55";
+
+        [JsonPropertyName("tpNF")]
+        public string TipoNf { get; set; } = string.Empty;
+
+        [JsonPropertyName("finNFe")]
+        public string Finalidade { get; set; } = string.Empty;
+
+        [JsonPropertyName("tpAmb")]
+        public string Ambiente { get; set; } = string.Empty;
     }
 
     public class OmieNfCompl
@@ -142,6 +151,12 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("xNatureza")]
         public string XNatureza { get; set; } = string.Empty;
+
+        [JsonPropertyName("cInfCpl")]
+        public string? InformacoesComplementares { get; set; }
+
+        [JsonPropertyName("cInfAdFisco")]
+        public string? InformacoesFisco { get; set; }
     }
 
     public class OmieNfTotal
@@ -178,12 +193,27 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("vProd")]
         public decimal ValorProdutos { get; set; }
+
+        [JsonPropertyName("vFrete")]
+        public decimal ValorFrete { get; set; }
+
+        [JsonPropertyName("vSeg")]
+        public decimal ValorSeguro { get; set; }
+
+        [JsonPropertyName("vDesc")]
+        public decimal ValorDesconto { get; set; }
+
+        [JsonPropertyName("vOutro")]
+        public decimal ValorOutrasDespesas { get; set; }
     }
 
     public class OmieNfIssqntot
     {
         [JsonPropertyName("vISS")]
         public decimal ValorIss { get; set; }
+
+        [JsonPropertyName("vBC")]
+        public decimal BaseCalculo { get; set; }
     }
 
     public class OmieNfRetTrib
