@@ -11,6 +11,9 @@ namespace Tabatine.Core.Entities
         public DateTime DataEmissao { get; set; }
         public TimeSpan? HoraEmissao { get; set; }
         public decimal ValorTotal { get; set; }
+        public string? NaturezaOperacao { get; set; }
+        public string? Serie { get; set; }
+        public bool ImportadoApi { get; set; } = true;
 
         // Impostos e Retenções
         public decimal ValorIss { get; set; }

@@ -115,6 +115,9 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("cSitNF")]
         public string Situacao { get; set; } = string.Empty;
+
+        [JsonPropertyName("serie")]
+        public string Serie { get; set; } = string.Empty;
     }
 
     public class OmieNfCompl
@@ -127,6 +130,9 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("nIdPedido")]
         public long? IdPedido { get; set; }
+
+        [JsonPropertyName("xNatureza")]
+        public string XNatureza { get; set; } = string.Empty;
     }
 
     public class OmieNfTotal

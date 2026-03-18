@@ -25,6 +25,7 @@ namespace Tabatine.Core.Entities
         public decimal ValorCofins { get; set; }
         public decimal BaseCalculoIcms { get; set; }
         public decimal ValorMercadorias { get; set; }
+        public decimal ComissaoVendedor { get; set; }
 
         // Condição de pagamento
         public string? CodigoParcela { get; set; }

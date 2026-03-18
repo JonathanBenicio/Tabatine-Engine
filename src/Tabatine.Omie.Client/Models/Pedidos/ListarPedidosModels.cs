@@ -115,6 +115,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("valor_desconto")]
         public decimal ValorDesconto { get; set; }
+
+        [JsonPropertyName("unidade")]
+        public string Unidade { get; set; } = string.Empty;
     }
 
     public class OmiePedidoItemImposto
@@ -168,6 +171,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("contato")]
         public string? Contato { get; set; }
+
+        [JsonPropertyName("perc_comissao")]
+        public decimal PercComissao { get; set; }
     }
 
     public class OmiePedidoParcelas

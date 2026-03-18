@@ -66,6 +66,9 @@ namespace Tabatine.Infrastructure.Data.Configurations
 
             builder.Property(p => p.ValorMercadorias)
                    .HasColumnType("numeric(18,2)");
+
+            builder.Property(p => p.ComissaoVendedor)
+                   .HasColumnType("numeric(10,2)");
         }
     }
 }

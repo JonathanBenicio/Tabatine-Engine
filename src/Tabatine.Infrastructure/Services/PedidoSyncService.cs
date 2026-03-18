@@ -176,6 +176,7 @@ namespace Tabatine.Infrastructure.Services
                             ValorCofins = omiePedido.TotalPedido.ValorCofins,
                             BaseCalculoIcms = omiePedido.TotalPedido.BaseCalculoIcms,
                             ValorMercadorias = omiePedido.TotalPedido.ValorMercadorias,
+                            ComissaoVendedor = omiePedido.InformacoesAdicionais?.PercComissao ?? 0,
 
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow,
@@ -220,6 +221,7 @@ namespace Tabatine.Infrastructure.Services
                         existingPedido.ValorCofins = omiePedido.TotalPedido.ValorCofins;
                         existingPedido.BaseCalculoIcms = omiePedido.TotalPedido.BaseCalculoIcms;
                         existingPedido.ValorMercadorias = omiePedido.TotalPedido.ValorMercadorias;
+                        existingPedido.ComissaoVendedor = omiePedido.InformacoesAdicionais?.PercComissao ?? 0;
 
                         // Auditoria e Status
                         existingPedido.Faturado = omiePedido.InfoCadastro?.Faturado == "S";
@@ -264,6 +266,7 @@ namespace Tabatine.Infrastructure.Services
                                 Quantidade = (int)item.Produto.Quantidade,
                                 ValorUnitario = item.Produto.ValorUnitario,
                                 ValorTotal = item.Produto.ValorTotal,
+                                UnidadeMedida = item.Produto.Unidade,
                                 ValorIcms = item.Imposto?.Icms?.ValorIcms ?? 0,
                                 ValorIpi = item.Imposto?.Ipi?.ValorIpi ?? 0,
                                 ValorPis = item.Imposto?.Pis?.ValorPis ?? 0,

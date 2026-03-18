@@ -16,6 +16,7 @@ namespace Tabatine.Core.Entities
         public int Quantidade { get; set; }
         public decimal ValorUnitario { get; set; }
         public decimal ValorTotal { get; set; }
+        public string? UnidadeMedida { get; set; }
         
         // Impostos e Descontos
         public decimal ValorIcms { get; set; }

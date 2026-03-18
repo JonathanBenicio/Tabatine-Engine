@@ -14,6 +14,8 @@ namespace Tabatine.Infrastructure.Data.Configurations
             
             builder.Property(n => n.NumeroNf).HasMaxLength(50);
             builder.Property(n => n.ChaveAcesso).HasMaxLength(100);
+            builder.Property(n => n.NaturezaOperacao).HasMaxLength(200);
+            builder.Property(n => n.Serie).HasMaxLength(20);
             
             builder.HasOne(n => n.Cliente)
                    .WithMany()
