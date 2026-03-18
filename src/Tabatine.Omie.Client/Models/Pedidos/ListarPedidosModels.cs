@@ -67,9 +67,6 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("codigo_parcela")]
         public string? CodigoParcela { get; set; }
-
-        [JsonPropertyName("codigo_conta_corrente")]
-        public long? CodigoContaCorrente { get; set; }
     }
 
     public class OmiePedidoItem
@@ -174,6 +171,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("perc_comissao")]
         public decimal PercComissao { get; set; }
+
+        [JsonPropertyName("codigo_conta_corrente")]
+        public long? CodigoContaCorrente { get; set; }
     }
 
     public class OmiePedidoParcelas

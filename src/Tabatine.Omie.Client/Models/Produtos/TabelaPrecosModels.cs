@@ -30,10 +30,10 @@ namespace Tabatine.Omie.Client.Models.Produtos
     public class TabelaPrecosListarResponse
     {
         [JsonPropertyName("nPagina")]
-        public int Pagina { get; set; }
+        public string Pagina { get; set; } = "1";
 
         [JsonPropertyName("nTotPaginas")]
-        public int TotalDePaginas { get; set; }
+        public string TotalDePaginas { get; set; } = "1";
 
         [JsonPropertyName("listaTabelasPreco")]
         public List<OmieTabelaPreco> ListaTabelasPreco { get; set; } = new();
@@ -63,10 +63,10 @@ namespace Tabatine.Omie.Client.Models.Produtos
     public class TabelaItensListarResponse
     {
         [JsonPropertyName("nPagina")]
-        public int Pagina { get; set; }
+        public string Pagina { get; set; } = "1";
 
         [JsonPropertyName("nTotPaginas")]
-        public int TotalDePaginas { get; set; }
+        public string TotalDePaginas { get; set; } = "1";
 
         [JsonPropertyName("listaTabelaPreco")]
         public List<TabelaPrecoItensWrapper> ListaTabelaPreco { get; set; } = new();

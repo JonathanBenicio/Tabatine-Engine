@@ -57,8 +57,8 @@ namespace Tabatine.Infrastructure.Services
                     .Distinct().ToList();
 
                 var omieContaCorrenteIds = response.PedidosVenda
-                    .Where(p => p.Cabecalho.CodigoContaCorrente > 0)
-                    .Select(p => p.Cabecalho.CodigoContaCorrente!.Value)
+                    .Where(p => p.InformacoesAdicionais?.CodigoContaCorrente > 0)
+                    .Select(p => p.InformacoesAdicionais!.CodigoContaCorrente!.Value)
                     .Distinct().ToList();
 
                 var omieEtapas = response.PedidosVenda.Select(p => p.Cabecalho.Etapa).Distinct().ToList();
@@ -156,7 +156,7 @@ namespace Tabatine.Infrastructure.Services
                             ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda,
                             Contato = omiePedido.InformacoesAdicionais?.Contato,
                             VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vNovo) ? vNovo.Id : null,
-                            ContaCorrenteId = omiePedido.Cabecalho.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.Cabecalho.CodigoContaCorrente.Value, out var ccNovo) ? ccNovo.Id : null,
+                            ContaCorrenteId = omiePedido.InformacoesAdicionais?.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.InformacoesAdicionais.CodigoContaCorrente.Value, out var ccNovo) ? ccNovo.Id : null,
                             
                             // Auditoria e Status
                             UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao,

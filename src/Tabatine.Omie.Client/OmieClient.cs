@@ -61,9 +61,9 @@ namespace Tabatine.Omie.Client
                 {
                     var errorBody = await response.Content.ReadAsStringAsync(ct);
                     
-                    if (errorBody.Contains("Client-5113"))
+                    if (errorBody.Contains("Client-5113") || errorBody.Contains("Client-101"))
                     {
-                        _logger.LogInformation("Omie retornou sem registros para {Url}. Call: {Call}. (Client-5113 - sem dados para o filtro)", url, call);
+                        _logger.LogInformation("Omie retornou sem registros para {Url}. Call: {Call}. (Sem dados para o filtro)", url, call);
                         return default!;
                     }
                     
@@ -171,10 +171,10 @@ namespace Tabatine.Omie.Client
             return await SendRequestAsync<ListarBancosParam, ListarBancosResponse>("geral/bancos/", "ListarBancos", param, cancellationToken);
         }
 
-        public async Task<Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarResponse> ListarMeiosPagamentoAsync(CancellationToken cancellationToken = default)
+        public async Task<Tabatine.Omie.Client.Models.Geral.MeiosPagamentoListarResponse> ListarMeiosPagamentoAsync(CancellationToken cancellationToken = default)
         {
-            var param = new Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarRequest();
-            return await SendRequestAsync<Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarRequest, Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarResponse>("geral/meiospagamento/", "ListarMeiosPagamento", param, cancellationToken);
+            var param = new Tabatine.Omie.Client.Models.Geral.MeiosPagamentoListarRequest();
+            return await SendRequestAsync<Tabatine.Omie.Client.Models.Geral.MeiosPagamentoListarRequest, Tabatine.Omie.Client.Models.Geral.MeiosPagamentoListarResponse>("geral/meiospagamento/", "ListarMeiosPagamento", param, cancellationToken);
         }
 
         public async Task<Tabatine.Omie.Client.Models.Geral.CaracteristicasListarResponse> ListarCaracteristicasAsync(int pagina = 1, CancellationToken cancellationToken = default)

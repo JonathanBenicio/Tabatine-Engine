@@ -3,10 +3,16 @@ using System.Collections.Generic;
 
 namespace Tabatine.Omie.Client.Models.Geral
 {
-    public class MeiosPagamentoPesquisarRequest
+    public class MeiosPagamentoListarRequest
     {
-        [JsonPropertyName("codigo")]
-        public string? Codigo { get; set; }
+        [JsonPropertyName("pagina")]
+        public int Pagina { get; set; } = 1;
+
+        [JsonPropertyName("registros_por_pagina")]
+        public int RegistrosPorPagina { get; set; } = 100;
+
+        [JsonPropertyName("apenas_importado_api")]
+        public string ApenasImportadoApi { get; set; } = "N";
     }
 
     public class OmieMeioPagamento
@@ -18,7 +24,7 @@ namespace Tabatine.Omie.Client.Models.Geral
         public string Descricao { get; set; } = string.Empty;
     }
 
-    public class MeiosPagamentoPesquisarResponse
+    public class MeiosPagamentoListarResponse
     {
         [JsonPropertyName("MeiosPagamentoLista")]
         public List<OmieMeioPagamento> MeiosPagamentoLista { get; set; } = new();

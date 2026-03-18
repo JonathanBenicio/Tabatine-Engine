@@ -80,7 +80,14 @@ namespace Tabatine.Infrastructure.Services
                 await _dbContext.SaveChangesAsync(ct);
                 _logger.LogInformation("Página {Pagina} de Tabelas de Preços sincronizada.", pagina);
 
-                temMais = pagina < response.TotalDePaginas;
+                if (int.TryParse(response.TotalDePaginas, out int totalPaginas))
+                {
+                    temMais = pagina < totalPaginas;
+                }
+                else
+                {
+                    temMais = false;
+                }
                 pagina++;
             }
 
@@ -134,7 +141,14 @@ namespace Tabatine.Infrastructure.Services
                     }
                 }
 
-                temMais = pagina < response.TotalDePaginas;
+                if (int.TryParse(response.TotalDePaginas, out int totalPaginasItem))
+                {
+                    temMais = pagina < totalPaginasItem;
+                }
+                else
+                {
+                    temMais = false;
+                }
                 pagina++;
             }
         }
