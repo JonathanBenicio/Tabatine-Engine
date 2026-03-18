@@ -10,6 +10,9 @@ using Tabatine.Omie.Client.Models.Pedidos;
 using Tabatine.Omie.Client.Models.NotasFiscais;
 using Tabatine.Omie.Client.Models.Vendedores;
 using Tabatine.Omie.Client.Models.ContaCorrente;
+using Tabatine.Omie.Client.Models.EtapaFaturamento;
+using Tabatine.Omie.Client.Models.FormaPagamento;
+using Tabatine.Omie.Client.Models.Bancos;
 
 namespace Tabatine.Omie.Client
 {
@@ -148,6 +151,24 @@ namespace Tabatine.Omie.Client
             }
 
             return await SendRequestAsync<ListarContaCorrenteParam, ListarContaCorrenteResponse>("geral/contacorrente/", "ListarContasCorrentes", param, cancellationToken);
+        }
+
+        public async Task<ListarEtapasFaturamentoResponse> ListarEtapasFaturamentoAsync(int pagina = 1, CancellationToken cancellationToken = default)
+        {
+            var param = new ListarEtapasFaturamentoParam { Pagina = pagina };
+            return await SendRequestAsync<ListarEtapasFaturamentoParam, ListarEtapasFaturamentoResponse>("produtos/etapafat/", "ListarEtapasFaturamento", param, cancellationToken);
+        }
+
+        public async Task<ListarFormasPagVendasResponse> ListarFormasPagVendasAsync(int pagina = 1, CancellationToken cancellationToken = default)
+        {
+            var param = new ListarFormasPagVendasParam { Pagina = pagina };
+            return await SendRequestAsync<ListarFormasPagVendasParam, ListarFormasPagVendasResponse>("produtos/formaspagvendas/", "ListarFormasPagVendas", param, cancellationToken);
+        }
+
+        public async Task<ListarBancosResponse> ListarBancosAsync(int pagina = 1, CancellationToken cancellationToken = default)
+        {
+            var param = new ListarBancosParam { Pagina = pagina };
+            return await SendRequestAsync<ListarBancosParam, ListarBancosResponse>("geral/bancos/", "ListarBancos", param, cancellationToken);
         }
     }
 }

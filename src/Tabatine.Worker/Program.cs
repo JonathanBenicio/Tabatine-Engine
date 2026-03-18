@@ -76,6 +76,9 @@ builder.Services.AddScoped<PedidoSyncService>();
 builder.Services.AddScoped<NotaFiscalSyncService>();
 builder.Services.AddScoped<VendedorSyncService>();
 builder.Services.AddScoped<ContaCorrenteSyncService>();
+builder.Services.AddScoped<BancoSyncService>();
+builder.Services.AddScoped<EtapaFaturamentoSyncService>();
+builder.Services.AddScoped<FormaPagamentoSyncService>();
 
 builder.Services.AddScoped<ISyncService, SyncManager>();
 

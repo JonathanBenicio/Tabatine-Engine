@@ -19,6 +19,9 @@ namespace Tabatine.Infrastructure.Data
         public DbSet<Vendedor> Vendedores => Set<Vendedor>();
         public DbSet<ContaCorrente> ContasCorrente => Set<ContaCorrente>();
         public DbSet<PedidoParcela> PedidoParcelas => Set<PedidoParcela>();
+        public DbSet<EtapaFaturamento> EtapasFaturamento => Set<EtapaFaturamento>();
+        public DbSet<FormaPagamento> FormasPagamento => Set<FormaPagamento>();
+        public DbSet<Banco> Bancos => Set<Banco>();
         public DbSet<IntegrationSyncState> IntegrationSyncStates => Set<IntegrationSyncState>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
