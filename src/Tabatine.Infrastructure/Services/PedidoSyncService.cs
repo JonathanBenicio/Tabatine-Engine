@@ -168,6 +168,7 @@ namespace Tabatine.Infrastructure.Services
                             NumeroPedidoCliente = omiePedido.InformacoesAdicionais?.NumeroPedidoCliente,
                             ConsumidorFinal = omiePedido.InformacoesAdicionais?.ConsumidorFinal,
                             MeioPagamento = omiePedido.Cabecalho.MeioPagamento,
+                            QuantidadeParcelas = omiePedido.Cabecalho.QuantidadeParcelas,
                             Contato = omiePedido.InformacoesAdicionais?.Contato,
                             VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vNovo) ? vNovo.Id : null,
                             ContaCorrenteId = omiePedido.InformacoesAdicionais?.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.InformacoesAdicionais.CodigoContaCorrente.Value, out var ccNovo) ? ccNovo.Id : null,
@@ -269,6 +270,7 @@ namespace Tabatine.Infrastructure.Services
                         existingPedido.ContaCorrenteId = omiePedido.InformacoesAdicionais?.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.InformacoesAdicionais.CodigoContaCorrente.Value, out var ccEx) ? ccEx.Id : null;
                         existingPedido.ObservacoesInternas = omiePedido.InformacoesAdicionais?.ObservacoesInternas;
                         existingPedido.MeioPagamento = omiePedido.Cabecalho.MeioPagamento;
+                        existingPedido.QuantidadeParcelas = omiePedido.Cabecalho.QuantidadeParcelas;
                         existingPedido.ObservacoesVenda = omiePedido.Observacoes?.ObservacaoVenda;
                         existingPedido.DadosAdicionaisNf = omiePedido.InformacoesAdicionais?.DadosAdicionaisNf;
                         existingPedido.NumeroPedidoCliente = omiePedido.InformacoesAdicionais?.NumeroPedidoCliente;
@@ -324,6 +326,7 @@ namespace Tabatine.Infrastructure.Services
                                 ValorUnitario = item.Produto.ValorUnitario,
                                 ValorTotal = item.Produto.ValorTotal,
                                 UnidadeMedida = item.Produto.Unidade,
+                                Cfop = item.Produto.Cfop,
 
                                 // Debugging tax values
                                 ValorIcms = item.Imposto?.Icms?.ValorIcms ?? 0,
@@ -350,6 +353,14 @@ namespace Tabatine.Infrastructure.Services
                                 ValorDesconto = item.Produto.ValorDesconto,
                                 PesoBruto = item.InfoAdic?.PesoBruto ?? 0,
                                 PesoLiquido = item.InfoAdic?.PesoLiquido ?? 0,
+                                
+                                // Tributos Reforma (IBS/CBS)
+                                ValorIbs = item.Imposto?.Ibs?.ValorIbs ?? 0,
+                                AliqIbs = item.Imposto?.Ibs?.AliquotaIbs ?? 0,
+                                ValorCbs = item.Imposto?.Cbs?.ValorCbs ?? 0,
+                                AliqCbs = item.Imposto?.Cbs?.AliquotaCbs ?? 0,
+                                BaseIbsCbs = item.Imposto?.IbsCbs?.BaseIbsCbs ?? 0,
+
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
                             });
@@ -378,7 +389,9 @@ namespace Tabatine.Infrastructure.Services
                                     DataVencimento = DateTime.SpecifyKind(dtVenc, DateTimeKind.Utc),
                                     Percentual = parcela.Percentual,
                                     ContaCorrenteId = existingPedido.ContaCorrenteId,
-                                    MeioPagamentoId = !string.IsNullOrEmpty(parcela.MeioPagamento) && meiosDict.TryGetValue(parcela.MeioPagamento, out var mId) ? mId : null
+                                    MeioPagamentoId = !string.IsNullOrEmpty(parcela.MeioPagamento) && meiosDict.TryGetValue(parcela.MeioPagamento, out var mId) ? mId : null,
+                                    Nsu = parcela.Nsu,
+                                    Categoria = parcela.Categoria
                                 });
                             }
                         }

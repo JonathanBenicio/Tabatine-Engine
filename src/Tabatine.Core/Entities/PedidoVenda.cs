@@ -46,6 +46,7 @@ namespace Tabatine.Core.Entities
         public string? ObservacoesInternas { get; set; }
         public string? DadosAdicionaisNf { get; set; }
         public string? MeioPagamento { get; set; }
+        public int QuantidadeParcelas { get; set; } 
         
         // Outros Totais Adicionais
         public decimal ValorDesconto { get; set; }

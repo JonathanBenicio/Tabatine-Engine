@@ -14,6 +14,7 @@ namespace Tabatine.Core.Entities
         public decimal ValorUnitario { get; set; }
         public decimal ValorTotal { get; set; }
         public string? UnidadeMedida { get; set; }
+        public string? Cfop { get; set; }
         
         // Impostos e Descontos
         public decimal ValorIcms { get; set; }
@@ -43,5 +44,12 @@ namespace Tabatine.Core.Entities
         // Pesos
         public decimal PesoBruto { get; set; }
         public decimal PesoLiquido { get; set; }
+
+        // Tributos da Reforma (IBS/CBS)
+        public decimal ValorIbs { get; set; }
+        public decimal AliqIbs { get; set; }
+        public decimal ValorCbs { get; set; }
+        public decimal AliqCbs { get; set; }
+        public decimal BaseIbsCbs { get; set; }
     }
 }

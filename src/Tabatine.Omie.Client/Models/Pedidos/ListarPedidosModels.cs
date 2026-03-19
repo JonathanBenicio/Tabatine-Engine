@@ -139,6 +139,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("unidade")]
         public string Unidade { get; set; } = string.Empty;
+
+        [JsonPropertyName("cfop")]
+        public string? Cfop { get; set; }
     }
 
     public class OmiePedidoItemImposto
@@ -160,35 +163,108 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("cofins")]
         public OmiePedidoItemCofins? CofinsFallback { set => Cofins ??= value; }
+
+        [JsonPropertyName("ibs")]
+        public OmiePedidoItemIbs? Ibs { get; set; }
+
+        [JsonPropertyName("cbs")]
+        public OmiePedidoItemCbs? Cbs { get; set; }
+
+        [JsonPropertyName("ibs_cbs")]
+        public OmiePedidoItemIbsCbs? IbsCbs { get; set; }
     }
 
-    public class OmiePedidoItemIcms 
-    { 
-        [JsonPropertyName("valor_icms")] public decimal ValorIcms { get; set; } 
+    public class OmiePedidoItemIbs
+    {
+        [JsonPropertyName("valor_ibs")] public decimal ValorIbs { get; set; }
+        [JsonPropertyName("aliquota_ibs_uf")] public decimal AliquotaIbs { get; set; }
+    }
+
+    public class OmiePedidoItemCbs
+    {
+        [JsonPropertyName("valor_cbs")] public decimal ValorCbs { get; set; }
+        [JsonPropertyName("aliquota_cbs")] public decimal AliquotaCbs { get; set; }
+    }
+
+    public class OmiePedidoItemIbsCbs
+    {
+        [JsonPropertyName("base_ibs_cbs")] public decimal BaseIbsCbs { get; set; }
+    }
+
+    public class OmiePedidoItemIcms
+    {
+        [JsonPropertyName("valor_icms")] public decimal ValorIcms { get; set; }
+        [JsonPropertyName("valor")] public decimal ValorFallback { set { if (value != 0) ValorIcms = value; } }
+        [JsonPropertyName("vICMS")] public decimal ValorNfFallback { set { if (value != 0) ValorIcms = value; } }
+
         [JsonPropertyName("base_icms")] public decimal BaseCalculoIcms { get; set; }
+        [JsonPropertyName("base_calculo")] public decimal BaseCalculoFallback { set { if (value != 0) BaseCalculoIcms = value; } }
+        [JsonPropertyName("vBC")] public decimal BaseCalculoNfFallback { set { if (value != 0) BaseCalculoIcms = value; } }
+
         [JsonPropertyName("aliq_icms")] public decimal AliquotaIcms { get; set; }
+        [JsonPropertyName("aliquota")] public decimal AliquotaFallback { set { if (value != 0) AliquotaIcms = value; } }
+        [JsonPropertyName("pICMS")] public decimal AliquotaNfFallback { set { if (value != 0) AliquotaIcms = value; } }
+
         [JsonPropertyName("cod_sit_trib_icms")] public string? CstIcms { get; set; }
+        [JsonPropertyName("cst_icms")] public string? CstFallback { set => CstIcms ??= value; }
+        [JsonPropertyName("CST")] public string? CstNfFallback { set => CstIcms ??= value; }
     }
-    public class OmiePedidoItemIpi 
-    { 
-        [JsonPropertyName("valor_ipi")] public decimal ValorIpi { get; set; } 
+
+    public class OmiePedidoItemIpi
+    {
+        [JsonPropertyName("valor_ipi")] public decimal ValorIpi { get; set; }
+        [JsonPropertyName("valor")] public decimal ValorFallback { set { if (value != 0) ValorIpi = value; } }
+        [JsonPropertyName("vIPI")] public decimal ValorNfFallback { set { if (value != 0) ValorIpi = value; } }
+
         [JsonPropertyName("base_ipi")] public decimal BaseCalculoIpi { get; set; }
+        [JsonPropertyName("base_calculo")] public decimal BaseCalculoFallback { set { if (value != 0) BaseCalculoIpi = value; } }
+        [JsonPropertyName("vBC")] public decimal BaseCalculoNfFallback { set { if (value != 0) BaseCalculoIpi = value; } }
+
         [JsonPropertyName("aliq_ipi")] public decimal AliquotaIpi { get; set; }
+        [JsonPropertyName("aliquota")] public decimal AliquotaFallback { set { if (value != 0) AliquotaIpi = value; } }
+        [JsonPropertyName("pIPI")] public decimal AliquotaNfFallback { set { if (value != 0) AliquotaIpi = value; } }
+
         [JsonPropertyName("cod_sit_trib_ipi")] public string? CstIpi { get; set; }
+        [JsonPropertyName("cst_ipi")] public string? CstFallback { set => CstIpi ??= value; }
+        [JsonPropertyName("CST")] public string? CstNfFallback { set => CstIpi ??= value; }
     }
-    public class OmiePedidoItemPis 
-    { 
-        [JsonPropertyName("valor_pis")] public decimal ValorPis { get; set; } 
+
+    public class OmiePedidoItemPis
+    {
+        [JsonPropertyName("valor_pis")] public decimal ValorPis { get; set; }
+        [JsonPropertyName("valor")] public decimal ValorFallback { set { if (value != 0) ValorPis = value; } }
+        [JsonPropertyName("vPIS")] public decimal ValorNfFallback { set { if (value != 0) ValorPis = value; } }
+
         [JsonPropertyName("base_pis")] public decimal BaseCalculoPis { get; set; }
+        [JsonPropertyName("base_calculo")] public decimal BaseCalculoFallback { set { if (value != 0) BaseCalculoPis = value; } }
+        [JsonPropertyName("vBC")] public decimal BaseCalculoNfFallback { set { if (value != 0) BaseCalculoPis = value; } }
+
         [JsonPropertyName("aliq_pis")] public decimal AliquotaPis { get; set; }
+        [JsonPropertyName("aliquota")] public decimal AliquotaFallback { set { if (value != 0) AliquotaPis = value; } }
+        [JsonPropertyName("pPIS")] public decimal AliquotaNfFallback { set { if (value != 0) AliquotaPis = value; } }
+
         [JsonPropertyName("cod_sit_trib_pis")] public string? CstPis { get; set; }
+        [JsonPropertyName("cst_pis")] public string? CstFallback { set => CstPis ??= value; }
+        [JsonPropertyName("CST")] public string? CstNfFallback { set => CstPis ??= value; }
     }
-    public class OmiePedidoItemCofins 
-    { 
-        [JsonPropertyName("valor_cofins")] public decimal ValorCofins { get; set; } 
+
+    public class OmiePedidoItemCofins
+    {
+        [JsonPropertyName("valor_cofins")] public decimal ValorCofins { get; set; }
+        [JsonPropertyName("valor")] public decimal ValorFallback { set { if (value != 0) ValorCofins = value; } }
+        [JsonPropertyName("vCOFINS")] public decimal ValorNfFallback { set { if (value != 0) ValorCofins = value; } }
+
         [JsonPropertyName("base_cofins")] public decimal BaseCalculoCofins { get; set; }
+        [JsonPropertyName("base_calculo")] public decimal BaseCalculoFallback { set { if (value != 0) BaseCalculoCofins = value; } }
+        [JsonPropertyName("vBC")] public decimal BaseCalculoNfFallback { set { if (value != 0) BaseCalculoCofins = value; } }
+
         [JsonPropertyName("aliq_cofins")] public decimal AliquotaCofins { get; set; }
+        [JsonPropertyName("aliquota")] public decimal AliquotaFallback { set { if (value != 0) AliquotaCofins = value; } }
+        [JsonPropertyName("pCOFINS")] public decimal AliquotaNfFallback { set { if (value != 0) AliquotaCofins = value; } }
+
         [JsonPropertyName("cod_sit_trib_cofins")] public string? CstCofins { get; set; }
+        [JsonPropertyName("cst_cofins")] public string? CstFallback { set => CstCofins ??= value; }
+        [JsonPropertyName("CST")] public string? CstNfFallback { set => CstCofins ??= value; }
     }
 
     public class OmiePedidoFrete
@@ -282,6 +358,12 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("meio_pagamento")]
         public string? MeioPagamento { get; set; }
+
+        [JsonPropertyName("nsu")]
+        public string? Nsu { get; set; }
+
+        [JsonPropertyName("categoria")]
+        public string? Categoria { get; set; }
     }
 
     public class OmiePedidoTotal

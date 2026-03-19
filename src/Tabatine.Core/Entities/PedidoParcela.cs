@@ -19,5 +19,8 @@ namespace Tabatine.Core.Entities
 
         public Guid? MeioPagamentoId { get; set; }
         public MeioPagamento? MeioPagamento { get; set; }
+
+        public string? Categoria { get; set; }
+        public string? Nsu { get; set; }
     }
 }
