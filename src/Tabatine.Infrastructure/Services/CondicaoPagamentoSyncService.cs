@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Tabatine.Omie.Client.Models.Geral;
 
 namespace Tabatine.Infrastructure.Services
 {
@@ -40,14 +41,34 @@ namespace Tabatine.Infrastructure.Services
             {
                 var response = await _omieClient.ListarParcelasAsync(pagina, ct);
 
-                if (response == null || response.Cadastros == null || response.Cadastros.Count == 0) break;
+                if (response == null) break;
 
-                var codigos = response.Cadastros.Select(c => c.Codigo).ToList();
+                var rawCadastros = response.Cadastros ?? new List<ParcelaOmie>();
+                
+                var invalidCount = rawCadastros.Count(c => string.IsNullOrWhiteSpace(c.Codigo));
+                if (invalidCount > 0)
+                {
+                    _logger.LogWarning("{Count} condições de pagamento ignoradas por falta de código.", invalidCount);
+                }
+
+                var validCadastros = rawCadastros
+                    .Where(c => !string.IsNullOrWhiteSpace(c.Codigo))
+                    .GroupBy(c => c.Codigo)
+                    .Select(g => g.First())
+                    .ToList();
+
+                if (validCadastros.Count < (rawCadastros.Count() - invalidCount))
+                {
+                    _logger.LogWarning("{Count} condições de pagamento com código duplicado ignoradas na página {Pagina}.", 
+                        rawCadastros.Count() - invalidCount - validCadastros.Count, pagina);
+                }
+
+                var codigos = validCadastros.Select(c => c.Codigo).ToList();
                 var existingCondicoes = await _dbContext.CondicoesPagamento
                     .Where(c => codigos.Contains(c.Codigo))
                     .ToDictionaryAsync(c => c.Codigo, ct);
 
-                foreach (var omieCondicao in response.Cadastros)
+                foreach (var omieCondicao in validCadastros)
                 {
                     existingCondicoes.TryGetValue(omieCondicao.Codigo, out var existing);
 

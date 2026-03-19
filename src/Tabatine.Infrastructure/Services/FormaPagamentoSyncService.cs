@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Tabatine.Omie.Client.Models.FormaPagamento;
 
 namespace Tabatine.Infrastructure.Services
 {
@@ -40,14 +41,34 @@ namespace Tabatine.Infrastructure.Services
             {
                 var response = await _omieClient.ListarFormasPagVendasAsync(pagina, ct);
                 
-                if (response == null || response.FormasPagamento == null || response.FormasPagamento.Count == 0) break;
+                if (response == null) break;
 
-                var codigos = response.FormasPagamento.Select(f => f.Codigo).ToList();
+                var rawFormas = response.FormasPagamento ?? new List<OmieFormaPagamento>();
+
+                var invalidCount = rawFormas.Count(f => string.IsNullOrWhiteSpace(f.Codigo));
+                if (invalidCount > 0)
+                {
+                    _logger.LogWarning("{Count} formas de pagamento ignoradas por falta de código.", invalidCount);
+                }
+
+                var validFormas = rawFormas
+                    .Where(f => !string.IsNullOrWhiteSpace(f.Codigo))
+                    .GroupBy(f => f.Codigo)
+                    .Select(g => g.First())
+                    .ToList();
+
+                if (validFormas.Count < (rawFormas.Count - invalidCount))
+                {
+                    _logger.LogWarning("{Count} formas de pagamento com código duplicado ignoradas na página {Pagina}.", 
+                        rawFormas.Count - invalidCount - validFormas.Count, pagina);
+                }
+
+                var codigos = validFormas.Select(f => f.Codigo).ToList();
                 var existingFormas = await _dbContext.FormasPagamento
                     .Where(f => codigos.Contains(f.Codigo))
                     .ToDictionaryAsync(f => f.Codigo, ct);
 
-                foreach (var omieForma in response.FormasPagamento)
+                foreach (var omieForma in validFormas)
                 {
                     existingFormas.TryGetValue(omieForma.Codigo, out var existing);
 
