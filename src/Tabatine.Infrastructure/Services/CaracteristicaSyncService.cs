@@ -18,12 +18,14 @@ namespace Tabatine.Infrastructure.Services
         private readonly IOmieClient _omieClient;
         private readonly AppDbContext _dbContext;
         private readonly ILogger<CaracteristicaSyncService> _logger;
+        private readonly ISyncStateRepository _syncState;
 
-        public CaracteristicaSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<CaracteristicaSyncService> logger)
+        public CaracteristicaSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<CaracteristicaSyncService> logger, ISyncStateRepository syncState)
         {
             _omieClient = omieClient;
             _dbContext = dbContext;
             _logger = logger;
+            _syncState = syncState;
         }
 
         public async Task SyncAllAsync(CancellationToken ct = default)
@@ -94,6 +96,7 @@ namespace Tabatine.Infrastructure.Services
                 pagina++;
             }
 
+            await _syncState.SetLastSyncDateAsync("Caracteristicas", DateTime.UtcNow, ct);
             _logger.LogInformation("Sincronização de Características concluída.");
         }
 

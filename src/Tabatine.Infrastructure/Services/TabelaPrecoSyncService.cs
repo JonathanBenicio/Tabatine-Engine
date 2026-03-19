@@ -18,12 +18,14 @@ namespace Tabatine.Infrastructure.Services
         private readonly IOmieClient _omieClient;
         private readonly AppDbContext _dbContext;
         private readonly ILogger<TabelaPrecoSyncService> _logger;
+        private readonly ISyncStateRepository _syncState;
 
-        public TabelaPrecoSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<TabelaPrecoSyncService> logger)
+        public TabelaPrecoSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<TabelaPrecoSyncService> logger, ISyncStateRepository syncState)
         {
             _omieClient = omieClient;
             _dbContext = dbContext;
             _logger = logger;
+            _syncState = syncState;
         }
 
         public async Task SyncAllAsync(CancellationToken ct = default)
@@ -84,6 +86,7 @@ namespace Tabatine.Infrastructure.Services
                 pagina++;
             }
 
+            await _syncState.SetLastSyncDateAsync("TabelasPreco", DateTime.UtcNow, ct);
             _logger.LogInformation("Sincronização de Tabelas de Preços concluída.");
         }
 
