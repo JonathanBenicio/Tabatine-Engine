@@ -1,3 +1,7 @@
+---
+trigger: model_decision
+---
+
 # Tabatine — Regras do Workspace
 
 ## Visão Geral do Projeto

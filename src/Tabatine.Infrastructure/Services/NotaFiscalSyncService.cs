@@ -156,17 +156,30 @@ namespace Tabatine.Infrastructure.Services
               ValorProd = omieNf.Total.IcmsTot.ValorProdutos,
               IcmsBaseCalculo = omieNf.Total.IcmsTot.BaseCalculoIcms,
               IcmsValor = omieNf.Total.IcmsTot.ValorIcms,
+              ValorIbs = omieNf.Total.IcmsTot.ValorIbs,
+              ValorCbs = omieNf.Total.IcmsTot.ValorCbs,
 
               Denegada = omieNf.Ide.Denegada == "S",
               ClienteId = cliente.Id,
               PedidoVendaId = pedido?.Id,
               VendedorId = pedido?.VendedorId,
               ContaCorrenteId = pedido?.ContaCorrenteId,
+              IdTransportadora = omieNf.Compl.IdTransportadora,
               CreatedAt = DateTime.UtcNow,
               UpdatedAt = DateTime.UtcNow,
               Itens = new List<ItemNotaFiscal>(),
               Titulos = new List<NotaFiscalTitulo>()
             };
+
+            if (DateTime.TryParseExact(omieNf.Ide.DataSaida, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dSaiParsed))
+            {
+                existing.DataSaida = DateTime.SpecifyKind(dSaiParsed, DateTimeKind.Utc);
+            }
+            if (TimeSpan.TryParse(omieNf.Ide.HoraSaida, out var hSaiParsed))
+            {
+                existing.HoraSaida = hSaiParsed;
+            }
+
             _dbContext.NotasFiscais.Add(existing);
           }
           else
@@ -202,11 +215,26 @@ namespace Tabatine.Infrastructure.Services
             existing.ValorProd = omieNf.Total.IcmsTot.ValorProdutos;
             existing.IcmsBaseCalculo = omieNf.Total.IcmsTot.BaseCalculoIcms;
             existing.IcmsValor = omieNf.Total.IcmsTot.ValorIcms;
+            existing.ValorIbs = omieNf.Total.IcmsTot.ValorIbs;
+            existing.ValorCbs = omieNf.Total.IcmsTot.ValorCbs;
 
             existing.Denegada = omieNf.Ide.Denegada == "S";
             existing.VendedorId = pedido?.VendedorId;
             existing.ContaCorrenteId = pedido?.ContaCorrenteId;
+            existing.IdTransportadora = omieNf.Compl.IdTransportadora;
             existing.UpdatedAt = DateTime.UtcNow;
+
+            if (DateTime.TryParseExact(omieNf.Ide.DataSaida, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dSaiUpd))
+            {
+                existing.DataSaida = DateTime.SpecifyKind(dSaiUpd, DateTimeKind.Utc);
+            }
+            else { existing.DataSaida = null; }
+
+            if (TimeSpan.TryParse(omieNf.Ide.HoraSaida, out var hSaiUpd))
+            {
+                existing.HoraSaida = hSaiUpd;
+            }
+            else { existing.HoraSaida = null; }
 
             foreach (var item in existing.Itens.ToList()) _dbContext.ItensNotaFiscal.Remove(item);
             existing.Itens.Clear();

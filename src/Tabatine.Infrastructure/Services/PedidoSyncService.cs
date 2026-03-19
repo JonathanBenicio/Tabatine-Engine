@@ -146,15 +146,24 @@ namespace Tabatine.Infrastructure.Services
                             CodigoParcela = omiePedido.Cabecalho.CodigoParcela,
                             FormaPagamentoId = omiePedido.Cabecalho.CodigoParcela != null && formasDict.TryGetValue(omiePedido.Cabecalho.CodigoParcela, out var fNovoId) ? fNovoId : null,
                             
-                            // Frete e Logística
+                            // Frete e Logística estendido
                             ValorFrete = omiePedido.Frete?.ValorFrete ?? 0,
                             QuantidadeVolumes = omiePedido.Frete?.QuantidadeVolumes ?? 0,
                             PesoBruto = omiePedido.Frete?.PesoBruto ?? 0,
                             PesoLiquido = omiePedido.Frete?.PesoLiquido ?? 0,
                             Transportadora = omiePedido.Frete?.Transportadora,
+                            CodigoRastreio = omiePedido.Frete?.CodigoRastreio,
+                            LinkRastreio = omiePedido.Frete?.LinkRastreio,
+                            VeiculoProprio = omiePedido.Frete?.VeiculoProprio,
+                            Placa = omiePedido.Frete?.Placa,
+                            ValorSeguro = omiePedido.Frete?.ValorSeguro ?? 0,
+                            ValorOutrasDespesas = omiePedido.Frete?.OutrasDespesas ?? 0,
 
-                            ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda,
+                            ObservacoesVenda = omiePedido.Observacoes?.ObservacaoVenda,
                             ObservacoesInternas = omiePedido.InformacoesAdicionais?.ObservacoesInternas,
+                            DadosAdicionaisNf = omiePedido.InformacoesAdicionais?.DadosAdicionaisNf,
+                            NumeroPedidoCliente = omiePedido.InformacoesAdicionais?.NumeroPedidoCliente,
+                            ConsumidorFinal = omiePedido.InformacoesAdicionais?.ConsumidorFinal,
                             MeioPagamento = omiePedido.Cabecalho.MeioPagamento,
                             Contato = omiePedido.InformacoesAdicionais?.Contato,
                             VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vNovo) ? vNovo.Id : null,
@@ -178,6 +187,9 @@ namespace Tabatine.Infrastructure.Services
                             ValorCofins = omiePedido.TotalPedido.ValorCofins,
                             BaseCalculoIcms = omiePedido.TotalPedido.BaseCalculoIcms,
                             ValorMercadorias = omiePedido.TotalPedido.ValorMercadorias,
+                            ValorDesconto = omiePedido.TotalPedido.ValorDescontos,
+                            ValorIbs = omiePedido.TotalPedido.ValorIbs,
+                            ValorCbs = omiePedido.TotalPedido.ValorCbs,
 
                             // Retenções no Pedido
                             ValorIss = omiePedido.TotalPedido.ValorIss,
@@ -223,6 +235,12 @@ namespace Tabatine.Infrastructure.Services
                         existingPedido.PesoBruto = omiePedido.Frete?.PesoBruto ?? 0;
                         existingPedido.PesoLiquido = omiePedido.Frete?.PesoLiquido ?? 0;
                         existingPedido.Transportadora = omiePedido.Frete?.Transportadora;
+                        existingPedido.CodigoRastreio = omiePedido.Frete?.CodigoRastreio;
+                        existingPedido.LinkRastreio = omiePedido.Frete?.LinkRastreio;
+                        existingPedido.VeiculoProprio = omiePedido.Frete?.VeiculoProprio;
+                        existingPedido.Placa = omiePedido.Frete?.Placa;
+                        existingPedido.ValorSeguro = omiePedido.Frete?.ValorSeguro ?? 0;
+                        existingPedido.ValorOutrasDespesas = omiePedido.Frete?.OutrasDespesas ?? 0;
 
                         // Impostos Totais
                         existingPedido.ValorIcms = omiePedido.TotalPedido.ValorIcms;
@@ -231,6 +249,9 @@ namespace Tabatine.Infrastructure.Services
                         existingPedido.ValorCofins = omiePedido.TotalPedido.ValorCofins;
                         existingPedido.BaseCalculoIcms = omiePedido.TotalPedido.BaseCalculoIcms;
                         existingPedido.ValorMercadorias = omiePedido.TotalPedido.ValorMercadorias;
+                        existingPedido.ValorDesconto = omiePedido.TotalPedido.ValorDescontos;
+                        existingPedido.ValorIbs = omiePedido.TotalPedido.ValorIbs;
+                        existingPedido.ValorCbs = omiePedido.TotalPedido.ValorCbs;
                         
                         // Retenções no Pedido
                         existingPedido.ValorIss = omiePedido.TotalPedido.ValorIss;
@@ -240,9 +261,14 @@ namespace Tabatine.Infrastructure.Services
 
                         existingPedido.ComissaoVendedor = omiePedido.InformacoesAdicionais?.PercComissao ?? 0;
                         existingPedido.FreteModalidade = omiePedido.Frete?.Modalidade;
+                        existingPedido.VendedorId = omiePedido.InformacoesAdicionais?.CodigoVendedor > 0 && vendedores.TryGetValue(omiePedido.InformacoesAdicionais.CodigoVendedor.Value, out var vEx) ? vEx.Id : null;
+                        existingPedido.ContaCorrenteId = omiePedido.InformacoesAdicionais?.CodigoContaCorrente > 0 && contasCorrente.TryGetValue(omiePedido.InformacoesAdicionais.CodigoContaCorrente.Value, out var ccEx) ? ccEx.Id : null;
                         existingPedido.ObservacoesInternas = omiePedido.InformacoesAdicionais?.ObservacoesInternas;
                         existingPedido.MeioPagamento = omiePedido.Cabecalho.MeioPagamento;
-                        existingPedido.ObservacoesVenda = omiePedido.InformacoesAdicionais?.ObservacoesVenda;
+                        existingPedido.ObservacoesVenda = omiePedido.Observacoes?.ObservacaoVenda;
+                        existingPedido.DadosAdicionaisNf = omiePedido.InformacoesAdicionais?.DadosAdicionaisNf;
+                        existingPedido.NumeroPedidoCliente = omiePedido.InformacoesAdicionais?.NumeroPedidoCliente;
+                        existingPedido.ConsumidorFinal = omiePedido.InformacoesAdicionais?.ConsumidorFinal;
 
                         // Auditoria e Status
                         existingPedido.Faturado = omiePedido.InfoCadastro?.Faturado == "S";

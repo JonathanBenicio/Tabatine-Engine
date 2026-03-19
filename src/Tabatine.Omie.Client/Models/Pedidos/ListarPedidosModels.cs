@@ -43,6 +43,15 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("infoCadastro")]
         public OmieInfoCadastro? InfoCadastro { get; set; }
+
+        [JsonPropertyName("observacoes")]
+        public OmiePedidoObservacoes? Observacoes { get; set; }
+    }
+
+    public class OmiePedidoObservacoes
+    {
+        [JsonPropertyName("obs_venda")]
+        public string? ObservacaoVenda { get; set; }
     }
 
     public class OmiePedidoCabecalho
@@ -184,13 +193,28 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("modalidade")]
         public string? Modalidade { get; set; }
+
+        [JsonPropertyName("codigo_rastreio")]
+        public string? CodigoRastreio { get; set; }
+
+        [JsonPropertyName("link_rastreio")]
+        public string? LinkRastreio { get; set; }
+
+        [JsonPropertyName("veiculo_proprio")]
+        public string? VeiculoProprio { get; set; }
+
+        [JsonPropertyName("placa")]
+        public string? Placa { get; set; }
+
+        [JsonPropertyName("valor_seguro")]
+        public decimal ValorSeguro { get; set; }
+
+        [JsonPropertyName("outras_despesas")]
+        public decimal OutrasDespesas { get; set; }
     }
 
     public class OmiePedidoInfoAdic
     {
-        [JsonPropertyName("dados_adicionais_nf")]
-        public string? ObservacoesVenda { get; set; }
-
         [JsonPropertyName("obs_interna")]
         public string? ObservacoesInternas { get; set; }
 
@@ -205,6 +229,15 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("codigo_conta_corrente")]
         public long? CodigoContaCorrente { get; set; }
+
+        [JsonPropertyName("dados_adicionais_nf")]
+        public string? DadosAdicionaisNf { get; set; }
+
+        [JsonPropertyName("numero_pedido_cliente")]
+        public string? NumeroPedidoCliente { get; set; }
+
+        [JsonPropertyName("consumidor_final")]
+        public string? ConsumidorFinal { get; set; }
     }
 
     public class OmiePedidoParcelas
@@ -265,6 +298,15 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("valor_inss")]
         public decimal ValorInss { get; set; }
+
+        [JsonPropertyName("valor_descontos")]
+        public decimal ValorDescontos { get; set; }
+
+        [JsonPropertyName("valor_ibs")]
+        public decimal ValorIbs { get; set; }
+
+        [JsonPropertyName("valor_cbs")]
+        public decimal ValorCbs { get; set; }
     }
 
     public class OmieInfoCadastro

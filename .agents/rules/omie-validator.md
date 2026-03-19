@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Regras de Validação e Consumo - API Omie
 
 Você é um agente validando e gerando código para a integração com a API da Omie. Siga estritamente estas diretrizes:

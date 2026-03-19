@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Tabatine.Core.Entities
 {
@@ -16,5 +17,7 @@ namespace Tabatine.Core.Entities
         public bool Ativo { get; set; }
 
         public ICollection<ProdutoCaracteristica> Caracteristicas { get; set; } = new List<ProdutoCaracteristica>();
+        public ICollection<ItemPedido> ItensPedido { get; set; } = new List<ItemPedido>();
+        public ICollection<ItemNotaFiscal> ItensNotaFiscal { get; set; } = new List<ItemNotaFiscal>();
     }
 }

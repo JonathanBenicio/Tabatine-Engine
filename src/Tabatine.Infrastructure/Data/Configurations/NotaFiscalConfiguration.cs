@@ -18,7 +18,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
             builder.Property(n => n.Serie).HasMaxLength(20);
             
             builder.HasOne(n => n.Cliente)
-                   .WithMany()
+                   .WithMany(c => c.NotasFiscais)
                    .HasForeignKey(n => n.ClienteId)
                    .OnDelete(DeleteBehavior.Restrict);
 
@@ -26,6 +26,15 @@ namespace Tabatine.Infrastructure.Data.Configurations
                    .WithMany()
                    .HasForeignKey(n => n.PedidoVendaId)
                    .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Property(n => n.IcmsValor)
+               .HasColumnType("numeric(18,2)");
+
+            builder.Property(n => n.ValorIbs)
+                   .HasColumnType("numeric(18,2)");
+
+            builder.Property(n => n.ValorCbs)
+                   .HasColumnType("numeric(18,2)");
 
             builder.Property(n => n.ValorTotal)
                    .HasColumnType("numeric(18,2)");
@@ -37,12 +46,12 @@ namespace Tabatine.Infrastructure.Data.Configurations
             builder.Property(n => n.ValorCofinsRetido).HasColumnType("numeric(18,2)");
 
             builder.HasOne(n => n.Vendedor)
-                   .WithMany()
+                   .WithMany(v => v.NotasFiscais)
                    .HasForeignKey(n => n.VendedorId)
                    .OnDelete(DeleteBehavior.SetNull);
 
             builder.HasOne(n => n.ContaCorrente)
-                   .WithMany()
+                   .WithMany(c => c.NotasFiscais)
                    .HasForeignKey(n => n.ContaCorrenteId)
                    .OnDelete(DeleteBehavior.SetNull);
         }

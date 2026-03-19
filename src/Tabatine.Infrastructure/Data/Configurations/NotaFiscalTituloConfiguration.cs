@@ -17,12 +17,12 @@ namespace Tabatine.Infrastructure.Data.Configurations
                    .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasOne(t => t.ContaCorrente)
-                   .WithMany()
+                   .WithMany(c => c.Titulos)
                    .HasForeignKey(t => t.ContaCorrenteId)
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(t => t.Vendedor)
-                   .WithMany()
+                   .WithMany(v => v.Titulos)
                    .HasForeignKey(t => t.VendedorId)
                    .OnDelete(DeleteBehavior.Restrict);
 

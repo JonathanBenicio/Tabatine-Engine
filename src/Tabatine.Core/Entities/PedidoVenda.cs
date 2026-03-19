@@ -44,7 +44,24 @@ namespace Tabatine.Core.Entities
         // Metadados
         public string? ObservacoesVenda { get; set; }
         public string? ObservacoesInternas { get; set; }
+        public string? DadosAdicionaisNf { get; set; }
         public string? MeioPagamento { get; set; }
+        
+        // Outros Totais Adicionais
+        public decimal ValorDesconto { get; set; }
+        public decimal ValorIbs { get; set; }
+        public decimal ValorCbs { get; set; }
+
+        // Mapeamento Rastreio e Logística (Frete estendido)
+        public string? CodigoRastreio { get; set; }
+        public string? LinkRastreio { get; set; }
+        public string? VeiculoProprio { get; set; }
+        public string? Placa { get; set; }
+        public decimal ValorSeguro { get; set; }
+        public decimal ValorOutrasDespesas { get; set; }
+
+        public string? NumeroPedidoCliente { get; set; }
+        public string? ConsumidorFinal { get; set; }
         public DateTime? DataInclusao { get; set; }
         public string? UsuarioInclusao { get; set; }
         public string? UsuarioAlteracao { get; set; }

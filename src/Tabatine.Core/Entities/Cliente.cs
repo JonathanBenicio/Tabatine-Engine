@@ -25,5 +25,6 @@ namespace Tabatine.Core.Entities
         
         // Navegação
         public ICollection<PedidoVenda> Pedidos { get; set; } = new List<PedidoVenda>();
+        public ICollection<NotaFiscal> NotasFiscais { get; set; } = new List<NotaFiscal>();
     }
 }

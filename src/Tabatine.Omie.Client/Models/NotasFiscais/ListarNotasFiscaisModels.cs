@@ -172,6 +172,12 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("tpAmb")]
         public string Ambiente { get; set; } = string.Empty;
+
+        [JsonPropertyName("dSaiEnt")]
+        public string? DataSaida { get; set; }
+
+        [JsonPropertyName("hSaiEnt")]
+        public string? HoraSaida { get; set; }
     }
 
     public class OmieNfCompl
@@ -193,6 +199,9 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("cInfAdFisco")]
         public string? InformacoesFisco { get; set; }
+
+        [JsonPropertyName("nIdTransp")]
+        public long? IdTransportadora { get; set; }
     }
 
     public class OmieNfTotal
@@ -241,6 +250,12 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("vOutro")]
         public decimal ValorOutrasDespesas { get; set; }
+
+        [JsonPropertyName("vIBS")]
+        public decimal ValorIbs { get; set; }
+
+        [JsonPropertyName("vCBS")]
+        public decimal ValorCbs { get; set; }
     }
 
     public class OmieNfIssqntot

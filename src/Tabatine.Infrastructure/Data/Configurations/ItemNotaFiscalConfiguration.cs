@@ -17,7 +17,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
                    .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasOne(i => i.Produto)
-                   .WithMany()
+                   .WithMany(p => p.ItensNotaFiscal)
                    .HasForeignKey(i => i.ProdutoId)
                    .OnDelete(DeleteBehavior.Restrict);
 

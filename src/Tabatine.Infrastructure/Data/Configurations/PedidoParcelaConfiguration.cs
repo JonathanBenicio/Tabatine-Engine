@@ -17,7 +17,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
                    .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasOne(p => p.ContaCorrente)
-                   .WithMany()
+                   .WithMany(c => c.Parcelas)
                    .HasForeignKey(p => p.ContaCorrenteId)
                    .OnDelete(DeleteBehavior.Restrict);
 

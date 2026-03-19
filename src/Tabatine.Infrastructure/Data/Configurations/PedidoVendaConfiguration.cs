@@ -18,12 +18,12 @@ namespace Tabatine.Infrastructure.Data.Configurations
                    .OnDelete(DeleteBehavior.Restrict);
                    
             builder.HasOne(p => p.Vendedor)
-                   .WithMany()
+                   .WithMany(v => v.PedidosVenda)
                    .HasForeignKey(p => p.VendedorId)
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(p => p.ContaCorrente)
-                   .WithMany()
+                   .WithMany(c => c.PedidosVenda)
                    .HasForeignKey(p => p.ContaCorrenteId)
                    .OnDelete(DeleteBehavior.Restrict);
 
@@ -35,6 +35,11 @@ namespace Tabatine.Infrastructure.Data.Configurations
             builder.HasOne(p => p.FormaPagamento)
                    .WithMany()
                    .HasForeignKey(p => p.FormaPagamentoId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(p => p.CondicaoPagamento)
+                   .WithMany()
+                   .HasForeignKey(p => p.CondicaoPagamentoId)
                    .OnDelete(DeleteBehavior.Restrict);
                    
             builder.Property(p => p.ValorTotal)
@@ -69,6 +74,21 @@ namespace Tabatine.Infrastructure.Data.Configurations
 
             builder.Property(p => p.ComissaoVendedor)
                    .HasColumnType("numeric(10,2)");
+
+            builder.Property(p => p.ValorDesconto)
+                   .HasColumnType("numeric(18,2)");
+
+            builder.Property(p => p.ValorIbs)
+                   .HasColumnType("numeric(18,2)");
+
+            builder.Property(p => p.ValorCbs)
+                   .HasColumnType("numeric(18,2)");
+
+            builder.Property(p => p.ValorSeguro)
+                   .HasColumnType("numeric(18,2)");
+
+            builder.Property(p => p.ValorOutrasDespesas)
+                   .HasColumnType("numeric(18,2)");
         }
     }
 }

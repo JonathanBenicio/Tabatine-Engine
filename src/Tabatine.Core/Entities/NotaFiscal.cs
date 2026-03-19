@@ -15,6 +15,9 @@ namespace Tabatine.Core.Entities
         public string? Serie { get; set; }
         public string? Modelo { get; set; } = "55";
         public bool ImportadoApi { get; set; } = true;
+        public DateTime? DataSaida { get; set; }
+        public TimeSpan? HoraSaida { get; set; }
+        public long? IdTransportadora { get; set; }
 
         // Impostos e Retenções
         public decimal ValorIss { get; set; }
@@ -41,6 +44,8 @@ namespace Tabatine.Core.Entities
         public decimal ValorProd { get; set; }
         public decimal IcmsBaseCalculo { get; set; }
         public decimal IcmsValor { get; set; }
+        public decimal ValorIbs { get; set; }
+        public decimal ValorCbs { get; set; }
         public bool Denegada { get; set; }
 
         public Guid? PedidoVendaId { get; set; }
