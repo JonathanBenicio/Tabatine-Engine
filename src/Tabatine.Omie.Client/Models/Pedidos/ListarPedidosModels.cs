@@ -77,6 +77,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
         [JsonPropertyName("codigo_parcela")]
         public string? CodigoParcela { get; set; }
 
+        [JsonPropertyName("qtde_parcelas")]
+        public int QuantidadeParcelas { get; set; }
+
         [JsonPropertyName("meio_pagamento")]
         public string? MeioPagamento { get; set; }
     }

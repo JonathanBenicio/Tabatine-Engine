@@ -63,6 +63,7 @@ namespace Tabatine.Infrastructure.Services
 
                 var omieEtapas = response.PedidosVenda.Select(p => p.Cabecalho.Etapa).Distinct().ToList();
                 var omieFormas = response.PedidosVenda.Where(p => p.Cabecalho.CodigoParcela != null).Select(p => p.Cabecalho.CodigoParcela!).Distinct().ToList();
+                var omieCondicoesPagamentoIds = response.PedidosVenda.Where(p => p.Cabecalho.QuantidadeParcelas > 0).Select(p => (long)p.Cabecalho.QuantidadeParcelas).Distinct().ToList();
 
                 var omieTabelaIds = response.PedidosVenda.SelectMany(p => p.Det.Where(d => d.Produto.CodigoTabelaPreco > 0).Select(d => d.Produto.CodigoTabelaPreco!.Value)).Distinct().ToList();
                 var omieMeioPagamentoCodigos = response.PedidosVenda.SelectMany(p => p.ListaParcelas?.Parcelas.Where(par => !string.IsNullOrEmpty(par.MeioPagamento)).Select(par => par.MeioPagamento!) ?? Enumerable.Empty<string>()).Distinct().ToList();
@@ -100,6 +101,12 @@ namespace Tabatine.Infrastructure.Services
                     .Select(f => new { f.Codigo, f.Id })
                     .ToListAsync(ct);
                 var formasDict = formas.GroupBy(f => f.Codigo).ToDictionary(g => g.Key, g => g.First().Id);
+
+                var condicoes = await _dbContext.CondicoesPagamento
+                    .Where(c => omieCondicoesPagamentoIds.Contains(c.OmieId))
+                    .Select(c => new { c.OmieId, c.Id })
+                    .ToListAsync(ct);
+                var condicoesDict = condicoes.GroupBy(c => c.OmieId).ToDictionary(g => g.Key, g => g.First().Id);
 
                 var meios = await _dbContext.MeiosPagamento
                     .Where(m => omieMeioPagamentoCodigos.Contains(m.Codigo))
@@ -140,6 +147,7 @@ namespace Tabatine.Infrastructure.Services
                             ClienteId = cliente.Id,
                             CodigoParcela = omiePedido.Cabecalho.CodigoParcela,
                             FormaPagamentoId = omiePedido.Cabecalho.CodigoParcela != null && formasDict.TryGetValue(omiePedido.Cabecalho.CodigoParcela, out var fNovoId) ? fNovoId : null,
+                            CondicaoPagamentoId = omiePedido.Cabecalho.QuantidadeParcelas > 0 && condicoesDict.TryGetValue(omiePedido.Cabecalho.QuantidadeParcelas, out var cNovoId) ? cNovoId : null,
                             
                             // Frete e Logística estendido
                             ValorFrete = omiePedido.Frete?.ValorFrete ?? 0,
@@ -223,6 +231,7 @@ namespace Tabatine.Infrastructure.Services
                         existingPedido.ValorTotal = omiePedido.TotalPedido.ValorTotalPedido;
                         existingPedido.CodigoParcela = omiePedido.Cabecalho.CodigoParcela;
                         existingPedido.FormaPagamentoId = omiePedido.Cabecalho.CodigoParcela != null && formasDict.TryGetValue(omiePedido.Cabecalho.CodigoParcela, out var fExId) ? fExId : null;
+                        existingPedido.CondicaoPagamentoId = omiePedido.Cabecalho.QuantidadeParcelas > 0 && condicoesDict.TryGetValue(omiePedido.Cabecalho.QuantidadeParcelas, out var cExId) ? cExId : null;
                         
                         // Frete e Logística
                         existingPedido.ValorFrete = omiePedido.Frete?.ValorFrete ?? 0;
