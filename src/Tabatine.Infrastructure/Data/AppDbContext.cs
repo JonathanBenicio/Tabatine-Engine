@@ -31,6 +31,7 @@ namespace Tabatine.Infrastructure.Data
         public DbSet<ProdutoCaracteristica> ProdutoCaracteristicas => Set<ProdutoCaracteristica>();
         public DbSet<IntegrationSyncState> IntegrationSyncStates => Set<IntegrationSyncState>();
         public DbSet<SyncLock> SyncLocks => Set<SyncLock>();
+        public DbSet<LogEntry> Logs => Set<LogEntry>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
