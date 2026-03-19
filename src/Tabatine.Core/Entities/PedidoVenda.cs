@@ -66,6 +66,10 @@ namespace Tabatine.Core.Entities
         public Guid? FormaPagamentoId { get; set; }
         public FormaPagamento? FormaPagamento { get; set; }
 
+        // Relacionamento com Condição de Pagamento
+        public Guid? CondicaoPagamentoId { get; set; }
+        public CondicaoPagamento? CondicaoPagamento { get; set; }
+
         // Relacionamento com Vendedor
         public Guid? VendedorId { get; set; }
         public Vendedor? Vendedor { get; set; }
