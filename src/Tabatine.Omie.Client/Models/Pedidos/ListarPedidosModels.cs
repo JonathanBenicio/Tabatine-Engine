@@ -152,8 +152,14 @@ namespace Tabatine.Omie.Client.Models.Pedidos
         [JsonPropertyName("pis_padrao")]
         public OmiePedidoItemPis? Pis { get; set; }
 
+        [JsonPropertyName("pis")]
+        public OmiePedidoItemPis? PisFallback { set => Pis ??= value; }
+
         [JsonPropertyName("cofins_padrao")]
         public OmiePedidoItemCofins? Cofins { get; set; }
+
+        [JsonPropertyName("cofins")]
+        public OmiePedidoItemCofins? CofinsFallback { set => Cofins ??= value; }
     }
 
     public class OmiePedidoItemIcms 

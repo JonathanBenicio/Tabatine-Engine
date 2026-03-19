@@ -309,6 +309,11 @@ namespace Tabatine.Infrastructure.Services
                     {
                         if (produtos.TryGetValue(item.Produto.CodigoProduto, out var produto))
                         {
+                            if (item.Imposto == null)
+                            {
+                                _logger.LogDebug("Imposto null para item {Item} do pedido {Pedido}", item.Ide.CodigoItem, existingPedido.OmieId);
+                            }
+
                             existingPedido.Itens.Add(new ItemPedido
                             {
                                 Id = Guid.NewGuid(),
@@ -320,6 +325,7 @@ namespace Tabatine.Infrastructure.Services
                                 ValorTotal = item.Produto.ValorTotal,
                                 UnidadeMedida = item.Produto.Unidade,
 
+                                // Debugging tax values
                                 ValorIcms = item.Imposto?.Icms?.ValorIcms ?? 0,
                                 BaseIcms = item.Imposto?.Icms?.BaseCalculoIcms ?? 0,
                                 AliqIcms = item.Imposto?.Icms?.AliquotaIcms ?? 0,
