@@ -38,7 +38,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(p => p.CondicaoPagamento)
-                   .WithMany()
+                   .WithMany(c => c.PedidosVenda)
                    .HasForeignKey(p => p.CondicaoPagamentoId)
                    .OnDelete(DeleteBehavior.Restrict);
                    
