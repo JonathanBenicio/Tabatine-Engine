@@ -45,45 +45,35 @@ namespace Tabatine.Infrastructure.Services
 
                 var rawCadastros = response.Cadastros ?? new List<ParcelaOmie>();
                 
-                var invalidCount = rawCadastros.Count(c => string.IsNullOrWhiteSpace(c.Codigo));
-                if (invalidCount > 0)
-                {
-                    _logger.LogWarning("{Count} condições de pagamento ignoradas por falta de código.", invalidCount);
-                }
-
+                // Omie returns nCodigo as int. We treat it as string in our DB.
                 var validCadastros = rawCadastros
-                    .Where(c => !string.IsNullOrWhiteSpace(c.Codigo))
+                    .Where(c => c.Codigo > 0)
                     .GroupBy(c => c.Codigo)
                     .Select(g => g.First())
                     .ToList();
 
-                if (validCadastros.Count < (rawCadastros.Count() - invalidCount))
-                {
-                    _logger.LogWarning("{Count} condições de pagamento com código duplicado ignoradas na página {Pagina}.", 
-                        rawCadastros.Count() - invalidCount - validCadastros.Count, pagina);
-                }
-
-                var codigos = validCadastros.Select(c => c.Codigo).ToList();
+                var codigos = validCadastros.Select(c => c.Codigo.ToString()).ToList();
                 var existingCondicoes = await _dbContext.CondicoesPagamento
                     .Where(c => codigos.Contains(c.Codigo))
                     .ToDictionaryAsync(c => c.Codigo, ct);
 
                 foreach (var omieCondicao in validCadastros)
                 {
-                    existingCondicoes.TryGetValue(omieCondicao.Codigo, out var existing);
+                    var codigoStr = omieCondicao.Codigo.ToString();
+                    existingCondicoes.TryGetValue(codigoStr, out var existing);
 
                     if (existing == null)
                     {
                         _dbContext.CondicoesPagamento.Add(new CondicaoPagamento
                         {
                             Id = Guid.NewGuid(),
-                            Codigo = omieCondicao.Codigo,
+                            Codigo = codigoStr,
                             Descricao = omieCondicao.Descricao,
                             QuantidadeParcelas = omieCondicao.QuantidadeParcelas,
                             DiaFixo = omieCondicao.DiaFixo,
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow,
-                            OmieId = 0 // ParcelaAPI doesn't return integer ID, assume 0 as placeholder for standard
+                            OmieId = omieCondicao.Codigo // Use the nCodigo as OmieId too
                         });
                     }
                     else
@@ -92,6 +82,7 @@ namespace Tabatine.Infrastructure.Services
                         existing.QuantidadeParcelas = omieCondicao.QuantidadeParcelas;
                         existing.DiaFixo = omieCondicao.DiaFixo;
                         existing.UpdatedAt = DateTime.UtcNow;
+                        existing.OmieId = omieCondicao.Codigo;
                     }
                 }
 

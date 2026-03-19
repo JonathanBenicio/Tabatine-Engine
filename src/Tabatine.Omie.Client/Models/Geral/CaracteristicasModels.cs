@@ -44,9 +44,11 @@ namespace Tabatine.Omie.Client.Models.Geral
         public int TotalDePaginas { get; set; }
 
         [JsonPropertyName("nRegistros")]
+        [JsonConverter(typeof(OmieFlexibleIntConverter))]
         public int Registros { get; set; }
 
         [JsonPropertyName("nTotRegistros")]
+        [JsonConverter(typeof(OmieFlexibleIntConverter))]
         public int TotalDeRegistros { get; set; }
 
         [JsonPropertyName("listaCaracteristicas")]

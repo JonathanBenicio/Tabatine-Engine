@@ -61,14 +61,20 @@ namespace Tabatine.Omie.Client.Models.Produtos
 
     public class OmieProdutoCaracteristica
     {
-        [JsonPropertyName("cExibe")]
-        public string Exibe { get; set; } = string.Empty;
-
         [JsonPropertyName("cNomeCaract")]
         public string NomeCaracteristica { get; set; } = string.Empty;
 
-        [JsonPropertyName("cValorCaract")]
+        [JsonPropertyName("cConteudo")]
         public string ValorCaracteristica { get; set; } = string.Empty;
+
+        [JsonPropertyName("cExibirItemNF")]
+        public string? ExibirItemNF { get; set; }
+
+        [JsonPropertyName("cExibirItemPedido")]
+        public string? ExibirItemPedido { get; set; }
+
+        [JsonPropertyName("cExibirOrdemProd")]
+        public string? ExibirOrdemProd { get; set; }
     }
 
     public class ListarProdutosResponse : OmieResponse<OmieProduto>

@@ -37,6 +37,14 @@ namespace Tabatine.Omie.Client.Models.Produtos
         [JsonConverter(typeof(OmieFlexibleIntConverter))]
         public int TotalDePaginas { get; set; }
 
+        [JsonPropertyName("nRegistros")]
+        [JsonConverter(typeof(OmieFlexibleIntConverter))]
+        public int Registros { get; set; }
+
+        [JsonPropertyName("nTotRegistros")]
+        [JsonConverter(typeof(OmieFlexibleIntConverter))]
+        public int TotalDeRegistros { get; set; }
+
         [JsonPropertyName("listaTabelasPreco")]
         public List<OmieTabelaPreco> ListaTabelasPreco { get; set; } = new();
     }
@@ -71,6 +79,14 @@ namespace Tabatine.Omie.Client.Models.Produtos
         [JsonPropertyName("nTotPaginas")]
         [JsonConverter(typeof(OmieFlexibleIntConverter))]
         public int TotalDePaginas { get; set; }
+
+        [JsonPropertyName("nRegistros")]
+        [JsonConverter(typeof(OmieFlexibleIntConverter))]
+        public int Registros { get; set; }
+
+        [JsonPropertyName("nTotRegistros")]
+        [JsonConverter(typeof(OmieFlexibleIntConverter))]
+        public int TotalDeRegistros { get; set; }
 
         [JsonPropertyName("listaTabelaPreco")]
         public List<TabelaPrecoItensWrapper> ListaTabelaPreco { get; set; } = new();

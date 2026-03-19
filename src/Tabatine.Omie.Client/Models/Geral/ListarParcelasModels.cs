@@ -6,24 +6,31 @@ namespace Tabatine.Omie.Client.Models.Geral
     public class ListarParcelasParam
     {
         [JsonPropertyName("pagina")]
-        public int Pagina { get; set; }
+        public int Pagina { get; set; } = 1;
 
         [JsonPropertyName("registros_por_pagina")]
-        public int RegistrosPorPagina { get; set; } = 100;
+        public int RegistrosPorPagina { get; set; } = 500;
 
         [JsonPropertyName("apenas_importado_api")]
         public string ApenasImportadoApi { get; set; } = "N";
+
+        [JsonPropertyName("ordenar_por")]
+        public string? OrdenarPor { get; set; }
+
+        [JsonPropertyName("ordem_decrescente")]
+        public string? OrdemDecrescente { get; set; }
     }
 
     public class ParcelaOmie
     {
-        [JsonPropertyName("cCodigo")]
-        public string Codigo { get; set; } = string.Empty;
+        [JsonPropertyName("nCodigo")]
+        [JsonConverter(typeof(OmieFlexibleIntConverter))]
+        public int Codigo { get; set; }
 
         [JsonPropertyName("cDescricao")]
         public string Descricao { get; set; } = string.Empty;
 
-        [JsonPropertyName("nQtdeParcelas")]
+        [JsonPropertyName("nParcelas")]
         public int QuantidadeParcelas { get; set; }
 
         [JsonPropertyName("nDiaFixo")]

@@ -48,7 +48,7 @@ namespace Tabatine.Omie.Client
             };
 
             var json = JsonSerializer.Serialize(request, _jsonOptions);
-            _logger.LogDebug("Enviando requisição Omie para {Url}. Call: {Call}. Payload: {Payload}", url, call, json);
+            _logger.LogDebug(">>> Enviando requisição Omie: {Url}. Call: {Call}. Payload: {Payload}", url, call, json);
 
             try
             {
@@ -56,22 +56,21 @@ namespace Tabatine.Omie.Client
                 content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
                 
                 var response = await _httpClient.PostAsync(url, content, ct);
-                
+                var responseJson = await response.Content.ReadAsStringAsync(ct);
+
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorBody = await response.Content.ReadAsStringAsync(ct);
-                    
-                    if (errorBody.Contains("Client-5113") || errorBody.Contains("Client-101"))
+                    if (responseJson.Contains("Client-5113") || responseJson.Contains("Client-101"))
                     {
-                        _logger.LogInformation("Omie retornou sem registros para {Url}. Call: {Call}. (Sem dados para o filtro)", url, call);
+                        _logger.LogDebug("<<< Omie retornou sem registros (5113/101) para {Url}. Call: {Call}", url, call);
                         return default!;
                     }
                     
-                    _logger.LogError("Erro Omie {StatusCode} em {Url}. Call: {Call}. Resposta: {ErrorBody}", response.StatusCode, url, call, errorBody);
-                    throw new HttpRequestException($"Erro Omie {response.StatusCode} em {call}: {errorBody}");
+                    _logger.LogError("<<< Erro Omie {StatusCode} em {Url}. Call: {Call}. Resposta: {ErrorBody}", response.StatusCode, url, call, responseJson);
+                    throw new HttpRequestException($"Erro Omie {response.StatusCode} em {call}: {responseJson}");
                 }
 
-                var responseJson = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogDebug("<<< Resposta Omie para {Call}: {Response}", call, responseJson);
                 return JsonSerializer.Deserialize<TResponse>(responseJson, _jsonOptions)!;
             }
             catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)

@@ -42,6 +42,8 @@ namespace Tabatine.Infrastructure.Services
 
             foreach (var omieMeio in response.MeiosPagamentoLista)
             {
+                if (string.IsNullOrWhiteSpace(omieMeio.Codigo)) continue;
+
                 if (existingMeios.TryGetValue(omieMeio.Codigo, out var existingMeio))
                 {
                     existingMeio.Descricao = omieMeio.Descricao;
@@ -49,10 +51,12 @@ namespace Tabatine.Infrastructure.Services
                 }
                 else
                 {
+                    // OmieId derived from codigo hash since MeiosPagamento has no numeric ID
+                    var omieId = (long)Math.Abs(omieMeio.Codigo.GetHashCode());
                     _dbContext.MeiosPagamento.Add(new MeioPagamento
                     {
                         Id = Guid.NewGuid(),
-                        OmieId = 0, // Meios de pagamento não possuem um long ID único na API de listagem, usamos o código como chave
+                        OmieId = omieId,
                         Codigo = omieMeio.Codigo,
                         Descricao = omieMeio.Descricao,
                         CreatedAt = DateTime.UtcNow,
