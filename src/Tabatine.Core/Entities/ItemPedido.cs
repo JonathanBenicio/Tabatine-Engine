@@ -9,9 +9,6 @@ namespace Tabatine.Core.Entities
         
         public Guid ProdutoId { get; set; }
         public Produto Produto { get; set; } = null!;
-
-        public Guid? TabelaPrecoId { get; set; }
-        public TabelaPreco? TabelaPreco { get; set; }
         
         public int Quantidade { get; set; }
         public decimal ValorUnitario { get; set; }

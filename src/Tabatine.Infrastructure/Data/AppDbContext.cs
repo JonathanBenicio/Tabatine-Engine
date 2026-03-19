@@ -24,8 +24,6 @@ namespace Tabatine.Infrastructure.Data
         public DbSet<CondicaoPagamento> CondicoesPagamento => Set<CondicaoPagamento>();
         public DbSet<Banco> Bancos => Set<Banco>();
         public DbSet<MeioPagamento> MeiosPagamento => Set<MeioPagamento>();
-        public DbSet<TabelaPreco> TabelasPreco => Set<TabelaPreco>();
-        public DbSet<TabelaPrecoItem> TabelaPrecoItens => Set<TabelaPrecoItem>();
         public DbSet<IntegrationSyncState> IntegrationSyncStates => Set<IntegrationSyncState>();
         public DbSet<SyncLock> SyncLocks => Set<SyncLock>();
         public DbSet<LogEntry> Logs => Set<LogEntry>();

@@ -83,6 +83,9 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
     public class OmiePedidoItem
     {
+        [JsonPropertyName("ide")]
+        public OmiePedidoItemIde Ide { get; set; } = new();
+
         [JsonPropertyName("produto")]
         public OmiePedidoItemProduto Produto { get; set; } = new();
 
@@ -91,6 +94,12 @@ namespace Tabatine.Omie.Client.Models.Pedidos
 
         [JsonPropertyName("inf_adic")]
         public OmiePedidoItemInfoAdic? InfoAdic { get; set; }
+    }
+
+    public class OmiePedidoItemIde
+    {
+        [JsonPropertyName("codigo_item")]
+        public long CodigoItem { get; set; }
     }
 
     public class OmiePedidoItemInfoAdic

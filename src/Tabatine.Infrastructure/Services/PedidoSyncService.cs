@@ -101,16 +101,11 @@ namespace Tabatine.Infrastructure.Services
                     .ToListAsync(ct);
                 var formasDict = formas.GroupBy(f => f.Codigo).ToDictionary(g => g.Key, g => g.First().Id);
 
-                var tabelas = await _dbContext.TabelasPreco
-                    .Where(t => omieTabelaIds.Contains(t.OmieId))
-                    .Select(t => new { t.OmieId, t.Id })
-                    .ToListAsync(ct);
-                var tabelasDict = tabelas.GroupBy(t => t.OmieId).ToDictionary(g => g.Key, g => g.First().Id);
-
                 var meios = await _dbContext.MeiosPagamento
                     .Where(m => omieMeioPagamentoCodigos.Contains(m.Codigo))
                     .Select(m => new { m.Codigo, m.Id })
                     .ToListAsync(ct);
+
                 var meiosDict = meios.GroupBy(m => m.Codigo).ToDictionary(g => g.Key, g => g.First().Id);
 
                 foreach (var omiePedido in response.PedidosVenda)
@@ -308,6 +303,7 @@ namespace Tabatine.Infrastructure.Services
                             existingPedido.Itens.Add(new ItemPedido
                             {
                                 Id = Guid.NewGuid(),
+                                OmieId = item.Ide.CodigoItem,
                                 PedidoVendaId = existingPedido.Id,
                                 ProdutoId = produto.Id,
                                 Quantidade = (int)item.Produto.Quantidade,
@@ -339,7 +335,6 @@ namespace Tabatine.Infrastructure.Services
                                 ValorDesconto = item.Produto.ValorDesconto,
                                 PesoBruto = item.InfoAdic?.PesoBruto ?? 0,
                                 PesoLiquido = item.InfoAdic?.PesoLiquido ?? 0,
-                                TabelaPrecoId = item.Produto.CodigoTabelaPreco.HasValue && tabelasDict.TryGetValue(item.Produto.CodigoTabelaPreco.Value, out var tId) ? tId : null,
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
                             });
