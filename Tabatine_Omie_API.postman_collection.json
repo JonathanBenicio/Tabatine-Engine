@@ -111,7 +111,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"call\": \"ObterPedidosVenda\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50,\n      \"cEtapa\": \"20\"\n    }\n  ]\n}",
+							"raw": "{\n  \"call\": \"ObterPedidosVenda\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"cEtapa\": \"50\"\n    }\n  ]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -873,7 +873,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"call\": \"ListarContasCorrentes\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 100,\n      \"apenas_contas_ativas\": \"S\"\n    }\n  ]\n}",
+							"raw": "{\n  \"call\": \"ListarContasCorrentes\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 100\n    }\n  ]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -982,6 +982,282 @@
 							]
 						},
 						"description": "Lista os últimos webhooks recebidos e armazenados em memória no servidor local (apenas desenvolvimento)."
+					}
+				}
+			]
+		},
+		{
+			"name": "9. Financeiro e Pagamentos",
+			"item": [
+				{
+					"name": "ListarFormasPagVendas",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarFormasPagVendas\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/formaspagvendas/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"formaspagvendas",
+								""
+							]
+						}
+					}
+				},
+				{
+					"name": "ListarMeiosPagamento",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"call\": \"ListarMeiosPagamento\",\n    \"app_key\": \"{{APP_KEY}}\",\n    \"app_secret\": \"{{APP_SECRET}}\",\n    \"param\": [\n        {\n            \"codigo\": \"\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/meiospagamento/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"meiospagamento",
+								""
+							]
+						}
+					}
+				},
+				{
+					"name": "ListarParcelas",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarParcelas\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/parcelas/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"parcelas",
+								""
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "10. Bancos e Características",
+			"item": [
+				{
+					"name": "ListarBancos",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarBancos\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/bancos/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"bancos",
+								""
+							]
+						}
+					}
+				},
+				{
+					"name": "ListarCaracteristicas",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarCaracteristicas\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"nPagina\": 1,\n      \"nRegPorPagina\": 50\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/geral/caracteristicas/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"geral",
+								"caracteristicas",
+								""
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "11. Tabelas de Preço",
+			"item": [
+				{
+					"name": "ListarTabelasPreco",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarTabelasPreco\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"npagina\": 1,\n      \"registros_por_pagina\": 50\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/tabelaprecos/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"tabelaprecos",
+								""
+							]
+						}
+					}
+				},
+				{
+					"name": "ListarTabelaItens",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarTabelaItens\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"nPagina\": 1,\n      \"nRegPorPagina\": 50\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/tabelaprecos/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"tabelaprecos",
+								""
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "12. Etapas de Faturamento",
+			"item": [
+				{
+					"name": "ListarEtapasFaturamento",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarEtapasFaturamento\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/produtos/etapafat/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"produtos",
+								"etapafat",
+								""
+							]
+						}
 					}
 				}
 			]

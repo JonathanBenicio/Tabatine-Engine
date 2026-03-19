@@ -328,10 +328,12 @@ namespace Tabatine.Infrastructure.Services
                                 ValorPis = item.Imposto?.Pis?.ValorPis ?? 0,
                                 BasePis = item.Imposto?.Pis?.BaseCalculoPis ?? 0,
                                 AliqPis = item.Imposto?.Pis?.AliquotaPis ?? 0,
+                                CstPis = item.Imposto?.Pis?.CstPis,
 
                                 ValorCofins = item.Imposto?.Cofins?.ValorCofins ?? 0,
                                 BaseCofins = item.Imposto?.Cofins?.BaseCalculoCofins ?? 0,
                                 AliqCofins = item.Imposto?.Cofins?.AliquotaCofins ?? 0,
+                                CstCofins = item.Imposto?.Cofins?.CstCofins,
 
                                 PercentualDesconto = item.Produto.PercentualDesconto,
                                 ValorDesconto = item.Produto.ValorDesconto,

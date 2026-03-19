@@ -20,7 +20,7 @@ namespace Tabatine.Omie.Client.Models.Geral
 
     public class MeiosPagamentoPesquisarResponse
     {
-        [JsonPropertyName("MeiosPagamentoLista")]
+        [JsonPropertyName("tipo_documento_cadastro")]
         public List<OmieMeioPagamento> MeiosPagamentoLista { get; set; } = new();
     }
 }

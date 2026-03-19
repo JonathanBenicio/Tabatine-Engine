@@ -37,9 +37,11 @@ namespace Tabatine.Core.Entities
 
         public decimal BasePis { get; set; }
         public decimal AliqPis { get; set; }
+        public string? CstPis { get; set; }
 
         public decimal BaseCofins { get; set; }
         public decimal AliqCofins { get; set; }
+        public string? CstCofins { get; set; }
 
         // Pesos
         public decimal PesoBruto { get; set; }

@@ -13,6 +13,7 @@ using Tabatine.Omie.Client.Models.ContaCorrente;
 using Tabatine.Omie.Client.Models.EtapaFaturamento;
 using Tabatine.Omie.Client.Models.FormaPagamento;
 using Tabatine.Omie.Client.Models.Bancos;
+using Tabatine.Omie.Client.Models.Geral;
 
 namespace Tabatine.Omie.Client
 {
@@ -170,34 +171,16 @@ namespace Tabatine.Omie.Client
             return await SendRequestAsync<ListarBancosParam, ListarBancosResponse>("geral/bancos/", "ListarBancos", param, cancellationToken);
         }
 
-        public async Task<Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarResponse> ListarMeiosPagamentoAsync(CancellationToken cancellationToken = default)
+        public async Task<MeiosPagamentoPesquisarResponse> ListarMeiosPagamentoAsync(CancellationToken cancellationToken = default)
         {
-            var param = new Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarRequest();
-            return await SendRequestAsync<Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarRequest, Tabatine.Omie.Client.Models.Geral.MeiosPagamentoPesquisarResponse>("geral/meiospagamento/", "ListarMeiosPagamento", param, cancellationToken);
+            var param = new MeiosPagamentoPesquisarRequest();
+            return await SendRequestAsync<MeiosPagamentoPesquisarRequest, MeiosPagamentoPesquisarResponse>("geral/meiospagamento/", "ListarMeiosPagamento", param, cancellationToken);
         }
 
-        public async Task<Tabatine.Omie.Client.Models.Geral.CaracteristicasListarResponse> ListarCaracteristicasAsync(int pagina = 1, CancellationToken cancellationToken = default)
+        public async Task<ListarParcelasResponse> ListarParcelasAsync(int pagina = 1, CancellationToken cancellationToken = default)
         {
-            var param = new Tabatine.Omie.Client.Models.Geral.CaracteristicasListarRequest { Pagina = pagina };
-            return await SendRequestAsync<Tabatine.Omie.Client.Models.Geral.CaracteristicasListarRequest, Tabatine.Omie.Client.Models.Geral.CaracteristicasListarResponse>("geral/caracteristicas/", "ListarCaracteristicas", param, cancellationToken);
-        }
-
-        public async Task<Tabatine.Omie.Client.Models.Produtos.TabelaPrecosListarResponse> ListarTabelasPrecoAsync(int pagina = 1, CancellationToken cancellationToken = default)
-        {
-            var param = new Tabatine.Omie.Client.Models.Produtos.TabelaPrecosListarRequest { Pagina = pagina };
-            return await SendRequestAsync<Tabatine.Omie.Client.Models.Produtos.TabelaPrecosListarRequest, Tabatine.Omie.Client.Models.Produtos.TabelaPrecosListarResponse>("produtos/tabelaprecos/", "ListarTabelasPreco", param, cancellationToken);
-        }
-
-        public async Task<Tabatine.Omie.Client.Models.Produtos.TabelaItensListarResponse> ListarTabelaItensAsync(long codigoTabela, int pagina = 1, CancellationToken cancellationToken = default)
-        {
-            var param = new Tabatine.Omie.Client.Models.Produtos.TabelaItensListarRequest { Pagina = pagina, CodigoTabelaPreco = codigoTabela };
-            return await SendRequestAsync<Tabatine.Omie.Client.Models.Produtos.TabelaItensListarRequest, Tabatine.Omie.Client.Models.Produtos.TabelaItensListarResponse>("produtos/tabelaprecos/", "ListarTabelaItens", param, cancellationToken);
-        }
-
-        public async Task<Tabatine.Omie.Client.Models.Geral.ListarParcelasResponse> ListarParcelasAsync(int pagina = 1, CancellationToken cancellationToken = default)
-        {
-            var param = new Tabatine.Omie.Client.Models.Geral.ListarParcelasParam { Pagina = pagina };
-            return await SendRequestAsync<Tabatine.Omie.Client.Models.Geral.ListarParcelasParam, Tabatine.Omie.Client.Models.Geral.ListarParcelasResponse>("geral/parcelas/", "ListarParcelas", param, cancellationToken);
+            var param = new ListarParcelasParam { Pagina = pagina };
+            return await SendRequestAsync<ListarParcelasParam, ListarParcelasResponse>("geral/parcelas/", "ListarParcelas", param, cancellationToken);
         }
     }
 }

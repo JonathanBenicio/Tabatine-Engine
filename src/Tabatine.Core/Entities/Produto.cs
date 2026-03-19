@@ -15,8 +15,6 @@ namespace Tabatine.Core.Entities
         public string? FamiliaProduto { get; set; }
         public decimal PrecoUnitario { get; set; }
         public bool Ativo { get; set; }
-
-        public ICollection<ProdutoCaracteristica> Caracteristicas { get; set; } = new List<ProdutoCaracteristica>();
         public ICollection<ItemPedido> ItensPedido { get; set; } = new List<ItemPedido>();
         public ICollection<ItemNotaFiscal> ItensNotaFiscal { get; set; } = new List<ItemNotaFiscal>();
     }
