@@ -1,28 +1,14 @@
 name: tabatine-engine
 services:
-  tabatine-redis:
-    image: redis:7-alpine
-    container_name: tabatine_redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    restart: unless-stopped
-
   tabatine-worker:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: tabatine_worker
-    depends_on:
-      - tabatine-redis
     environment:
       - DOTNET_ENVIRONMENT=Development
-      - ConnectionStrings__Redis=tabatine-redis:6379,abortConnect=false
     env_file:
       - .env.local
     restart: unless-stopped
-
-volumes:
-  redis_data:
+    ports:
+      - "8080:8080"

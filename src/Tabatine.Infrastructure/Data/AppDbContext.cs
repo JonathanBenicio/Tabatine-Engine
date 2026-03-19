@@ -30,6 +30,7 @@ namespace Tabatine.Infrastructure.Data
         public DbSet<TabelaPrecoItem> TabelaPrecoItens => Set<TabelaPrecoItem>();
         public DbSet<ProdutoCaracteristica> ProdutoCaracteristicas => Set<ProdutoCaracteristica>();
         public DbSet<IntegrationSyncState> IntegrationSyncStates => Set<IntegrationSyncState>();
+        public DbSet<SyncLock> SyncLocks => Set<SyncLock>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

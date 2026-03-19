@@ -9,13 +9,65 @@ using Tabatine.Infrastructure.Services;
 using Tabatine.Core.Interfaces;
 using Tabatine.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Serilog;
+using Serilog.Events;
+using Serilog.Sinks.PostgreSQL;
+using Serilog.Sinks.PostgreSQL.ColumnWriters;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System.Text.Json;
+using System.Net.Mime;
+using Microsoft.Extensions.DependencyInjection;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("DefaultConnection not found");
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day)
+    .WriteTo.PostgreSQL(
+        connectionString: connectionString,
+        tableName: "Logs",
+        needAutoCreateTable: false,
+        columnOptions: new Dictionary<string, ColumnWriterBase>
+        {
+            { "message", new RenderedMessageColumnWriter() },
+            { "message_template", new MessageTemplateColumnWriter() },
+            { "level", new LevelColumnWriter() },
+            { "timestamp", new TimestampColumnWriter() },
+            { "exception", new ExceptionColumnWriter() },
+            { "properties", new PropertiesColumnWriter() },
+            { "log_event", new LogEventSerializedColumnWriter() }
+        })
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
+// Configure Health Checks
+builder.Services.AddHealthChecks()
+    .AddAsyncCheck("Database", async () =>
+    {
+        try
+        {
+            using var conn = new Npgsql.NpgsqlConnection(connectionString);
+            await conn.OpenAsync();
+            return HealthCheckResult.Healthy();
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("Erro ao conectar no banco", ex);
+        }
+    });
 
 // Configure DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
+        connectionString,
         b => b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
     ).ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
 );
@@ -23,12 +75,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Configure Omie Options
 builder.Services.Configure<OmieOptions>(builder.Configuration.GetSection("Omie"));
 
-// Configure Redis
-builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(sp =>
-{
-    var configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
-    return StackExchange.Redis.ConnectionMultiplexer.Connect(configuration);
-});
+// Configure Distributed Lock Service
+builder.Services.AddScoped<IDistributedLockService, DbDistributedLockService>();
 
 // Configure HttpClient with Resilience
 builder.Services.AddHttpClient<IOmieClient, OmieClient>(client =>
@@ -40,7 +88,7 @@ builder.Services.AddHttpClient<IOmieClient, OmieClient>(client =>
 {
     pipelineBuilder.AddRetry(new HttpRetryStrategyOptions
     {
-        MaxRetryAttempts = 1,  // Reduzido: 3 retries * N serviços tripavm o circuit breaker
+        MaxRetryAttempts = 1,
         BackoffType = DelayBackoffType.Exponential,
         UseJitter = true,
         Delay = TimeSpan.FromSeconds(3),
@@ -52,8 +100,8 @@ builder.Services.AddHttpClient<IOmieClient, OmieClient>(client =>
     pipelineBuilder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
     {
         SamplingDuration = TimeSpan.FromSeconds(60),
-        FailureRatio = 0.8,   // Abrir só quando 80% das chamadas falharem
-        MinimumThroughput = 20, // Exige ao menos 20 chamadas antes de avaliar
+        FailureRatio = 0.8,
+        MinimumThroughput = 20,
         BreakDuration = TimeSpan.FromSeconds(60)
     });
 
@@ -66,7 +114,6 @@ builder.Services.AddHttpClient<IOmieClient, OmieClient>(client =>
     }));
 
     pipelineBuilder.AddConcurrencyLimiter(4);
-    
     pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(60));
 });
 
@@ -86,16 +133,49 @@ builder.Services.AddScoped<CaracteristicaSyncService>();
 builder.Services.AddScoped<TabelaPrecoSyncService>();
 
 builder.Services.AddScoped<ISyncService, SyncManager>();
-
 builder.Services.AddHostedService<Worker>();
 
-var host = builder.Build();
+var app = builder.Build();
 
-// Migrate database on startup
-using (var scope = host.Services.CreateScope())
+// Configure Health Check Endpoint with JSON output
+app.MapHealthChecks("/health", new HealthCheckOptions
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
-}
+    ResponseWriter = async (context, report) =>
+    {
+        var result = JsonSerializer.Serialize(new
+        {
+            status = report.Status.ToString(),
+            details = report.Entries.Select(e => new
+            {
+                key = e.Key,
+                description = e.Value.Description,
+                status = e.Value.Status.ToString(),
+                error = e.Value.Exception?.Message
+            })
+        }, new JsonSerializerOptions { WriteIndented = true });
 
-host.Run();
+        context.Response.ContentType = MediaTypeNames.Application.Json;
+        await context.Response.WriteAsync(result);
+    }
+});
+
+try
+{
+    // Migrate database on startup
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.Migrate();
+    }
+
+    Log.Information("Aplicação Iniciada com Health Checks ativos.");
+    await app.RunAsync();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Host encerrado inesperadamente.");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

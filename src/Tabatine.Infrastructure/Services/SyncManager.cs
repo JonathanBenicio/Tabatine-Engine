@@ -1,7 +1,6 @@
 using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using StackExchange.Redis;
 using Tabatine.Core.Interfaces;
 
 namespace Tabatine.Infrastructure.Services
@@ -10,23 +9,22 @@ namespace Tabatine.Infrastructure.Services
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<SyncManager> _logger;
-        private readonly IConnectionMultiplexer _redis;
+        private readonly IDistributedLockService _lockService;
         private const string LockKey = "tabatine:sync:lock";
 
-        public SyncManager(IServiceProvider serviceProvider, ILogger<SyncManager> logger, IConnectionMultiplexer redis)
+        public SyncManager(IServiceProvider serviceProvider, ILogger<SyncManager> logger, IDistributedLockService lockService)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
-            _redis = redis;
+            _lockService = lockService;
         }
 
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            var db = _redis.GetDatabase();
             var lockToken = Guid.NewGuid().ToString();
             
             // Tenta obter o lock por 30 minutos (tempo máximo de um ciclo)
-            if (!await db.LockTakeAsync(LockKey, lockToken, TimeSpan.FromMinutes(30)))
+            if (!await _lockService.TryAcquireLockAsync(LockKey, lockToken, TimeSpan.FromMinutes(30), ct))
             {
                 _logger.LogWarning("Ciclo de sincronização já está em execução em outro worker. Abortando.");
                 return;
@@ -85,7 +83,7 @@ namespace Tabatine.Infrastructure.Services
 
       finally
       {
-        await db.LockReleaseAsync(LockKey, lockToken);
+        await _lockService.ReleaseLockAsync(LockKey, lockToken, ct);
         _logger.LogInformation("Ciclo de Sincronização Global finalizado e trava liberada.");
       }
     }
