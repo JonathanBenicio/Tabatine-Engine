@@ -1,5 +1,5 @@
 ---
-trigger: model_decision
+trigger: manual
 ---
 
 # Tabatine — Regras do Workspace

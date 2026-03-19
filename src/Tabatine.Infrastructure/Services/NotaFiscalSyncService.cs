@@ -268,7 +268,14 @@ namespace Tabatine.Infrastructure.Services
                       CstIpi = det.Imposto?.Ipi?.Cst,
                       ValorIpi = det.Imposto?.Ipi?.Valor ?? 0,
                       ValorPis = det.Imposto?.Pis?.Valor ?? 0,
-                      ValorCofins = det.Imposto?.Cofins?.Valor ?? 0
+                      ValorCofins = det.Imposto?.Cofins?.Valor ?? 0,
+
+                      // Novos Impostos (Reforma Tributária)
+                      ValorIbs = det.Imposto?.Ibs?.ValorIbs ?? 0,
+                      AliqIbs = det.Imposto?.Ibs?.AliquotaIbs ?? 0,
+                      ValorCbs = det.Imposto?.Cbs?.ValorCbs ?? 0,
+                      AliqCbs = det.Imposto?.Cbs?.AliquotaCbs ?? 0,
+                      BaseIbsCbs = det.Imposto?.IbsCbs?.BaseIbsCbs ?? 0
                   });
                   itensMapeados++;
               }

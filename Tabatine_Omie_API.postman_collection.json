@@ -387,7 +387,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"call\": \"ListarClientes\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50,\n      \"clientesFiltro\": {}\n    }\n  ]\n}",
+							"raw": "{\n  \"call\": \"ListarClientes\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 100,\n      \"apenas_importado_api\": \"N\",\n      \"exibir_obs\": \"S\",\n      \"clientesFiltro\": {\n        \"filtrar_por_data_de\": \"01/01/2026\",\n        \"filtrar_por_data_ate\": \"31/12/2026\"\n      }\n    }\n  ]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -762,7 +762,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"call\": \"ListarProdutos\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 50,\n      \"apenas_importado_api\": \"N\",\n      \"filtrar_apenas_omiepdv\": \"N\"\n    }\n  ]\n}",
+							"raw": "{\n  \"call\": \"ListarProdutos\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 100,\n      \"apenas_importado_api\": \"N\",\n      \"filtrar_apenas_omiepdv\": \"N\",\n      \"filtrar_por_data_de\": \"01/01/2026\",\n      \"filtrar_por_data_ate\": \"31/12/2026\"\n    }\n  ]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1258,6 +1258,45 @@
 								""
 							]
 						}
+					}
+				}
+			]
+		},
+		{
+			"name": "13. Financeiro — Contas a Pagar",
+			"description": "Endpoint: /financeiro/contaspagar/\nDocumentação: https://app.omie.com.br/api/v1/financeiro/contaspagar/",
+			"item": [
+				{
+					"name": "ListarContasPagar",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarContasPagar\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 100,\n      \"filtrar_por_data_de\": \"01/01/2026\",\n      \"filtrar_por_data_ate\": \"31/12/2026\",\n      \"filtrar_por_status\": \"\",\n      \"apenas_importado_api\": \"N\",\n      \"exibir_obs\": \"S\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/financeiro/contaspagar/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"financeiro",
+								"contaspagar",
+								""
+							]
+						},
+						"description": "Lista contas a pagar com filtros de data e status.\n\nUsado para sincronizar comissões de vendedores."
 					}
 				}
 			]

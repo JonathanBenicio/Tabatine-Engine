@@ -8,6 +8,7 @@ using Tabatine.Omie.Client.Models.EtapaFaturamento;
 using Tabatine.Omie.Client.Models.FormaPagamento;
 using Tabatine.Omie.Client.Models.Bancos;
 using Tabatine.Omie.Client.Models.Geral;
+using Tabatine.Omie.Client.Models.Financeiro;
 
 namespace Tabatine.Omie.Client
 {
@@ -24,5 +25,7 @@ namespace Tabatine.Omie.Client
         Task<ListarBancosResponse> ListarBancosAsync(int pagina = 1, CancellationToken cancellationToken = default);
         Task<MeiosPagamentoPesquisarResponse> ListarMeiosPagamentoAsync(CancellationToken cancellationToken = default);
         Task<ListarParcelasResponse> ListarParcelasAsync(int pagina = 1, CancellationToken cancellationToken = default);
+        Task<ListarContasPagarResponse> ListarContasPagarAsync(int pagina = 1, long? codigoVendedor = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default);
+        Task<OmieCliente?> ConsultarClienteAsync(long codigoClienteOmie, CancellationToken cancellationToken = default);
     }
 }

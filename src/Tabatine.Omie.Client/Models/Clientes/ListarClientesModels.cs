@@ -78,6 +78,15 @@ namespace Tabatine.Omie.Client.Models.Clientes
 
         [JsonPropertyName("optante_simples_nacional")]
         public string? OptanteSimplesNacional { get; set; }
+
+        [JsonPropertyName("recomendacoes")]
+        public OmieClienteRecomendacoes? Recomendacoes { get; set; }
+    }
+
+    public class OmieClienteRecomendacoes
+    {
+        [JsonPropertyName("codigo_vendedor")]
+        public long? CodigoVendedor { get; set; }
     }
 
     public class ListarClientesResponse : OmieResponse<OmieCliente>

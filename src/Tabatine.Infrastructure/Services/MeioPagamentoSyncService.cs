@@ -51,8 +51,10 @@ namespace Tabatine.Infrastructure.Services
                 }
                 else
                 {
-                    // OmieId derived from codigo hash since MeiosPagamento has no numeric ID
-                    var omieId = (long)Math.Abs(omieMeio.Codigo.GetHashCode());
+                    // Stable ID generation using deterministic character sum
+                    long omieId = 0;
+                    foreach (char c in omieMeio.Codigo) omieId = (omieId * 31) + c;
+                    omieId = Math.Abs(omieId);
                     _dbContext.MeiosPagamento.Add(new MeioPagamento
                     {
                         Id = Guid.NewGuid(),

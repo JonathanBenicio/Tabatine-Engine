@@ -14,6 +14,7 @@ using Tabatine.Omie.Client.Models.EtapaFaturamento;
 using Tabatine.Omie.Client.Models.FormaPagamento;
 using Tabatine.Omie.Client.Models.Bancos;
 using Tabatine.Omie.Client.Models.Geral;
+using Tabatine.Omie.Client.Models.Financeiro;
 
 namespace Tabatine.Omie.Client
 {
@@ -181,6 +182,33 @@ namespace Tabatine.Omie.Client
         {
             var param = new ListarParcelasParam { Pagina = pagina };
             return await SendRequestAsync<ListarParcelasParam, ListarParcelasResponse>("geral/parcelas/", "ListarParcelas", param, cancellationToken);
+        }
+
+        public async Task<ListarContasPagarResponse> ListarContasPagarAsync(int pagina = 1, long? codigoVendedor = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default)
+        {
+            var param = new ListarContasPagarParam 
+            { 
+                Pagina = pagina,
+                RegistrosPorPagina = 100 // Limite padrão para evitar 500 em algumas instâncias
+            };
+            
+            // Removido filtrar_por_vendedor pois a Omie retorna 500 para este endpoint
+                
+            if (filtrarDe.HasValue && filtrarDe.Value > DateTime.MinValue)
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+                
+            if (filtrarAte.HasValue && filtrarAte.Value > DateTime.MinValue)
+                param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
+                
+            if (!string.IsNullOrEmpty(status))
+                param.FiltrarPorStatus = status;
+
+            return await SendRequestAsync<ListarContasPagarParam, ListarContasPagarResponse>("financas/contapagar/", "ListarContasPagar", param, cancellationToken);
+        }
+        public async Task<OmieCliente?> ConsultarClienteAsync(long codigoClienteOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new { codigo_cliente_omie = codigoClienteOmie };
+            return await SendRequestAsync<object, OmieCliente>("geral/clientes/", "ConsultarCliente", param, cancellationToken);
         }
     }
 }

@@ -74,6 +74,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
         connectionString,
         b => b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
+             .EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)
+             .CommandTimeout(60)
     ).ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
 );
 

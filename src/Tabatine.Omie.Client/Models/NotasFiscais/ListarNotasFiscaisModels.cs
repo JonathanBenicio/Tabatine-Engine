@@ -75,6 +75,32 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("COFINS")]
         public OmieNfDetCofins? Cofins { get; set; }
+
+        [JsonPropertyName("IBS")]
+        public OmieNfDetIbs? Ibs { get; set; }
+
+        [JsonPropertyName("CBS")]
+        public OmieNfDetCbs? Cbs { get; set; }
+
+        [JsonPropertyName("ibs_cbs")]
+        public OmieNfDetIbsCbs? IbsCbs { get; set; }
+    }
+
+    public class OmieNfDetIbs
+    {
+        [JsonPropertyName("vIBS")] public decimal ValorIbs { get; set; }
+        [JsonPropertyName("pIBS")] public decimal AliquotaIbs { get; set; }
+    }
+
+    public class OmieNfDetCbs
+    {
+        [JsonPropertyName("vCBS")] public decimal ValorCbs { get; set; }
+        [JsonPropertyName("pCBS")] public decimal AliquotaCbs { get; set; }
+    }
+
+    public class OmieNfDetIbsCbs
+    {
+        [JsonPropertyName("vBC_IBS_CBS")] public decimal BaseIbsCbs { get; set; }
     }
 
     public class OmieNfDetIcms

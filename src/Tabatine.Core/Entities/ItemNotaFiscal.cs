@@ -30,5 +30,12 @@ namespace Tabatine.Core.Entities
 
         public decimal ValorPis { get; set; }
         public decimal ValorCofins { get; set; }
+
+        // Novos Impostos (Reforma Tributária)
+        public decimal ValorIbs { get; set; }
+        public decimal AliqIbs { get; set; }
+        public decimal ValorCbs { get; set; }
+        public decimal AliqCbs { get; set; }
+        public decimal BaseIbsCbs { get; set; }
     }
 }
