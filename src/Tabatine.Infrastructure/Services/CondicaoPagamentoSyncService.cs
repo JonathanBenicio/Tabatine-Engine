@@ -95,5 +95,7 @@ namespace Tabatine.Infrastructure.Services
             await _syncState.SetLastSyncDateAsync("CondicoesPagamento", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Condições de Pagamento finalizada.");
         }
+
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default) => await Task.CompletedTask;
     }
 }

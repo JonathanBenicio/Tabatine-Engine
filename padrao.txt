@@ -1,0 +1,36 @@
+Para melhorar o projeto **Tabatine Engine**, você deve consolidar as regras já estabelecidas nos arquivos de governança (`dot-net-standards.md`, `geral.md`) e expandi-las com padrões de mercado voltados para sistemas de alta disponibilidade e integração.
+
+Aqui estão os pilares de boas práticas recomendados para o seu contexto:
+
+### 1. Legibilidade e Organização (Clean Code)
+O projeto já segue uma **Clean Architecture**, mas pode ser refinado:
+* **Domain-Driven Design (DDD) Tático**: Embora use entidades em português para o domínio Omie, tente isolar a lógica de negócio (cálculos de impostos, validações de status) em **Domain Services** dentro do `Tabatine.Core`, evitando que os `SyncServices` na infraestrutura fiquem sobrecarregados.
+* **Result Pattern**: Em vez de disparar exceções para fluxos de negócio esperados (ex: registro já sincronizado), utilize um objeto `Result<T>` para retornar sucesso ou falha com mensagens claras.
+* **Consistência de Idioma**: Mantenha a regra rigorosa de Inglês para infraestrutura e Português para domínio, garantindo que novos desenvolvedores entendam rapidamente onde termina o padrão de projeto e onde começa a regra de negócio do ERP.
+
+### 2. Desempenho e Escalabilidade
+Como o sistema lida com sincronização e limites de taxa (Rate Limits) da Omie:
+* **Paralelismo Controlado**: No `SyncManager.cs`, os serviços rodam de forma sequencial para evitar bloqueios. Para itens independentes (como Bancos e Meios de Pagamento), você pode usar `Task.WhenAll` com um `SemaphoreSlim` para limitar o grau de paralelismo sem estourar o limite de 240 req/min da Omie.
+* **Bulk Operations**: Ao persistir dados no PostgreSQL/Supabase, utilize o `EFCore.BulkExtensions` para inserções em massa em vez de múltiplos `AddAsync`, reduzindo o overhead de ida e volta ao banco.
+* **Paginação Inteligente**: Otimize o uso de `registros_por_pagina` (entre 50 e 100) conforme sugerido na documentação interna, garantindo que a memória do Worker não sature com payloads gigantescos.
+
+### 3. Observabilidade e Monitoramento
+Você já possui uma tabela de `Logs`, mas pode elevar o nível:
+* **Structured Logging**: Garanta que o Serilog capture propriedades específicas (como `OmieId` ou `Entidade`) como colunas separadas ou JSON indexável no banco, facilitando consultas como "Ver todos os erros do Pedido X".
+* **Health Checks**: Implemente o endpoint `/health` no Worker para monitorar se a conexão com o banco e a API da Omie estão ativas.
+* **Métricas de Sincronização**: Exponha métricas (usando Prometheus ou Azure Monitor) sobre o tempo médio de sincronização por entidade e a taxa de sucesso/falha dos jobs.
+
+### 4. Testes e Garantia de Qualidade
+* **Testes de Unidade (xUnit/FluentAssertions)**: Foque nos mapeadores de dados (Mappers) e nos helpers de data/hora (como o `OmieTimestampHelper`).
+* **Testes de Integração**: Utilize **Testcontainers** para subir uma instância real de PostgreSQL durante os testes, garantindo que as Migrations e a Fluent API do EF Core funcionem como esperado.
+* **Mocking da API Omie**: Use o `WireMock.Net` para simular as respostas da API Omie (incluindo cenários de erro e throttling) sem consumir sua chave real de produção.
+
+### 5. Sustentabilidade e Manutenção
+* **Idempotência**: Reforce a lógica de "Upsert" mencionada nos padrões. Um job de sincronização deve poder falhar e reiniciar a qualquer momento sem duplicar dados ou corromper o estado.
+* **Circuit Breaker**: Implemente a biblioteca **Polly** no `OmieClient` para gerenciar retentativas (Retries) com "Exponential Backoff" e abrir o circuito caso a API da Omie fique instável, evitando que o Worker consuma recursos desnecessários.
+* **Documentação de Campos**: Mantenha os arquivos de referência de campos (como `listar-venda.txt`) atualizados, pois APIs de ERP mudam frequentemente e o mapeamento manual é um ponto comum de falha.
+
+
+### Resumo da Estrutura Atual vs Sugerida:
+* **Injeção de Dependência**: Continue usando `AddScoped` para serviços com `DbContext` e `AddSingleton` para clientes de API.
+* **Lock Distribuído**: O uso do `IDistributedLockService` no `SyncManager` é uma excelente prática para evitar condições de corrida em ambientes com múltiplos containers.

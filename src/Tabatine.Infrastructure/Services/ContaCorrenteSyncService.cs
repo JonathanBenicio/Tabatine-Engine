@@ -108,5 +108,7 @@ namespace Tabatine.Infrastructure.Services
             await _syncState.SetLastSyncDateAsync("ContasCorrente", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Contas Correntes finalizada.");
         }
+
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default) => await Task.CompletedTask;
     }
 }

@@ -94,5 +94,7 @@ namespace Tabatine.Infrastructure.Services
             await _syncState.SetLastSyncDateAsync("EtapasFaturamento", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Etapas de Faturamento finalizada.");
         }
+
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default) => await Task.CompletedTask;
     }
 }

@@ -89,5 +89,7 @@ namespace Tabatine.Infrastructure.Services
             await _syncState.SetLastSyncDateAsync("Bancos", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Bancos finalizada.");
         }
+
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default) => await Task.CompletedTask;
     }
 }

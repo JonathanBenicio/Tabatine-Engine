@@ -74,5 +74,10 @@ namespace Tabatine.Infrastructure.Services
         logger.LogInformation("Ciclo de Sincronização Global finalizado e trava liberada.");
       }
     }
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            // O SyncManager coordena o ciclo total. Sincronização por ID deve ser feita no serviço específico.
+            await Task.CompletedTask;
+        }
     }
 }
