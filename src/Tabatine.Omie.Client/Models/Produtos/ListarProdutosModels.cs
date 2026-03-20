@@ -23,10 +23,16 @@ namespace Tabatine.Omie.Client.Models.Produtos
         public string? FiltrarPorDataAte { get; set; }
     }
 
-    public class OmieProduto
+    public class OmieProduto : IOmieMetadata
     {
         [JsonPropertyName("codigo_produto")]
         public long CodigoProduto { get; set; }
+
+        [JsonPropertyName("dAlt")]
+        public string? DAlt { get; set; }
+
+        [JsonPropertyName("hAlt")]
+        public string? HAlt { get; set; }
 
         [JsonPropertyName("codigo")]
         public string Codigo { get; set; } = string.Empty;

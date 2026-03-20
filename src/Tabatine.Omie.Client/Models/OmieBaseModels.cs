@@ -5,6 +5,30 @@ using System.Collections.Generic;
 
 namespace Tabatine.Omie.Client.Models
 {
+    public interface IOmieMetadata
+    {
+        string? DAlt { get; set; }
+        string? HAlt { get; set; }
+    }
+
+    public static class OmieTimestampHelper
+    {
+        public static DateTime? ParseOmieDateTime(string? dAlt, string? hAlt)
+        {
+            if (string.IsNullOrWhiteSpace(dAlt)) return null;
+
+            // Omie uses DD/MM/YYYY and HH:MM:SS
+            if (DateTime.TryParseExact($"{dAlt} {hAlt ?? "00:00:00"}", "dd/MM/yyyy HH:mm:ss", 
+                System.Globalization.CultureInfo.InvariantCulture, 
+                System.Globalization.DateTimeStyles.AssumeLocal, out var result))
+            {
+                return result.ToUniversalTime();
+            }
+
+            return null;
+        }
+    }
+
     public class OmieRequest<T>
     {
         [JsonPropertyName("call")]

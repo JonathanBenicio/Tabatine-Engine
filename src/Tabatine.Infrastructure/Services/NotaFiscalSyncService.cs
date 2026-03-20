@@ -5,6 +5,7 @@ using Tabatine.Core.Entities;
 using Tabatine.Core.Interfaces;
 using Tabatine.Infrastructure.Data;
 using Tabatine.Omie.Client;
+using Tabatine.Omie.Client.Models;
 
 namespace Tabatine.Infrastructure.Services
 {
@@ -184,6 +185,16 @@ namespace Tabatine.Infrastructure.Services
           }
           else
           {
+            var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieNf.Info?.DAlt, omieNf.Info?.HAlt);
+
+            // Se o timestamp da Omie for igual ao que já temos, pula o update
+            if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue && 
+                existing.OmieUpdatedAt.Value == omieLastAlt.Value)
+            {
+                _logger.LogDebug("Nota Fiscal OmieId {OmieId} já está atualizada. Pulando UPDATE.", omieId);
+                continue;
+            }
+
             existing.Status = status;
             existing.CodigoStatus = int.TryParse(omieNf.Ide.Situacao, out int csAtualizacao) ? csAtualizacao : 0;
             existing.ChaveAcesso = omieNf.Compl.ChaveNfe;
@@ -223,6 +234,7 @@ namespace Tabatine.Infrastructure.Services
             existing.ContaCorrenteId = pedido?.ContaCorrenteId;
             existing.IdTransportadora = omieNf.Compl.IdTransportadora;
             existing.UpdatedAt = DateTime.UtcNow;
+            existing.OmieUpdatedAt = omieLastAlt;
 
             if (DateTime.TryParseExact(omieNf.Ide.DataSaida, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dSaiUpd))
             {

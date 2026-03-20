@@ -4,6 +4,7 @@ using Tabatine.Core.Entities;
 using Tabatine.Core.Interfaces;
 using Tabatine.Infrastructure.Data;
 using Tabatine.Omie.Client;
+using Tabatine.Omie.Client.Models;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -51,6 +52,7 @@ namespace Tabatine.Infrastructure.Services
                 foreach (var omieCliente in response.ClientesCadastro)
                 {
                     existingClientes.TryGetValue(omieCliente.CodigoClienteOmie, out var existing);
+                    var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieCliente.DAlt, omieCliente.HAlt);
 
                     if (existing == null)
                     {
@@ -74,11 +76,20 @@ namespace Tabatine.Infrastructure.Services
                             InscricaoMunicipal = omieCliente.InscricaoMunicipal,
                             OptanteSimplesNacional = omieCliente.OptanteSimplesNacional == "S",
                             CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
+                            UpdatedAt = DateTime.UtcNow,
+                            OmieUpdatedAt = omieLastAlt
                         });
                     }
                     else
                     {
+                        // Se o timestamp da Omie for igual ao que já temos, pula o update
+                        if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue && 
+                            existing.OmieUpdatedAt.Value == omieLastAlt.Value)
+                        {
+                            _logger.LogDebug("Cliente OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieCliente.CodigoClienteOmie);
+                            continue;
+                        }
+
                         existing.RazaoSocial = omieCliente.RazaoSocial;
                         existing.NomeFantasia = omieCliente.NomeFantasia;
                         existing.CnpjCpf = omieCliente.CnpjCpf;
@@ -95,6 +106,7 @@ namespace Tabatine.Infrastructure.Services
                         existing.InscricaoMunicipal = omieCliente.InscricaoMunicipal;
                         existing.OptanteSimplesNacional = omieCliente.OptanteSimplesNacional == "S";
                         existing.UpdatedAt = DateTime.UtcNow;
+                        existing.OmieUpdatedAt = omieLastAlt;
                     }
                 }
 

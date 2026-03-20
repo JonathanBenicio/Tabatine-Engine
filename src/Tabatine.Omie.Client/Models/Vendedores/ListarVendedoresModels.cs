@@ -21,10 +21,16 @@ namespace Tabatine.Omie.Client.Models.Vendedores
         public string ApenasImportadoApi { get; set; } = "N";
     }
 
-    public class OmieVendedor
+    public class OmieVendedor : IOmieMetadata
     {
         [JsonPropertyName("codigo")]
         public long Codigo { get; set; }
+
+        [JsonPropertyName("dAlt")]
+        public string? DAlt { get; set; }
+
+        [JsonPropertyName("hAlt")]
+        public string? HAlt { get; set; }
 
         [JsonPropertyName("nome")]
         public string Nome { get; set; } = string.Empty;

@@ -29,10 +29,16 @@ namespace Tabatine.Omie.Client.Models.Clientes
         // Campos válidos: codigo_cliente_omie, cnpj_cpf, razao_social, etc.
     }
 
-    public class OmieCliente
+    public class OmieCliente : IOmieMetadata
     {
         [JsonPropertyName("codigo_cliente_omie")]
         public long CodigoClienteOmie { get; set; }
+
+        [JsonPropertyName("dAlt")]
+        public string? DAlt { get; set; }
+
+        [JsonPropertyName("hAlt")]
+        public string? HAlt { get; set; }
 
         [JsonPropertyName("razao_social")]
         public string RazaoSocial { get; set; } = string.Empty;

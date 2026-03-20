@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Tabatine.Omie.Client.Models;
+
 
 namespace Tabatine.Infrastructure.Services
 {
@@ -227,6 +229,16 @@ namespace Tabatine.Infrastructure.Services
                     }
                     else
                     {
+                        var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omiePedido.InfoCadastro?.DAlt, omiePedido.InfoCadastro?.HAlt);
+
+                        // Se o timestamp da Omie for igual ao que já temos, pula o update
+                        if (existingPedido.OmieUpdatedAt.HasValue && omieLastAlt.HasValue && 
+                            existingPedido.OmieUpdatedAt.Value == omieLastAlt.Value)
+                        {
+                            _logger.LogDebug("Pedido OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
+                            continue;
+                        }
+
                         existingPedido.Etapa = omiePedido.Cabecalho.Etapa;
                         existingPedido.EtapaFaturamentoId = etapasDict.TryGetValue(omiePedido.Cabecalho.Etapa, out var eExId) ? eExId : null;
                         existingPedido.ValorTotal = omiePedido.TotalPedido.ValorTotalPedido;

@@ -9,6 +9,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Tabatine.Omie.Client.Models;
+
 
 namespace Tabatine.Infrastructure.Services
 {
@@ -63,6 +65,7 @@ namespace Tabatine.Infrastructure.Services
                     }
 
                     existingVendedores.TryGetValue(omieId, out var existing);
+                    var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieItem.DAlt, omieItem.HAlt);
 
                     if (existing == null)
                     {
@@ -75,18 +78,28 @@ namespace Tabatine.Infrastructure.Services
                             Comissao = omieItem.Comissao,
                             Inativo = omieItem.Inativo == "S",
                             CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
+                            UpdatedAt = DateTime.UtcNow,
+                            OmieUpdatedAt = omieLastAlt
                         };
                         _dbContext.Vendedores.Add(novoVendedor);
                         existingVendedores[omieId] = novoVendedor;
                     }
                     else
                     {
+                        // Se o timestamp da Omie for igual ao que já temos, pula o update
+                        if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue && 
+                            existing.OmieUpdatedAt.Value == omieLastAlt.Value)
+                        {
+                            _logger.LogDebug("Vendedor OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
+                            continue;
+                        }
+
                         existing.Nome = omieItem.Nome;
                         existing.Email = omieItem.Email;
                         existing.Comissao = omieItem.Comissao;
                         existing.Inativo = omieItem.Inativo == "S";
                         existing.UpdatedAt = DateTime.UtcNow;
+                        existing.OmieUpdatedAt = omieLastAlt;
                     }
                 }
 

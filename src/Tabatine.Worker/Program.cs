@@ -24,6 +24,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure Serilog
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("DefaultConnection not found");
 
+Serilog.Debugging.SelfLog.Enable(msg => Console.WriteLine($"[SERILOG SELF-LOG] {msg}"));
+
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -36,7 +38,8 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day, restrictedToMinimumLevel: LogEventLevel.Debug)
     .WriteTo.PostgreSQL(
         connectionString: connectionString,
-        tableName: "Logs",
+        tableName: "\"Logs\"",
+        schemaName: "public",
         needAutoCreateTable: false,
         restrictedToMinimumLevel: LogEventLevel.Information,
         columnOptions: new Dictionary<string, ColumnWriterBase>

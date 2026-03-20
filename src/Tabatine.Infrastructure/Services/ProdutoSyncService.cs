@@ -4,6 +4,7 @@ using Tabatine.Core.Entities;
 using Tabatine.Core.Interfaces;
 using Tabatine.Infrastructure.Data;
 using Tabatine.Omie.Client;
+using Tabatine.Omie.Client.Models;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -66,6 +67,7 @@ namespace Tabatine.Infrastructure.Services
                     }
 
                     existingProdutos.TryGetValue(omieId, out var existing);
+                    var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieItem.DAlt, omieItem.HAlt);
 
                     if (existing == null)
                     {
@@ -83,13 +85,22 @@ namespace Tabatine.Infrastructure.Services
                             FamiliaProduto = omieItem.FamiliaProduto,
                             Ativo = omieItem.Inativo == "N",
                             CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
+                            UpdatedAt = DateTime.UtcNow,
+                            OmieUpdatedAt = omieLastAlt
                         };
                         _dbContext.Produtos.Add(novoProduto);
                         existingProdutos[omieId] = novoProduto;
                     }
                     else
                     {
+                        // Se o timestamp da Omie for igual ao que já temos, pula o update
+                        if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue && 
+                            existing.OmieUpdatedAt.Value == omieLastAlt.Value)
+                        {
+                            _logger.LogDebug("Produto OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
+                            continue;
+                        }
+
                         existing.CodigoProduto = omieItem.Codigo;
                         existing.Descricao = omieItem.Descricao;
                         existing.PrecoUnitario = omieItem.ValorUnitario;
@@ -100,6 +111,7 @@ namespace Tabatine.Infrastructure.Services
                         existing.FamiliaProduto = omieItem.FamiliaProduto;
                         existing.Ativo = omieItem.Inativo == "N";
                         existing.UpdatedAt = DateTime.UtcNow;
+                        existing.OmieUpdatedAt = omieLastAlt;
                     }
                 }
 
