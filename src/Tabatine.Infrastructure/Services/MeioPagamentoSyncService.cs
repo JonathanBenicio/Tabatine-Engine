@@ -69,7 +69,9 @@ namespace Tabatine.Infrastructure.Services
 
             await _dbContext.SaveChangesAsync(ct);
             await _syncState.SetLastSyncDateAsync("MeiosPagamento", DateTime.UtcNow, ct);
-            _logger.LogInformation("Sincronização de Meios de Pagamento concluída.");
+            _logger.LogInformation("Sincronização de Meios de Pagamento finalizada.");
         }
+
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default) => await Task.CompletedTask;
     }
 }

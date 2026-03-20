@@ -120,5 +120,10 @@ namespace Tabatine.Infrastructure.Services
             await _syncState.SetLastSyncDateAsync("Clientes", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Clientes finalizada.");
         }
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            // Opcional: Implementar se necessário para webhooks de clientes
+            await Task.CompletedTask;
+        }
     }
 }

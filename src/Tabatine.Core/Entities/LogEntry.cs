@@ -3,9 +3,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Tabatine.Core.Entities
 {
-    [Table("Logs")]
+    [Table("logs")]
     public class LogEntry
     {
+        [Column("id")]
         public int Id { get; set; }
 
         [Column("message")]

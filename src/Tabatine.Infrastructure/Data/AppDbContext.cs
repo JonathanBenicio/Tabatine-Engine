@@ -27,6 +27,7 @@ namespace Tabatine.Infrastructure.Data
         public DbSet<IntegrationSyncState> IntegrationSyncStates => Set<IntegrationSyncState>();
         public DbSet<SyncLock> SyncLocks => Set<SyncLock>();
         public DbSet<LogEntry> Logs => Set<LogEntry>();
+        public DbSet<Notification> Notifications => Set<Notification>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
