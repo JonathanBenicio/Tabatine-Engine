@@ -18,6 +18,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using System.Text.Json;
 using System.Net.Mime;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -128,6 +129,9 @@ builder.Services.AddHttpClient<IOmieClient, OmieClient>(client =>
 });
 
 builder.Services.AddScoped<ISyncStateRepository, SyncStateRepository>();
+builder.Services.AddScoped<INotificationService, SupabaseNotificationService>();
+builder.Services.AddScoped<INotificationService, TelegramNotificationService>();
+
 builder.Services.AddScoped<ClienteSyncService>();
 builder.Services.AddScoped<ProdutoSyncService>();
 builder.Services.AddScoped<PedidoSyncService>();
@@ -165,6 +169,67 @@ app.MapHealthChecks("/health", new HealthCheckOptions
         context.Response.ContentType = MediaTypeNames.Application.Json;
         await context.Response.WriteAsync(result);
     }
+});
+
+// Omie Webhook Endpoint
+app.MapPost("/webhook/omie", async (
+    [FromBody] Tabatine.Worker.Models.OmieWebhookRequest request,
+    IServiceProvider serviceProvider,
+    ILogger<Program> logger) =>
+{
+    logger.LogInformation("Recebido Webhook Omie: Evento={Event}", request.Event);
+
+    try
+    {
+        if (request.Message == null) return Results.Ok();
+
+        using var scope = serviceProvider.CreateScope();
+        var pedidoSync = scope.ServiceProvider.GetRequiredService<PedidoSyncService>();
+        var nfSync = scope.ServiceProvider.GetRequiredService<NotaFiscalSyncService>();
+        var notificationServices = scope.ServiceProvider.GetServices<INotificationService>();
+
+        string? messageJson = request.Message.ToString();
+        if (string.IsNullOrEmpty(messageJson)) return Results.Ok();
+
+        if (request.Event == "VendaProduto.Novo" || request.Event == "VendaProduto.Alterado")
+        {
+            var pedidoMsg = JsonSerializer.Deserialize<Tabatine.Worker.Models.OmieWebhookPedidoMessage>(messageJson);
+            if (pedidoMsg != null)
+            {
+                await pedidoSync.SyncByIdAsync(pedidoMsg.CodigoPedido);
+                
+                var title = request.Event == "VendaProduto.Novo" ? "Novo Pedido" : "Pedido Alterado";
+                var summary = $"Pedido {pedidoMsg.NumeroPedido} - Etapa: {pedidoMsg.Etapa}";
+                
+                foreach (var service in notificationServices)
+                {
+                    await service.SendNotificationAsync(title, summary, "PEDIDO", pedidoMsg.CodigoPedido);
+                }
+            }
+        }
+        else if (request.Event == "Faturamento.NotaFiscalEmitida")
+        {
+            var nfMsg = JsonSerializer.Deserialize<Tabatine.Worker.Models.OmieWebhookNfMessage>(messageJson);
+            if (nfMsg != null)
+            {
+                await nfSync.SyncByIdAsync(nfMsg.CodigoNf);
+                
+                var title = "NF Emitida";
+                var summary = $"Nota Fiscal {nfMsg.NumeroNf} emitida.";
+                
+                foreach (var service in notificationServices)
+                {
+                    await service.SendNotificationAsync(title, summary, "NF", nfMsg.CodigoNf);
+                }
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Erro ao processar webhook Omie");
+    }
+
+    return Results.Ok();
 });
 
 try

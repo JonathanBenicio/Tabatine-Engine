@@ -15,6 +15,12 @@ using Tabatine.Omie.Client.Models.FormaPagamento;
 using Tabatine.Omie.Client.Models.Bancos;
 using Tabatine.Omie.Client.Models.Geral;
 using Tabatine.Omie.Client.Models.Financeiro;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Tabatine.Omie.Client
 {
@@ -209,6 +215,20 @@ namespace Tabatine.Omie.Client
         {
             var param = new { codigo_cliente_omie = codigoClienteOmie };
             return await SendRequestAsync<object, OmieCliente>("geral/clientes/", "ConsultarCliente", param, cancellationToken);
+        }
+
+        public async Task<OmiePedido?> ConsultarPedidoAsync(long codigoPedidoOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new { codigo_pedido_omie = codigoPedidoOmie };
+            var response = await SendRequestAsync<object, OmiePedido>("produtos/pedido/", "ConsultarPedido", param, cancellationToken);
+            return response;
+        }
+
+        public async Task<OmieNotaFiscal?> ConsultarNotaFiscalAsync(long codigoNfOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new { codigo_nf = codigoNfOmie };
+            var response = await SendRequestAsync<object, OmieNotaFiscal>("produtos/nfconsultar/", "ConsultarNF", param, cancellationToken);
+            return response;
         }
     }
 }

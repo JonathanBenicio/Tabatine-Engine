@@ -124,5 +124,9 @@ namespace Tabatine.Infrastructure.Services
             await _syncState.SetLastSyncDateAsync("Produtos", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Produtos finalizada.");
         }
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            await Task.CompletedTask;
+        }
     }
 }
