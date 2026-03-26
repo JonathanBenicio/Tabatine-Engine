@@ -9,6 +9,12 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  Omie__AppKey: ${{ secrets.OMIE_APPKEY }}
+  Omie__AppSecret: ${{ secrets.OMIE_APPSECRET }}
+  Omie__BaseUrl: ${{ secrets.OMIE_BASEURL }}
+  ConnectionStrings__DefaultConnection: ${{ secrets.CONNECTIONSTRINGS_DEFAULTCONNECTION }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -62,4 +68,3 @@ jobs:
           app-name: 'tabatine-worker'
           slot-name: 'Production'
           package: .
-          
