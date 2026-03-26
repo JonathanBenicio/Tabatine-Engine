@@ -1,6 +1,6 @@
 using Serilog;
 using Serilog.Events;
-using Serilog.Sinks.PostgreSQL;
+using Serilog.Sinks.PostgreSQL.ColumnWriters;
 
 namespace Tabatine.Worker.Extensions;
 
