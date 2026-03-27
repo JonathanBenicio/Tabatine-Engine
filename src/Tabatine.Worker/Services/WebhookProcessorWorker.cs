@@ -8,21 +8,13 @@ using Tabatine.Worker.Models;
 
 namespace Tabatine.Worker.Services;
 
-public class WebhookProcessorWorker : BackgroundService
+public class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logger, IServiceScopeFactory scopeFactory) : BackgroundService
 {
-    private readonly ILogger<WebhookProcessorWorker> _logger;
-    private readonly IServiceScopeFactory _scopeFactory;
     private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(5);
-
-    public WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logger, IServiceScopeFactory scopeFactory)
-    {
-        _logger = logger;
-        _scopeFactory = scopeFactory;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("WebhookProcessorWorker iniciado.");
+        logger.LogInformation("WebhookProcessorWorker iniciado.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -43,17 +35,17 @@ public class WebhookProcessorWorker : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro crítico no loop principal do WebhookProcessorWorker.");
+                logger.LogError(ex, "Erro crítico no loop principal do WebhookProcessorWorker.");
                 await Task.Delay(_pollingInterval, stoppingToken);
             }
         }
 
-        _logger.LogInformation("WebhookProcessorWorker finalizado.");
+        logger.LogInformation("WebhookProcessorWorker finalizado.");
     }
 
     private async Task<bool> ProcessNextMessageAsync(CancellationToken cancellationToken)
     {
-        using var scope = _scopeFactory.CreateScope();
+        using var scope = scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         // Usando transação explícita para o FOR UPDATE SKIP LOCKED
@@ -73,51 +65,18 @@ public class WebhookProcessorWorker : BackgroundService
                 return false;
             }
 
-            _logger.LogInformation("Processando Webhook ID: {Id} - Evento: {Event}", webhookEvent.Id, webhookEvent.Event);
+            logger.LogInformation("Processando Webhook ID: {Id} - Evento: {Event}", webhookEvent.Id, webhookEvent.Event);
 
             try
             {
-                var pedidoSync = scope.ServiceProvider.GetRequiredService<PedidoSyncService>();
-                var nfSync = scope.ServiceProvider.GetRequiredService<NotaFiscalSyncService>();
-                var notificationServices = scope.ServiceProvider.GetServices<INotificationService>();
-
-                if (webhookEvent.Event == "VendaProduto.Novo" || webhookEvent.Event == "VendaProduto.Alterado")
-                {
-                    var pedidoMsg = JsonSerializer.Deserialize<OmieWebhookPedidoMessage>(webhookEvent.Payload);
-                    if (pedidoMsg != null)
-                    {
-                        await pedidoSync.SyncByIdAsync(pedidoMsg.CodigoPedido);
-                        
-                        var title = webhookEvent.Event == "VendaProduto.Novo" ? "Novo Pedido" : "Pedido Alterado";
-                        var summary = $"Pedido {pedidoMsg.NumeroPedido} - Etapa: {pedidoMsg.Etapa}";
-                        
-                        foreach (var service in notificationServices)
-                        {
-                            await service.SendNotificationAsync(title, summary, "PEDIDO", pedidoMsg.CodigoPedido);
-                        }
-                    }
-                }
-                else if (webhookEvent.Event == "Faturamento.NotaFiscalEmitida")
-                {
-                    var nfMsg = JsonSerializer.Deserialize<OmieWebhookNfMessage>(webhookEvent.Payload);
-                    if (nfMsg != null)
-                    {
-                        await nfSync.SyncByIdAsync(nfMsg.CodigoNf);
-                        
-                        var title = "NF Emitida";
-                        var summary = $"Nota Fiscal {nfMsg.NumeroNf} emitida.";
-                        
-                        foreach (var service in notificationServices)
-                        {
-                            await service.SendNotificationAsync(title, summary, "NF", nfMsg.CodigoNf);
-                        }
-                    }
-                }
+                var handlerFactory = scope.ServiceProvider.GetRequiredService<Tabatine.Worker.Services.Handlers.WebhookHandlerFactory>();
+                var handler = handlerFactory.GetHandler(webhookEvent.Event);
+                await handler.HandleAsync(webhookEvent, cancellationToken);
 
                 // Sucesso
                 webhookEvent.Status = "Processed";
                 webhookEvent.ProcessedAt = DateTime.UtcNow;
-                _logger.LogInformation("Webhook ID: {Id} processado com sucesso.", webhookEvent.Id);
+                logger.LogInformation("Webhook ID: {Id} processado com sucesso.", webhookEvent.Id);
             }
             catch (Exception ex)
             {
@@ -125,7 +84,7 @@ public class WebhookProcessorWorker : BackgroundService
                 webhookEvent.Status = "Failed";
                 webhookEvent.ErrorMessage = ex.Message;
                 webhookEvent.ProcessedAt = DateTime.UtcNow;
-                _logger.LogError(ex, "Erro processando Webhook ID: {Id}", webhookEvent.Id);
+                logger.LogError(ex, "Erro processando Webhook ID: {Id}", webhookEvent.Id);
             }
 
             // Atualizar e comitar transação

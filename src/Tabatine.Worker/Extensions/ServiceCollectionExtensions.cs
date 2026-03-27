@@ -8,6 +8,7 @@ using Tabatine.Omie.Client.Models;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Tabatine.Worker.Services.Handlers;
 
 namespace Tabatine.Worker.Extensions;
 
@@ -45,6 +46,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<FormaPagamentoSyncService>();
         services.AddScoped<CondicaoPagamentoSyncService>();
         services.AddScoped<MeioPagamentoSyncService>();
+
+        // Webhook Handlers
+        services.AddScoped<IWebhookEventHandler, PedidoWebhookHandler>();
+        services.AddScoped<IWebhookEventHandler, NotaFiscalWebhookHandler>();
+        services.AddScoped<IWebhookEventHandler, ClienteWebhookHandler>();
+        services.AddScoped<IWebhookEventHandler, ProdutoWebhookHandler>();
+        services.AddScoped<WebhookHandlerFactory>();
 
         services.AddScoped<ISyncService, SyncManager>();
         services.AddHostedService<Worker>();
