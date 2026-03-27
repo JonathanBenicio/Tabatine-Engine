@@ -11,6 +11,7 @@ builder.Services.AddOmieInfrastructure(builder.Configuration);
 builder.Services.AddOmieClient(builder.Configuration);
 builder.Services.AddCustomHealthChecks(builder.Configuration);
 builder.Services.AddOpenApi();
+builder.Services.AddHostedService<Tabatine.Worker.Services.WebhookProcessorWorker>();
 
 var app = builder.Build();
 

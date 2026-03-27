@@ -50,7 +50,7 @@
           "host": ["{{baseUrl}}"],
           "path": ["webhook", "omie"]
         },
-        "description": "Simula o webhook da Omie ao criar um novo pedido de venda.\n\nO engine irá:\n1. Deserializar a mensagem como `OmieWebhookPedidoMessage`\n2. Chamar `PedidoSyncService.SyncByIdAsync(codigo_pedido_omie)`\n3. Enviar notificação com título 'Novo Pedido'"
+        "description": "Simula o webhook da Omie ao criar um novo pedido de venda.\n\nO Endpoint irá:\n1. Gravar o payload na tabela WebhookEvents ('Pending')\n2. Retornar 200 OK (Fast Acknowledge)\n\nO Background Worker irá (Assíncrono):\n1. Capturar o evento na fila\n2. Chamar o PedidoSyncService.SyncByIdAsync\n3. Enviar a notificação internamente\n4. Marcar como 'Processed'"
       },
       "response": [
         {
@@ -85,7 +85,7 @@
           "host": ["{{baseUrl}}"],
           "path": ["webhook", "omie"]
         },
-        "description": "Simula o webhook da Omie ao alterar um pedido de venda existente.\n\nO engine irá:\n1. Deserializar a mensagem como `OmieWebhookPedidoMessage`\n2. Chamar `PedidoSyncService.SyncByIdAsync(codigo_pedido_omie)`\n3. Enviar notificação com título 'Pedido Alterado'"
+        "description": "Simula o webhook da Omie ao alterar um pedido de venda existente.\n\nO Endpoint irá:\n1. Gravar o payload na tabela WebhookEvents ('Pending')\n2. Retornar 200 OK (Fast Acknowledge)\n\nO Background Worker irá (Assíncrono):\n1. Capturar o evento na fila\n2. Chamar o PedidoSyncService.SyncByIdAsync\n3. Enviar a notificação internamente\n4. Marcar como 'Processed'"
       },
       "response": [
         {
@@ -120,7 +120,7 @@
           "host": ["{{baseUrl}}"],
           "path": ["webhook", "omie"]
         },
-        "description": "Simula o webhook da Omie ao emitir uma Nota Fiscal.\n\nO engine irá:\n1. Deserializar a mensagem como `OmieWebhookNfMessage`\n2. Chamar `NotaFiscalSyncService.SyncByIdAsync(codigo_nf)`\n3. Enviar notificação com título 'NF Emitida'"
+        "description": "Simula o webhook da Omie ao emitir uma Nota Fiscal.\n\nO Endpoint irá:\n1. Gravar o payload na tabela WebhookEvents ('Pending')\n2. Retornar 200 OK (Fast Acknowledge)\n\nO Background Worker irá (Assíncrono):\n1. Capturar o evento na fila\n2. Chamar o NotaFiscalSyncService.SyncByIdAsync\n3. Enviar a notificação internamente\n4. Marcar como 'Processed'"
       },
       "response": [
         {
@@ -155,7 +155,7 @@
           "host": ["{{baseUrl}}"],
           "path": ["webhook", "omie"]
         },
-        "description": "Evento não mapeado. O engine aceita a requisição (200 OK) mas não executa nenhuma ação de sincronização."
+        "description": "Evento não mapeado. O endpoint enfileira normalmente devolvendo 200 OK. O Worker irá retirá-lo da fila, ignorar o processamento (pois não faz match) e marcá-lo como 'Processed'."
       },
       "response": [
         {

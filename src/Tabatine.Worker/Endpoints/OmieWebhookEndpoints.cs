@@ -22,52 +22,33 @@ public static class OmieWebhookEndpoints
             {
                 if (request.Message == null) return Results.Ok();
 
-                using var scope = serviceProvider.CreateScope();
-                var pedidoSync = scope.ServiceProvider.GetRequiredService<PedidoSyncService>();
-                var nfSync = scope.ServiceProvider.GetRequiredService<NotaFiscalSyncService>();
-                var notificationServices = scope.ServiceProvider.GetServices<INotificationService>();
-
                 string? messageJson = request.Message.ToString();
                 if (string.IsNullOrEmpty(messageJson)) return Results.Ok();
 
-                if (request.Event == "VendaProduto.Novo" || request.Event == "VendaProduto.Alterado")
+                // Salvar o evento na fila para processamento em background (Fast Acknowledge)
+                using var scope = serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Data.AppDbContext>();
+
+                var webhookEvent = new Tabatine.Core.Entities.WebhookEvent
                 {
-                    var pedidoMsg = JsonSerializer.Deserialize<OmieWebhookPedidoMessage>(messageJson);
-                    if (pedidoMsg != null)
-                    {
-                        await pedidoSync.SyncByIdAsync(pedidoMsg.CodigoPedido);
-                        
-                        var title = request.Event == "VendaProduto.Novo" ? "Novo Pedido" : "Pedido Alterado";
-                        var summary = $"Pedido {pedidoMsg.NumeroPedido} - Etapa: {pedidoMsg.Etapa}";
-                        
-                        foreach (var service in notificationServices)
-                        {
-                            await service.SendNotificationAsync(title, summary, "PEDIDO", pedidoMsg.CodigoPedido);
-                        }
-                    }
-                }
-                else if (request.Event == "Faturamento.NotaFiscalEmitida")
-                {
-                    var nfMsg = JsonSerializer.Deserialize<OmieWebhookNfMessage>(messageJson);
-                    if (nfMsg != null)
-                    {
-                        await nfSync.SyncByIdAsync(nfMsg.CodigoNf);
-                        
-                        var title = "NF Emitida";
-                        var summary = $"Nota Fiscal {nfMsg.NumeroNf} emitida.";
-                        
-                        foreach (var service in notificationServices)
-                        {
-                            await service.SendNotificationAsync(title, summary, "NF", nfMsg.CodigoNf);
-                        }
-                    }
-                }
+                    AppKey = request.AppKey ?? string.Empty,
+                    Event = request.Event ?? "Desconhecido",
+                    Payload = messageJson,
+                    Status = "Pending",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await dbContext.WebhookEvents.AddAsync(webhookEvent);
+                await dbContext.SaveChangesAsync();
+                
+                logger.LogInformation("Evento {Event} salvo na fila com ID {Id}", request.Event, webhookEvent.Id);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Erro ao processar webhook Omie");
+                logger.LogError(ex, "Erro ao gravar webhook Omie na fila");
             }
 
+            // Sempre retornar 200 OK rapidamente para não bloquear a fila da Omie
             return Results.Ok();
         });
     }

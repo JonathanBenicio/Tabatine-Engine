@@ -28,6 +28,7 @@ namespace Tabatine.Infrastructure.Data
         public DbSet<SyncLock> SyncLocks => Set<SyncLock>();
         public DbSet<LogEntry> Logs => Set<LogEntry>();
         public DbSet<Notification> Notifications => Set<Notification>();
+        public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
