@@ -200,6 +200,20 @@
           "body": ""
         }
       ]
+    },
+    {
+      "name": "Trigger System Manual Sync",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/sync/trigger",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "sync", "trigger"]
+        },
+        "description": "Agenda uma sincronização completa (Full Sync) de todos os módulos Omie utilizando a infraestrutura de fila do PostgreSQL/Supabase."
+      },
+      "response": []
     }
   ]
 }

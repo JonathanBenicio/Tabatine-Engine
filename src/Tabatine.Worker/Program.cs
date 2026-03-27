@@ -22,6 +22,7 @@ app.MapScalarApiReference();
 // Modularized Mappings
 app.UseCustomHealthChecks();
 app.MapOmieWebhookEndpoints();
+app.MapSyncEndpoints();
 app.ApplyMigrations();
 
 try

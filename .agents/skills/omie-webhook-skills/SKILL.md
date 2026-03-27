@@ -27,3 +27,9 @@
 - **Capacidades:**
   - Registrar com clareza o motivo de falha de uma sincronização no background.
   - [cite_start]Implementar uma política de repetição de falhas interna (já que a responsabilidade de tentar de novo agora é local, não da Omie)[cite: 31].
+
+## 5. Referências e Implementação
+
+Para ver o detalhamento técnico de como estas *Skills* foram implementadas na prática no ambiente do Tabatine (Engine), acesse a documentação detalhada:
+
+- [Documentação da Arquitetura de Webhooks](references/webhook-docs.md)

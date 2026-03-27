@@ -52,10 +52,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IWebhookEventHandler, NotaFiscalWebhookHandler>();
         services.AddScoped<IWebhookEventHandler, ClienteWebhookHandler>();
         services.AddScoped<IWebhookEventHandler, ProdutoWebhookHandler>();
+        services.AddScoped<IWebhookEventHandler, VendedorWebhookHandler>();
+        services.AddScoped<IWebhookEventHandler, ContaCorrenteWebhookHandler>();
+        services.AddScoped<IWebhookEventHandler, SystemManualSyncWebhookHandler>();
         services.AddScoped<WebhookHandlerFactory>();
 
         services.AddScoped<ISyncService, SyncManager>();
-        services.AddHostedService<Worker>();
 
         return services;
     }
