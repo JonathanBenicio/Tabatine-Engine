@@ -28,7 +28,9 @@ graph TD
     OmieAPI -->|JSON Data| OmieClient[IOmieClient]
     OmieClient -->|Mapeamento| DbContext[AppDbContext]
     DbContext -->|Upsert| Supabase[(Supabase / PostgreSQL)]
-    Webhook[Webhook Endpoint] -->|Trigger| Worker
+    Webhook[Webhook Endpoint /webhook/omie] -->|Fast Acknowledge| Queue[(Tabela WebhookEvents)]
+    Queue -->|Polling SKIP LOCKED| Processor[WebhookProcessorWorker]
+    Processor -->|Trigger| ISyncService
 ```
 
 ## 🛠️ Como Iniciar
@@ -66,11 +68,12 @@ graph TD
    dotnet run --project src/Tabatine.Worker
    ```
 
-## 📡 Integração de Webhooks
+## 📡 Integração de Webhooks (Processamento Assíncrono)
 
-O Worker expõe endpoints (ex: `/api/omie/webhook`) para receber notificações em tempo real do Omie. Atualmente, processa:
-- **Vendas**: Dispara notificações para Telegram e atualiza o estado local.
-- **Notas Fiscais**: Sincronização imediata após emissão.
+O Worker expõe o endpoint `/webhook/omie` para receber notificações em tempo real do Omie.
+Para respeitar o curto *timeout* da Omie de 7 segundos e evitar o bloqueio da fila original:
+1. **Ingestão (Fast Acknowledge)**: O endpoint apenas valida a estrutura, insere o payload bruto na tabela `WebhookEvents` do banco de dados e retorna `200 OK` instantaneamente.
+2. **Processamento (Background Worker)**: O serviço especializado `WebhookProcessorWorker` varre a fila no banco de dados com concorrência segura (`SELECT ... FOR UPDATE SKIP LOCKED`), processando os eventos de **Vendas** e **Notas Fiscais**, alterando o status para `Processed` ou `Failed` sem derrubar a aplicação.
 
 ## 📝 Logs e Auditoria
 
