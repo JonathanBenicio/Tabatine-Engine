@@ -96,3 +96,4 @@ jobs:
           app-name: 'tabatine-worker'
           slot-name: 'Production'
           package: .
+          startup-command: 'dotnet Tabatine.Worker.dll'
