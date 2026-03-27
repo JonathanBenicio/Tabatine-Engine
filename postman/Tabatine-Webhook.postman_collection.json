@@ -1,0 +1,205 @@
+{
+  "info": {
+    "_postman_id": "tabatine-webhook-collection",
+    "name": "Tabatine - Omie Webhooks",
+    "description": "Collection para testar os endpoints de webhook Omie no Tabatine Engine.\n\nEndpoint único: POST /webhook/omie\n\nEventos suportados:\n- VendaProduto.Novo\n- VendaProduto.Alterado\n- Faturamento.NotaFiscalEmitida",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string",
+      "description": "URL base do Tabatine Worker"
+    },
+    {
+      "key": "appKey",
+      "value": "{{OMIE_APP_KEY}}",
+      "type": "string",
+      "description": "App Key da Omie"
+    },
+    {
+      "key": "appHash",
+      "value": "{{OMIE_APP_HASH}}",
+      "type": "string",
+      "description": "App Hash/Secret da Omie"
+    }
+  ],
+  "item": [
+    {
+      "name": "VendaProduto.Novo",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Novo\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"10\",\n    \"status_pedido\": \"Aberto\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/webhook/omie",
+          "host": ["{{baseUrl}}"],
+          "path": ["webhook", "omie"]
+        },
+        "description": "Simula o webhook da Omie ao criar um novo pedido de venda.\n\nO engine irá:\n1. Deserializar a mensagem como `OmieWebhookPedidoMessage`\n2. Chamar `PedidoSyncService.SyncByIdAsync(codigo_pedido_omie)`\n3. Enviar notificação com título 'Novo Pedido'"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "body": ""
+        }
+      ]
+    },
+    {
+      "name": "VendaProduto.Alterado",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"20\",\n    \"status_pedido\": \"Faturado\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/webhook/omie",
+          "host": ["{{baseUrl}}"],
+          "path": ["webhook", "omie"]
+        },
+        "description": "Simula o webhook da Omie ao alterar um pedido de venda existente.\n\nO engine irá:\n1. Deserializar a mensagem como `OmieWebhookPedidoMessage`\n2. Chamar `PedidoSyncService.SyncByIdAsync(codigo_pedido_omie)`\n3. Enviar notificação com título 'Pedido Alterado'"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "body": ""
+        }
+      ]
+    },
+    {
+      "name": "Faturamento.NotaFiscalEmitida",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Faturamento.NotaFiscalEmitida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000123\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/webhook/omie",
+          "host": ["{{baseUrl}}"],
+          "path": ["webhook", "omie"]
+        },
+        "description": "Simula o webhook da Omie ao emitir uma Nota Fiscal.\n\nO engine irá:\n1. Deserializar a mensagem como `OmieWebhookNfMessage`\n2. Chamar `NotaFiscalSyncService.SyncByIdAsync(codigo_nf)`\n3. Enviar notificação com título 'NF Emitida'"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "body": ""
+        }
+      ]
+    },
+    {
+      "name": "Evento Desconhecido (ignorado)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Outro.Evento\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"dados\": \"quaisquer\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/webhook/omie",
+          "host": ["{{baseUrl}}"],
+          "path": ["webhook", "omie"]
+        },
+        "description": "Evento não mapeado. O engine aceita a requisição (200 OK) mas não executa nenhuma ação de sincronização."
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "body": ""
+        }
+      ]
+    },
+    {
+      "name": "Mensagem Nula (ignorada)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Novo\",\n  \"author\": \"Omie\",\n  \"message\": null\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/webhook/omie",
+          "host": ["{{baseUrl}}"],
+          "path": ["webhook", "omie"]
+        },
+        "description": "Testa o comportamento quando `message` é nulo. O endpoint retorna 200 OK imediatamente sem processar."
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "status": "OK",
+          "code": 200,
+          "body": ""
+        }
+      ]
+    }
+  ]
+}

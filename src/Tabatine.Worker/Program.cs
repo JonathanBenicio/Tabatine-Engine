@@ -1,3 +1,4 @@
+using Scalar.AspNetCore;
 using Serilog;
 using Tabatine.Worker.Endpoints;
 using Tabatine.Worker.Extensions;
@@ -9,8 +10,13 @@ builder.AddCustomLogging();
 builder.Services.AddOmieInfrastructure(builder.Configuration);
 builder.Services.AddOmieClient(builder.Configuration);
 builder.Services.AddCustomHealthChecks(builder.Configuration);
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+// OpenAPI / Scalar
+app.MapOpenApi();
+app.MapScalarApiReference();
 
 // Modularized Mappings
 app.UseCustomHealthChecks();
