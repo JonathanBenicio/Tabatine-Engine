@@ -61,6 +61,34 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_DA63F70D898A4A2F8806DE9A7D454C93 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_7FA2DD4B6D3844C1B6D35E65069FDF47 }}
 
+      - name: Configure Azure Web App Settings
+        uses: azure/appservice-settings@v1
+        with:
+          app-name: 'tabatine-worker'
+          app-settings-json: |
+            [
+              {
+                "name": "Omie__AppKey",
+                "value": "${{ secrets.OMIE_APPKEY }}",
+                "slotSetting": false
+              },
+              {
+                "name": "Omie__AppSecret",
+                "value": "${{ secrets.OMIE_APPSECRET }}",
+                "slotSetting": false
+              },
+              {
+                "name": "Omie__BaseUrl",
+                "value": "${{ secrets.OMIE_BASEURL }}",
+                "slotSetting": false
+              },
+              {
+                "name": "ConnectionStrings__DefaultConnection",
+                "value": "${{ secrets.CONNECTIONSTRINGS_DEFAULTCONNECTION }}",
+                "slotSetting": false
+              }
+            ]
+
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
