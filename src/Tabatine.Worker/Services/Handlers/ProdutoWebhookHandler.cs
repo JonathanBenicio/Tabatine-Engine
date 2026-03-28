@@ -31,7 +31,11 @@ public class ProdutoWebhookHandler(ProdutoSyncService produtoSyncService, IEnume
         var root = doc.RootElement;
         
         long? codigoProduto = null;
-        if (root.TryGetProperty("codigo_produto", out var el1) && el1.ValueKind == JsonValueKind.Number)
+        if (root.TryGetProperty("idProduto", out var el0) && el0.ValueKind == JsonValueKind.Number)
+        {
+            codigoProduto = el0.GetInt64();
+        }
+        else if (root.TryGetProperty("codigo_produto", out var el1) && el1.ValueKind == JsonValueKind.Number)
         {
             codigoProduto = el1.GetInt64();
         }

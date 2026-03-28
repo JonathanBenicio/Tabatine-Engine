@@ -28,7 +28,11 @@ public class ClienteWebhookHandler(ClienteSyncService clienteSyncService, IEnume
         
         // Extract the code regardless of the exact schema provided we find the property
         long? codigoCliente = null;
-        if (root.TryGetProperty("codigo_cliente_omie", out var el1) && el1.ValueKind == JsonValueKind.Number)
+        if (root.TryGetProperty("idCliente", out var el0) && el0.ValueKind == JsonValueKind.Number)
+        {
+            codigoCliente = el0.GetInt64();
+        }
+        else if (root.TryGetProperty("codigo_cliente_omie", out var el1) && el1.ValueKind == JsonValueKind.Number)
         {
             codigoCliente = el1.GetInt64();
         }

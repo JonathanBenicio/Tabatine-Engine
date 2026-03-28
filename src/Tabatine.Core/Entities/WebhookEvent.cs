@@ -26,6 +26,12 @@ namespace Tabatine.Core.Entities
 
         public string? ErrorMessage { get; set; }
 
+        /// <summary>
+        /// Omie Connect 2.0 messageId for idempotent deduplication.
+        /// </summary>
+        [MaxLength(100)]
+        public string? MessageId { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? ProcessedAt { get; set; }

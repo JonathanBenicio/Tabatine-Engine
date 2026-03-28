@@ -26,7 +26,11 @@ public class ContaCorrenteWebhookHandler(ContaCorrenteSyncService contaCorrenteS
         var root = doc.RootElement;
         
         long? codigoCC = null;
-        if (root.TryGetProperty("nCodCC", out var el1) && el1.ValueKind == JsonValueKind.Number)
+        if (root.TryGetProperty("idContaCorrente", out var el0) && el0.ValueKind == JsonValueKind.Number)
+        {
+            codigoCC = el0.GetInt64();
+        }
+        else if (root.TryGetProperty("nCodCC", out var el1) && el1.ValueKind == JsonValueKind.Number)
         {
             codigoCC = el1.GetInt64();
         }
