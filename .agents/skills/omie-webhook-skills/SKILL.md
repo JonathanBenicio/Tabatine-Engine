@@ -1,3 +1,7 @@
+---
+description: Regras e estrutura de Ingestion, Background Processing e filas assíncronas projetadas para processar notificações push em tempo real emitidas pelo ERP Omie.
+---
+
 # Skills: Componentes do Webhook Omie
 
 [cite_start]Para implementar o ecossistema de webhooks da Omie respeitando suas características[cite: 6], o sistema deve possuir as seguintes *Skills* (módulos/capacidades):

@@ -1,3 +1,8 @@
+---
+name: Omie API Core Modules
+description: Habilidades fundamentais e padrões de projeto (Resiliência, Pagination, Translators) exigidos para consumir a API REST financeira da Omie de forma escalável.
+---
+
 # Skills: Módulos de Integração com a API Omie
 
 Para consumir a API de forma profissional e escalável, a arquitetura deve ser equipada com as seguintes *Skills*:

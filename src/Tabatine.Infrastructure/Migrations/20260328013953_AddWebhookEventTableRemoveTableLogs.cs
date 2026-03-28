@@ -1,20 +1,19 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
 namespace Tabatine.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddWebhookEventTable : Migration
+    public partial class AddWebhookEventTableRemoveTableLogs : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "Id",
-                table: "Logs",
-                newName: "id");
+            migrationBuilder.DropTable(
+                name: "Logs");
 
             migrationBuilder.CreateTable(
                 name: "WebhookEvents",
@@ -41,10 +40,24 @@ namespace Tabatine.Infrastructure.Migrations
             migrationBuilder.DropTable(
                 name: "WebhookEvents");
 
-            migrationBuilder.RenameColumn(
-                name: "id",
-                table: "Logs",
-                newName: "Id");
+            migrationBuilder.CreateTable(
+                name: "Logs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    exception = table.Column<string>(type: "text", nullable: true),
+                    level = table.Column<string>(type: "text", nullable: true),
+                    log_event = table.Column<string>(type: "jsonb", nullable: true),
+                    message = table.Column<string>(type: "text", nullable: true),
+                    message_template = table.Column<string>(type: "text", nullable: true),
+                    properties = table.Column<string>(type: "jsonb", nullable: true),
+                    timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Logs", x => x.Id);
+                });
         }
     }
 }

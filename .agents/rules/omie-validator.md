@@ -12,7 +12,7 @@ Você é um agente validando e gerando código para a integração com a API da 
 - **Tratamento HTTP 425**: Na 10ª requisição incorreta para a mesma rota, ocorrerá um bloqueio total de 30 minutos. Implemente mecanismos de retry, backoff e controle de consumo.
 
 ## 2. Paginação e Sincronização
-- Embora o limite de paginação da API seja de 100 registros, para listagens em lote recomenda-se ajustar a consulta para no máximo 500 registros por página.
+- O limite de paginação da API é de 100 registros por página.
 - Sempre prefira listagens em lote utilizando as datas de última consulta para trazer apenas registros incrementais.
 
 ## 3. Estrutura de Vendas (`PedidoVendaProduto`)

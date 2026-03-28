@@ -93,7 +93,7 @@ public abstract class OmieEntityBase
 
 ### Pagination
 
-- Use `registros_por_pagina`: 50-100 (max 500)
+- Use `registros_por_pagina`: 50-100 (max 100)
 - Always use incremental sync with `filtrar_por_data_de`
 - Handle empty responses (codes `Client-5113`, `Client-101`)
 
@@ -175,8 +175,15 @@ Refer to these files for additional context:
 
 - `.agents/rules/geral.md` - Project overview
 - `.agents/rules/dot-net-standards.md` - .NET conventions
-- `.agents/rules/omie-validator.md` - Omie API rules
+- `.agents/rules/omie-validator.md` - Omie API validation rules
+- `.agents/rules/omie-api-rules.md` - Omie API integration rules
+- `.agents/rules/omie-webhooks-rules.md` - Omie webhook rules
 - `.agents/rules/supabase-db.md` - Database guidelines
+
+### Workflows
+
+- `.agents/workflows/omie-api-workflow.md` - Omie API integration workflow
+- `.agents/workflows/omie-webhook-workflow.md` - Omie webhook handling workflow
 
 ---
 

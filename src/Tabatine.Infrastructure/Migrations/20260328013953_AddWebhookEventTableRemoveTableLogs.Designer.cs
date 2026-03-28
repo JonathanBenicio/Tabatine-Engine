@@ -12,8 +12,8 @@ using Tabatine.Infrastructure.Data;
 namespace Tabatine.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260327204535_AddWebhookEventTable")]
-    partial class AddWebhookEventTable
+    [Migration("20260328013953_AddWebhookEventTableRemoveTableLogs")]
+    partial class AddWebhookEventTableRemoveTableLogs
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -561,48 +561,6 @@ namespace Tabatine.Infrastructure.Migrations
                     b.HasIndex("ProdutoId");
 
                     b.ToTable("ItensPedido", (string)null);
-                });
-
-            modelBuilder.Entity("Tabatine.Core.Entities.LogEntry", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Exception")
-                        .HasColumnType("text")
-                        .HasColumnName("exception");
-
-                    b.Property<string>("Level")
-                        .HasColumnType("text")
-                        .HasColumnName("level");
-
-                    b.Property<string>("LogEvent")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("log_event");
-
-                    b.Property<string>("Message")
-                        .HasColumnType("text")
-                        .HasColumnName("message");
-
-                    b.Property<string>("MessageTemplate")
-                        .HasColumnType("text")
-                        .HasColumnName("message_template");
-
-                    b.Property<string>("Properties")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("properties");
-
-                    b.Property<DateTimeOffset>("Timestamp")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("timestamp");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Logs", (string)null);
                 });
 
             modelBuilder.Entity("Tabatine.Core.Entities.MeioPagamento", b =>

@@ -20,7 +20,7 @@ O sistema pode ser idealizado como um **Worker Service** em .NET (usando o `Micr
 - **Client HTTP:** `IHttpClientFactory` nativo.
 - **Resiliência e Rate Limits:** `.NET Resilience Extensions` (`Microsoft.Extensions.Http.Resilience`) para aplicar políticas nativas e avançadas de Retry, Timeout e Circuit Breaker.
 - **Banco de Dados Relacional:** **Supabase (PostgreSQL)** acessado de forma robusta via **Entity Framework Core** (`Npgsql.EntityFrameworkCore.PostgreSQL`).
-- **Banco de Controle e Cache:** **Redis**. Fundamental para controle distribuído de Rate Limits, coordenação entre múltiplas instâncias do worker (Distributed Locks) e caching rápido.
+- **Banco de Controle e Cache:** **Redis** (opcional). Pode ser utilizado para controle distribuído de Rate Limits, coordenação entre múltiplas instâncias do worker (Distributed Locks) e caching rápido, se necessário.
 
 ---
 
@@ -31,12 +31,12 @@ O sistema pode ser idealizado como um **Worker Service** em .NET (usando o `Micr
 Em cada iteração de um Job de entidade (ex: `SincronizarVendas`):
 
 1. **Recupera o Estado Anterior:** Lê do banco de dados (ex. tabela `IntegrationSyncState`) o último filtro temporal rodado (ex: `01/03/2026 14:00:00`). Caso não exista contexto, buscar de um passado pré-determinado (Carga Inicial).
-2. **Setup da Paginação:** Define página `1` inicial e limites recomendados por requisição, ex.: `registros_por_pagina = 100` (ou o ideal ajustado até 500, desde que não dê timeout).
+2. **Setup da Paginação:** Define página `1` inicial e limites recomendados por requisição, ex.: `registros_por_pagina = 100`.
 3. **Loop de Páginas:** Ao realizar o `POST` para `ListarDocumentos` com o filtro:
    - Extrai o retorno (lista).
    - Inseri na base de dados local.
    - Avança para a página `2`.
-   - Cessa a busca quando `numero_registros` da página atual for `< pagina_length` ou `total_de_paginas` atingido.
+   - Cessa a busca quando o número de registros retornados for menor que o limite configurado ou `total_de_paginas` atingido.
 4. **Atualiza o Estado Anterior:** Em caso de o Job rodar com sucesso integral, salva o `LastSyncDate` final para que a próxima execução traga apenas a diferença (_delta_).
 
 ### 3.2. Gestão de Rate Limits e Concorrência
