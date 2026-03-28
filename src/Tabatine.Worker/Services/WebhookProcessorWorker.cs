@@ -57,7 +57,6 @@ public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logg
                 var sql = "SELECT * FROM \"WebhookEvents\" WHERE \"Status\" = 'Pending' ORDER BY \"CreatedAt\" ASC LIMIT 1 FOR UPDATE SKIP LOCKED";
                 var webhookEvent = await dbContext.WebhookEvents
                     .FromSqlRaw(sql)
-                    .AsAsyncEnumerable()
                     .FirstOrDefaultAsync(cancellationToken);
 
                 if (webhookEvent == null)
