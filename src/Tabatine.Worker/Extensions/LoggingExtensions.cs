@@ -33,7 +33,7 @@ public static class LoggingExtensions
                 {
                     { "Message", new RenderedMessageColumnWriter() },
                     { "MessageTemplate", new MessageTemplateColumnWriter() },
-                    { "Level", new LevelColumnWriter() },
+                    { "Level", new LevelColumnWriter(true, NpgsqlTypes.NpgsqlDbType.Text) },
                     { "Timestamp", new TimestampColumnWriter() },
                     { "Exception", new ExceptionColumnWriter() },
                     { "Properties", new PropertiesColumnWriter() },
