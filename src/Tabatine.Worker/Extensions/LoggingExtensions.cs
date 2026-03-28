@@ -24,20 +24,20 @@ public static class LoggingExtensions
             .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day, restrictedToMinimumLevel: LogEventLevel.Debug)
             .WriteTo.PostgreSQL(
                 connectionString: connectionString,
-                tableName: "logs",
+                tableName: "Logs",
                 schemaName: "public",
                 batchSizeLimit: 1,
                 needAutoCreateTable: false,
                 restrictedToMinimumLevel: LogEventLevel.Information,
                 columnOptions: new Dictionary<string, ColumnWriterBase>
                 {
-                    { "message", new RenderedMessageColumnWriter() },
-                    { "message_template", new MessageTemplateColumnWriter() },
-                    { "level", new LevelColumnWriter() },
-                    { "timestamp", new TimestampColumnWriter() },
-                    { "exception", new ExceptionColumnWriter() },
-                    { "properties", new PropertiesColumnWriter() },
-                    { "log_event", new LogEventSerializedColumnWriter() }
+                    { "Message", new RenderedMessageColumnWriter() },
+                    { "MessageTemplate", new MessageTemplateColumnWriter() },
+                    { "Level", new LevelColumnWriter() },
+                    { "Timestamp", new TimestampColumnWriter() },
+                    { "Exception", new ExceptionColumnWriter() },
+                    { "Properties", new PropertiesColumnWriter() },
+                    { "LogEvent", new LogEventSerializedColumnWriter() }
                 })
             .CreateLogger();
 
