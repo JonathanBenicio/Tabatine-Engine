@@ -25,7 +25,7 @@ public static class LoggingExtensions
             .WriteTo.PostgreSQL(
                 connectionString: connectionString,
                 tableName: "Logs",
-                schemaName: "public",
+                schemaName: "",
                 batchSizeLimit: 1,
                 needAutoCreateTable: false,
                 restrictedToMinimumLevel: LogEventLevel.Information,
