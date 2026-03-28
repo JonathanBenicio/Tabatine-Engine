@@ -12,7 +12,7 @@ using Tabatine.Infrastructure.Data;
 namespace Tabatine.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260328014044_AddTableLogs")]
+    [Migration("20260328015951_AddTableLogs")]
     partial class AddTableLogs
     {
         /// <inheritdoc />
