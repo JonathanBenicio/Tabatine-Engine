@@ -114,7 +114,7 @@ public abstract class OmieEntityBase
 | `Warning` | Recoverable errors, inconsistencies |
 | `Error` | Critical failures stopping sync |
 
-- Use `ILogger<T>` injected via constructor
+- Use `ILogger<T>` injetado via **Primary Constructor**
 - Log critical operations to `LogEntry` table for audit
 
 ### Error Handling
@@ -171,14 +171,19 @@ Environment variables in `appsettings.json` or `.env`:
 
 ## Existing Agent Rules
 
-Refer to these files for additional context:
+Refer to these files for core architecture rules:
 
-- `.agents/rules/geral.md` - Project overview
-- `.agents/rules/dot-net-standards.md` - .NET conventions
-- `.agents/rules/omie-validator.md` - Omie API validation rules
-- `.agents/rules/omie-api-rules.md` - Omie API integration rules
-- `.agents/rules/omie-webhooks-rules.md` - Omie webhook rules
-- `.agents/rules/supabase-db.md` - Database guidelines
+- `.agents/rules/geral.md` - Project overview & entry point
+- `.agents/rules/dot-net-standards.md` - C# 10 standards & Primary Constructors
+- `.agents/rules/efcore-supabase-rules.md` - Database & EF Core standards
+- `.agents/rules/omie-api-rules.md` - Omie API & Memory Safety (Antigravity Rules)
+
+### Specialized Skills
+
+For specific tasks, view the `SKILL.md` in:
+- `.agents/skills/omie-api-skills/` - Omie API Integration & Validation
+- `.agents/skills/omie-webhooks/` - Omie Webhooks (Fast Acknowledge & Processing)
+- `.agents/skills/omie-webhook-skills/` - Webhook Ingestion Infrastructure
 
 ### Workflows
 

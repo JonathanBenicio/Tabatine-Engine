@@ -1,33 +1,67 @@
 ---
-name: Omie API Core Modules
-description: Habilidades fundamentais e padrões de projeto (Resiliência, Pagination, Translators) exigidos para consumir a API REST financeira da Omie de forma escalável.
+name: omie-api-integration-skills
+description: "Módulo base contendo a infraestrutura de rede, paginação e resiliência exigidos para consumir a API REST financeira da Omie de forma escalável."
+version: "1.2.0"
+category: "Integration.API"
 ---
 
-# Skills: Módulos de Integração com a API Omie
+# Skill: Omie API Core Integration
 
-Para consumir a API de forma profissional e escalável, a arquitetura deve ser equipada com as seguintes *Skills*:
+## 1. Definition
+Garante o consumo padronizado, escalável e seguro da API da Omie para o Tabatine Engine, provendo um HttpClient encapsulado, resiliência contra instabilidades de rede e abstração arquitetural para a paginação dos endpoints de listagem.
 
-## 1. Omie HttpClient (Core Skill)
-- **Função:** Cliente HTTP abstrato para encapsular a complexidade da API.
-- **Capacidades:**
-  - Gerir automaticamente as credenciais (`app_key` e `app_secret`) em todos os payloads.
-  - Implementar um mecanismo de chamadas assíncronas (`async/await`) no .NET.
-  - Formatar adequadamente o Content-Type como `application/json`.
+## 2. Capabilities & How-To Patterns
 
-## 2. Pagination Builder (List Skill)
-- **Função:** Gerar e controlar os cursores/páginas nas listagens.
-- **Capacidades:**
-  - Abstrair a paginação: permitir que o programador consuma a lista inteira (ex: `IAsyncEnumerable` em .NET) enquanto a Skill resolve nos bastidores as requisições em blocos de 100 registos.
-  - Gerir os parâmetros granulares de filtros temporais (`filtrar_apenas_alteracao`, etc.).
+### [Pagination & Flow]: Memory Safety
+> [!IMPORTANT] IAsyncEnumerable
+> É **estritamente proibido** retornar `List<T>` ou alocar todos os registros na memória ao buscar dados massivos. Use fluxos assíncronos (`IAsyncEnumerable<T>` com `yield return`) para evitar pressão no LOH (Large Object Heap).
 
-## 3. Rate Limiter & Retry Policy (Resilience Skill)
-- **Função:** Proteger a aplicação contra quedas e punições da API.
-- **Capacidades:**
-  - Utilizar bibliotecas como **Polly** (no ecossistema .NET) para encapsular chamadas HTTP.
-  - **Tratamento de Transient Faults:** Detetar exceções de rede ou o erro interno `PROTO_BYEBYE` da Omie.
-  - **Exponential Backoff:** Tentar de novo em falhas (ex: após 2s, depois 4s, depois 8s) antes de declarar a requisição como morta.
+*   Implemente loops `while (paginaAtual <= totalPaginas)` utilizando a propriedade `total_de_paginas` da resposta da Omie.
+*   Mantenha um `registros_por_pagina` fixo em **100** para máxima eficiência e estabilidade da API Omie.
 
-## 4. Error Translator (Observability Skill)
-- **Função:** Tornar os erros da API legíveis para o negócio.
-- **Capacidades:**
-  - Traduzir a estrutura de erro da Omie (que devolve um JSON contendo o código da falha e a causa, ex: "tag: [xxxx] não cadastrada") para exceções fortemente tipadas ou resultados legíveis no painel de controlo.
+### [Data Transfer Objects]: Records & JSON Mapping
+*   **Padrão**: Utilize `record` C# com propriedades `{ get; init; }` para imutabilidade.
+*   Explicite o mapeamento com `[JsonPropertyName("nome_campo_no_omie")]` em todos os campos para garantir compatibilidade com o RPC da Omie.
+
+### [Error Handling]: Result Pattern
+*   Evite exceções para controle de fluxo.
+*   Encapsule retornos em um objeto `Result<T>` que contenha `Success`, `Data` e `ErrorMessage` (ou `ErrorCode`).
+*   Reserve `try/catch` apenas para falhas críticas de infraestrutura (Socket, Timeout).
+
+## 3. Decision Tree: API Sync Strategy
+Escolha a abordagem correta para sincronização de dados:
+
+```mermaid
+graph TD
+    A[Sincronizar Recurso?] --> B{Primeira vez?}
+    B -- Sim (Full Sync) --> C[Loop de Paginação Total]
+    B -- Não (Incremental) --> D[Recuperar Timestamp do DB Antigravity]
+    D --> E[Filtrar por 'DataAlteracaoDe' >= LastSync]
+    C --> F[Upsert no Banco de Dados local]
+    E --> F
+    F --> G[Atualizar Cursor de Sincronização em 'IntegracaoOmieCursor']
+```
+
+## 4. Constraints (Antigravity Rules)
+*   **Rate Limits**: Máximo de 240 reqs/minuto. Utilize `scripts/test-omie-connection.ps1` para validar o status.
+*   **Isolamento**: Camada `Tabatine.Infrastructure` injeta `IOmieClient`. Nenhuma lógica do `Core` deve tocar no HTTP/OmieDTO.
+
+## 5. Scripts (Black Boxes)
+*   **`scripts/test-omie-connection.ps1`**: Testa as credenciais e o status de conectividade com a API.
+    *   *Uso*: `pwsh scripts/test-omie-connection.ps1`
+
+---
+## 6. Implementation Reference (Agent Template)
+```csharp
+public async IAsyncEnumerable<ClienteDto> StreamClientesAsync(DateTime lastSync)
+{
+    int current = 1;
+    int total = 1;
+    while(current <= total) {
+        var resp = await _client.PostAsync<Resp>("ListarClientes", new { pagina = current, datar_de = lastSync });
+        total = resp.TotalPaginas;
+        foreach(var item in resp.Items) yield return item;
+        current++;
+    }
+}
+```

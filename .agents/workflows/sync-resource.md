@@ -35,4 +35,4 @@ No projeto `Tabatine.Worker`, registre o novo serviço no contêiner de DI.
 - Exemplo: `builder.Services.AddScoped<ISyncService, NomeDaEntidadeSyncService>();`
 
 ### 7. Criar e Aplicar Migração
-Siga o workflow de [migração](file:///c:/Users/Jonathan/Documents/Developer/GitHub/Tabatine-Engine/.agents/workflows/migration.md) para gerar a tabela no Supabase.
+Siga o workflow de [migração](migration.md) para gerar a tabela no Supabase.

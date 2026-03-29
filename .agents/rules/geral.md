@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+trigger: model_decision
 ---
 
 # Tabatine — Regras do Workspace (Engine)
@@ -12,15 +12,20 @@ Tabatine Engine é uma solução de sincronização com o **Omie ERP** construí
 
 ## Arquitetura da Solução
 
-O projeto segue uma arquitetura limpa (Clean Architecture) dividida em:
+O projeto segue uma arquitetura limpa (Clean Architecture) e utiliza padrões **Antigravity** para garantir performance e manutenibilidade:
 
 - **Tabatine.Core**: Contém as entidades de domínio, interfaces e lógica de negócio central. As entidades geralmente herdam de `OmieEntityBase`.
-- **Tabatine.Infrastructure**: Implementação dos serviços de dados, repositórios e integração com APIs externas.
-- **Tabatine.Omie.Client**: Biblioteca cliente para comunicação com a API REST/JSON do Omie.
-- **Tabatine.Worker**: Serviço em segundo plano (Background Service) que orquestra as tarefas de sincronização.
+- **Tabatine.Infrastructure**: Implementação dos serviços de dados (EF Core), repositórios e integração com APIs externas.
+- **Tabatine.Omie.Client**: Biblioteca cliente especializada para comunicação com a API REST/JSON do Omie, utilizando **Records** para DTOs.
+- **Tabatine.Worker**: Host .NET que orquestra as tarefas de sincronização e processamento de webhooks.
+
+### Pilares Arquiteturais (Obrigatórios)
+1. **Memory Safety**: Uso de `IAsyncEnumerable<T>` com `yield return` para evitar estouros de memória em listagens massivas.
+2. **Result Pattern**: Nunca use exceções para controle de fluxo de negócio. Utilize `Result<T>`.
+3. **Primary Constructors**: Padrão C# 10 obrigatório para Injeção de Dependência.
+4. **Snake Case Database**: O banco de dados (Supabase) deve seguir estritamente `snake_case`.
 
 ### Fluxo de Sincronização
-
 ```mermaid
 graph TD
     Worker[Tabatine.Worker] -->|Executa| ISyncService[ISyncService]
@@ -39,28 +44,19 @@ graph TD
 Todas as APIs do Omie usam **JSON via HTTP POST**. A `APP_KEY` e `APP_SECRET` são obrigatórias em todas as chamadas.
 
 ### Limites e Boas Práticas
-- **Rate Limit**: Respeitar o limite de 240 req/min e bloqueio de 60s por registro (ver `omie-validator.md`).
-- **Paginação**: Usar `registros_por_pagina` (recomendado: 50 a 100) e iterar sobre `total_de_paginas`.
+- **Rate Limit**: Respeitar o limite de 240 req/min e bloqueio de 60s por registro (Consulte as **Skills** de API).
+- **Paginação**: Usar `registros_por_pagina` (máximo 100) e iterar de forma assíncrona.
 - **Incremental**: Sempre que possível, usar o campo `filtrar_por_data_de` ou similar para trazer apenas alterações desde a última sincronização.
 
 ---
 
-## Estrutura do Projeto
+## Especialização de Documentos
 
-```
-src/
-├── Tabatine.Core/           # Domínio e Entidades
-│   └── Entities/            # Classes POCO mapeadas para o DB
-├── Tabatine.Infrastructure/ # Implementação técnica
-│   ├── Data/                # EF Core DbContext e Migrations
-│   └── Services/            # Serviços de Sincronização (ClienteSyncService, etc)
-├── Tabatine.Omie.Client/    # Cliente da API Omie
-│   └── Models/              # DTOs de Request/Response da Omie
-└── Tabatine.Worker/         # Host do serviço de background
-```
+Para detalhes específicos, consulte os documentos em `.agents/rules/`:
+- `dot-net-standards.md`: Convenções de C# e estilos de codificação.
+- `efcore-supabase-rules.md`: Regras de banco de dados e Fluent API.
+- `omie-api-rules.md`: Integração técnica com APIs REST.
 
----
-
-## Problemas Conhecidos e Débitos Técnicos
-- **Mapeamento de Impostos**: Verifique sempre o `ItemPedido` para campos como IBS, CBS e CFOP.
-- **Log de Sincronização**: Acompanhe o status na tabela `Logs` ou use o Serilog configurado no Worker.
+Para implementação de fluxos específicos, use as **Skills**:
+- `omie-api-skills`: Validações de roteamento e payloads complexos.
+- `omie-webhooks`: Processamento assíncrono de notificações push.

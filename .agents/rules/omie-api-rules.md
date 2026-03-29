@@ -1,21 +1,37 @@
+---
+trigger: model_decision
+description: Regras de integração e arquitetura estritas para consumo da API Omie (Tabatine Engine).
+---
+
 # Regras de Arquitetura e Integração: APIs Omie
 
-## 1. Paginação Estrita (Limite de Registos)
-- **Regra:** Todas as requisições de listagem (ex: `ListarClientes`, `ListarPedidos`) DEVEM definir o parâmetro `registros_por_pagina` com o valor máximo de **100**.
-- **Motivo:** A Omie bloqueia nativamente paginações superiores a 100 registos por página para garantir a máxima performance e estabilidade do sistema.
-- **Padrão:** Implementar loops de paginação verificando a propriedade `total_de_paginas` ou `total_de_registros` retornada no cabeçalho da resposta.
+Essas regras definem os limites e restrições de alto nível para a integração. Para detalhes técnicos de *como* implementar (DTOs, Paginação, Result Pattern), consulte a skill `omie-api-integration-skills`.
 
-## 2. Consultas Incrementais (Filtros de Data/Hora)
-- **Regra:** Nunca realizar o download completo (Full Sync) de tabelas em operações de rotina.
-- **Motivo:** Otimizar o tempo de resposta e poupar a franquia/limites de requisições. 
-- **Padrão:** O sistema DEVE armazenar a data/hora da última sincronização com sucesso e utilizar as tags de filtro da API, como `filtrar_por_data_de`, `filtrar_por_hora_de`, `filtrar_apenas_inclusao`, ou `filtrar_apenas_alteracao`.
+## 1. Paginação Estrita (Antigravity Rule de Memória)
+- **Constraint:** Todas as requisições de listagem (ex: `ListarClientes`, `ListarPedidos`) DEVEM definir o parâmetro `registros_por_pagina` com o valor máximo de **100**.
+- **Constraint Antigravity:** É **estritamente proibido** retornar `List<T>` ou alocar todos os registros na memória em métodos que buscam dados massivos da Omie. O agente DEVE utilizar fluxos assíncronos (`IAsyncEnumerable<T>` com `yield return`).
+- **Motivo:** Evitar alocações no LOH (Large Object Heap) e garantir escalabilidade do `Tabatine.Worker`.
 
-## 3. Respeito aos Limites de Consumo (Rate Limits)
-- **Regra:** O sistema deve estar preparado para receber erros de estrangulamento (Rate Limit) ou instabilidade (`PROTO_BYEBYE`) e atuar sem intervenção manual.
-- **Motivo:** A Omie aplica limites de requisições por IP e App Key. Requisições massivas concorrentes podem ser bloqueadas temporariamente.
-- **Padrão:** Implementar um padrão de *Exponential Backoff* (tentativas com atraso progressivo) para qualquer chamada à API que falhe por instabilidade de rede ou bloqueio de limite.
+## 2. Imutabilidade e Mapeamento de Modelos
+- **Constraint Antigravity:** Qualquer classe na integração de API (Request/Response) DEVE ser implementada como um `record` imutável.
+- **Padrão:** O mapeamento de campos com `[JsonPropertyName("nome_campo_omie")]` é obrigatório para compatibilidade semântica com o RPC da Omie.
 
-## 4. Garantia de Documento de Origem
-- **Regra:** Não inserir lançamentos financeiros avulsos (ex: Contas a Receber) quando a operação derivar de uma venda ou serviço.
-- **Motivo:** Cadastrar lançamentos financeiros diretamente ou de forma paralela causa duplicidade, bloqueio de faturação e anomalias contabilísticas/fiscais.
-- **Padrão:** A aplicação externa deve gerar o **Documento de Origem** (ex: *Pedido de Venda* ou *Ordem de Serviço*). Ao ser faturado na Omie, o documento gera o financeiro automaticamente.
+## 3. Gestão de Erros e Fluxo (Result Pattern)
+- **Constraint Antigravity:** NUNCA utilize controle de fluxo de erros lançando exceções (`throw new Exception()`). Exceptions no .NET devem ser minimizadas para alta performance.
+- **Padrão:** Utilize o `Result Pattern` encapsulando falhas normais da Omie.
+
+## 4. Consultas Incrementais e Otimização
+- **Rule:** Nunca realize um "Full Sync" (download completo) em rotinas recorrentes.
+- **Constraint:** Utilize obrigatoriamente filtros da API como `filtrar_por_data_de` e `filtrar_por_hora_de`. Adote a política de Upsert (verifica existência pelo campo `OmieId`) no banco de dados local.
+
+## 5. Circuit Breaker e Respeito aos Rate Limits
+- **Constraint:** A Omie aplica limites estritos de requisições por IP/App Key (ex: 240/min).
+- **Padrão:** Qualquer código de integração DEVE prever a implementação de políticas de resiliência via Polly (Exponential Backoff). Consulte scripts de conectividade em `omie-api-skills` para validação de status.
+
+## 6. Garantia de Documento de Origem
+- **Regra de Negócio (Omie):** É proibido inserir lançamentos financeiros avulsos originados em pedidos comerciais. A aplicação externa se limitará a integrar e confirmar o **Documento de Origem**.
+
+---
+*Para padrões de código e templates de implementação, acesse:*
+- [Omie API Core Skills](../skills/omie-api-skills/SKILL.md)
+- [Omie Webhook Skills](../skills/omie-webhooks/SKILL.md)
