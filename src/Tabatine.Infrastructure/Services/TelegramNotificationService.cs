@@ -1,52 +1,87 @@
-using System;
-using System.Net.Http;
-using System.Text.Json;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Tabatine.Core.Interfaces;
+using Tabatine.Infrastructure.Data;
 
-namespace Tabatine.Infrastructure.Services
+namespace Tabatine.Infrastructure.Services;
+
+public class TelegramNotificationService(
+    HttpClient httpClient,
+    IConfiguration configuration,
+    AppDbContext dbContext,
+    ILogger<TelegramNotificationService> logger) : INotificationService
 {
-    public class TelegramNotificationService : INotificationService
-    {
-        private readonly HttpClient _httpClient;
-        private readonly IConfiguration _configuration;
-        private readonly ILogger<TelegramNotificationService> _logger;
+    // ── Global broadcast (existing behaviour) ─────────────────────────────────
 
-        public TelegramNotificationService(HttpClient httpClient, IConfiguration configuration, ILogger<TelegramNotificationService> logger)
+    public async Task SendNotificationAsync(string title, string message, string type, long? referenceId = null)
+    {
+        var botToken = configuration["Telegram:BotToken"];
+
+        if (string.IsNullOrEmpty(botToken))
         {
-            _httpClient = httpClient;
-            _configuration = configuration;
-            _logger = logger;
+            logger.LogWarning("Telegram BotToken não configurado. Notificação não enviada.");
+            return;
         }
 
-        public async Task SendNotificationAsync(string title, string message, string type, long? referenceId = null)
+        // Busca todos os perfis que devem receber logs e possuem um ChatId vinculado
+        var logRecipients = await dbContext.Perfis
+            .Where(p => p.ReceiveLogs && p.TelegramChatId.HasValue)
+            .Select(p => p.TelegramChatId!.Value)
+            .ToListAsync();
+
+        if (logRecipients.Count == 0)
         {
-            var botToken = _configuration["Telegram:BotToken"];
-            var chatId = _configuration["Telegram:ChatId"];
+            logger.LogInformation("Nenhum destinatário de log do Telegram configurado no banco de dados.");
+            return;
+        }
 
-            if (string.IsNullOrEmpty(botToken) || string.IsNullOrEmpty(chatId))
-            {
-                _logger.LogWarning("Telegram BotToken ou ChatId não configurados. Notificação não enviada.");
-                return;
-            }
+        var text = $"*{title}*\n\n{message}\n\nTipo: {type}\nID Omie: {referenceId}";
+        
+        foreach (var chatId in logRecipients)
+        {
+            await SendRawMessageAsync(chatId.ToString(), text);
+        }
+    }
 
-            var text = $"* {title} *\n\n{message}\n\nTipo: {type}\nID Omie: {referenceId}";
-            
-            try
+    // ── Direct message to a specific chat (Deep Link) ─────────────────────────
+
+    public async Task SendDirectMessageAsync(long chatId, string message)
+    {
+        var botToken = configuration["Telegram:BotToken"];
+
+        if (string.IsNullOrEmpty(botToken))
+        {
+            logger.LogWarning("Telegram BotToken não configurado. Mensagem direta não enviada.");
+            return;
+        }
+
+        await SendRawMessageAsync(chatId.ToString(), message);
+    }
+
+    // ── Internal helper ───────────────────────────────────────────────────────
+
+    private async Task SendRawMessageAsync(string chatId, string text)
+    {
+        try
+        {
+            var botToken = configuration["Telegram:BotToken"];
+            var url = $"https://api.telegram.org/bot{botToken}/sendMessage" +
+                      $"?chat_id={chatId}" +
+                      $"&text={Uri.EscapeDataString(text)}" +
+                      $"&parse_mode=Markdown";
+
+            var response = await httpClient.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
             {
-                var response = await _httpClient.GetAsync($"https://api.telegram.org/bot{botToken}/sendMessage?chat_id={chatId}&text={Uri.EscapeDataString(text)}&parse_mode=Markdown");
-                if (!response.IsSuccessStatusCode)
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    _logger.LogError("Erro ao enviar notificação para o Telegram: {Error}", error);
-                }
+                var error = await response.Content.ReadAsStringAsync();
+                logger.LogError("Erro ao enviar mensagem para o Telegram. ChatId={ChatId}, Error={Error}", chatId, error);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Falha na comunicação com o Telegram API.");
-            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Falha na comunicação com a Telegram API. ChatId={ChatId}", chatId);
         }
     }
 }

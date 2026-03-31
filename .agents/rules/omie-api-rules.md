@@ -7,7 +7,7 @@ description: Regras de integração e arquitetura estritas para consumo da API O
 
 Essas regras definem os limites e restrições de alto nível para a integração. Para detalhes técnicos de *como* implementar (DTOs, Paginação, Result Pattern), consulte a skill `omie-api-integration-skills`.
 
-## 1. Paginação Estrita (Antigravity Rule de Memória)
+## 1. Paginação Estrita (Rule de Memória)
 - **Constraint:** Todas as requisições de listagem (ex: `ListarClientes`, `ListarPedidos`) DEVEM definir o parâmetro `registros_por_pagina` com o valor máximo de **100**.
 - **Constraint Antigravity:** É **estritamente proibido** retornar `List<T>` ou alocar todos os registros na memória em métodos que buscam dados massivos da Omie. O agente DEVE utilizar fluxos assíncronos (`IAsyncEnumerable<T>` com `yield return`).
 - **Motivo:** Evitar alocações no LOH (Large Object Heap) e garantir escalabilidade do `Tabatine.Worker`.
@@ -25,8 +25,9 @@ Essas regras definem os limites e restrições de alto nível para a integraçã
 - **Constraint:** Utilize obrigatoriamente filtros da API como `filtrar_por_data_de` e `filtrar_por_hora_de`. Adote a política de Upsert (verifica existência pelo campo `OmieId`) no banco de dados local.
 
 ## 5. Circuit Breaker e Respeito aos Rate Limits
-- **Constraint:** A Omie aplica limites estritos de requisições por IP/App Key (ex: 240/min).
-- **Padrão:** Qualquer código de integração DEVE prever a implementação de políticas de resiliência via Polly (Exponential Backoff). Consulte scripts de conectividade em `omie-api-skills` para validação de status.
+- **Rate Limit**: Respeitar o limite de 240 req/min e o bloqueio de 60s entre chamadas para o mesmo `OmieId`.
+- **Especial**: Em caso de **HTTP 425 (Too Early)**, a aplicação deve interromper o processamento por 30 minutos conforme as regras de segurança da Omie.
+- **Padrão**: Qualquer código de integração DEVE prever a implementação de políticas de resiliência via Polly (Exponential Backoff e Circuit Breaker).
 
 ## 6. Garantia de Documento de Origem
 - **Regra de Negócio (Omie):** É proibido inserir lançamentos financeiros avulsos originados em pedidos comerciais. A aplicação externa se limitará a integrar e confirmar o **Documento de Origem**.

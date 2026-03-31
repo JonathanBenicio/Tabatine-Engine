@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "tabatine-webhook-collection",
     "name": "Tabatine - Omie Webhooks",
-    "description": "Collection para testar os endpoints de webhook Omie no Tabatine Engine.\n\nEndpoint único: POST /webhook/omie\n\nEventos suportados:\n- VendaProduto.Novo\n- VendaProduto.Alterado\n- Faturamento.NotaFiscalEmitida",
+    "description": "Collection para testar os endpoints de webhook Omie no Tabatine Engine.\n\nEndpoint único: POST /webhook/omie\n\nHandlers suportados:\n- ClienteFornecedor (Incluido, Alterado, Excluido)\n- VendaProduto (Incluida, Alterada, Cancelada, Devolvida, EtapaAlterada, Excluida, Faturada)\n- Produto (Incluido, Alterado, Excluido, MovimentacaoEstoque, AjusteEstoque)\n- Vendedor (Incluido, Alterado, Excluido)\n- Financas.ContaCorrente (Incluido, Alterado, Excluido)\n- NFe (NotaAutorizada, NotaCancelada, NotaDevolucaoAutorizada)\n- NFSe (NotaAutorizada, NotaCancelada, NotaSubstituida)\n- Faturamento.NotaFiscalEmitida (legado)\n- System.ManualSync (via /api/sync/trigger)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -27,193 +27,636 @@
   ],
   "item": [
     {
-      "name": "VendaProduto.Novo",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Novo\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"10\",\n    \"status_pedido\": \"Aberto\"\n  }\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{baseUrl}}/webhook/omie",
-          "host": ["{{baseUrl}}"],
-          "path": ["webhook", "omie"]
-        },
-        "description": "Simula o webhook da Omie ao criar um novo pedido de venda.\n\nO Endpoint irá:\n1. Gravar o payload na tabela WebhookEvents ('Pending')\n2. Retornar 200 OK (Fast Acknowledge)\n\nO Background Worker irá (Assíncrono):\n1. Capturar o evento na fila\n2. Chamar o PedidoSyncService.SyncByIdAsync\n3. Enviar a notificação internamente\n4. Marcar como 'Processed'"
-      },
-      "response": [
+      "name": "ClienteFornecedor",
+      "description": "Eventos de Cliente/Fornecedor. Handler: ClienteWebhookHandler → ClienteSyncService.SyncByIdAsync",
+      "item": [
         {
-          "name": "200 OK",
-          "status": "OK",
-          "code": 200,
-          "body": ""
+          "name": "ClienteFornecedor.Incluido",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"ClienteFornecedor.Incluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_cliente_omie\": 123456789\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a inclusão de um novo Cliente/Fornecedor na Omie.\n\n1. Grava na tabela WebhookEvents (Pending)\n2. Retorna 200 OK (Fast Acknowledge)\n3. Background Worker chama ClienteSyncService.SyncByIdAsync\n4. Envia notificação 'Novo Cliente/Fornecedor'"
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "ClienteFornecedor.Alterado",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"ClienteFornecedor.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_cliente_omie\": 123456789\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a alteração de um Cliente/Fornecedor existente na Omie."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "ClienteFornecedor.Excluido",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"ClienteFornecedor.Excluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_cliente_omie\": 123456789\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a exclusão de um Cliente/Fornecedor na Omie."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         }
       ]
     },
     {
-      "name": "VendaProduto.Alterado",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"20\",\n    \"status_pedido\": \"Faturado\"\n  }\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{baseUrl}}/webhook/omie",
-          "host": ["{{baseUrl}}"],
-          "path": ["webhook", "omie"]
-        },
-        "description": "Simula o webhook da Omie ao alterar um pedido de venda existente.\n\nO Endpoint irá:\n1. Gravar o payload na tabela WebhookEvents ('Pending')\n2. Retornar 200 OK (Fast Acknowledge)\n\nO Background Worker irá (Assíncrono):\n1. Capturar o evento na fila\n2. Chamar o PedidoSyncService.SyncByIdAsync\n3. Enviar a notificação internamente\n4. Marcar como 'Processed'"
-      },
-      "response": [
+      "name": "VendaProduto (Pedido)",
+      "description": "Eventos de Pedido de Venda. Handler: PedidoWebhookHandler → PedidoSyncService.SyncByIdAsync",
+      "item": [
         {
-          "name": "200 OK",
-          "status": "OK",
-          "code": 200,
-          "body": ""
+          "name": "VendaProduto.Incluida",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Incluida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"10\",\n    \"status_pedido\": \"Aberto\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a inclusão de um novo Pedido de Venda na Omie.\n\n1. Grava na tabela WebhookEvents (Pending)\n2. Retorna 200 OK (Fast Acknowledge)\n3. Background Worker chama PedidoSyncService.SyncByIdAsync\n4. Envia notificação 'Novo Pedido'"
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "VendaProduto.Alterada",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Alterada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"20\",\n    \"status_pedido\": \"Faturado\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a alteração de um Pedido de Venda existente."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "VendaProduto.Faturada",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Faturada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"50\",\n    \"status_pedido\": \"Faturado\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula o faturamento de um Pedido de Venda."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "VendaProduto.Cancelada",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Cancelada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"10\",\n    \"status_pedido\": \"Cancelado\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula o cancelamento de um Pedido de Venda."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "VendaProduto.EtapaAlterada",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.EtapaAlterada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"30\",\n    \"status_pedido\": \"Aprovado\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a alteração de etapa de um Pedido de Venda (ex: de 10 para 30)."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "VendaProduto.Devolvida",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Devolvida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"50\",\n    \"status_pedido\": \"Devolvido\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a devolução de um Pedido de Venda."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "VendaProduto.Excluida",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Excluida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"10\",\n    \"status_pedido\": \"Excluido\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a exclusão de um Pedido de Venda."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         }
       ]
     },
     {
-      "name": "Faturamento.NotaFiscalEmitida",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Faturamento.NotaFiscalEmitida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000123\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{baseUrl}}/webhook/omie",
-          "host": ["{{baseUrl}}"],
-          "path": ["webhook", "omie"]
-        },
-        "description": "Simula o webhook da Omie ao emitir uma Nota Fiscal.\n\nO Endpoint irá:\n1. Gravar o payload na tabela WebhookEvents ('Pending')\n2. Retornar 200 OK (Fast Acknowledge)\n\nO Background Worker irá (Assíncrono):\n1. Capturar o evento na fila\n2. Chamar o NotaFiscalSyncService.SyncByIdAsync\n3. Enviar a notificação internamente\n4. Marcar como 'Processed'"
-      },
-      "response": [
+      "name": "Produto",
+      "description": "Eventos de Produto. Handler: ProdutoWebhookHandler → ProdutoSyncService.SyncByIdAsync",
+      "item": [
         {
-          "name": "200 OK",
-          "status": "OK",
-          "code": 200,
-          "body": ""
+          "name": "Produto.Incluido",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Produto.Incluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_produto\": 111222333\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a inclusão de um novo Produto na Omie.\n\n1. Grava na tabela WebhookEvents (Pending)\n2. Retorna 200 OK (Fast Acknowledge)\n3. Background Worker chama ProdutoSyncService.SyncByIdAsync\n4. Envia notificação 'Novo Produto'"
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Produto.Alterado",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Produto.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_produto\": 111222333\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a alteração de um Produto existente."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Produto.Excluido",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Produto.Excluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_produto\": 111222333\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a exclusão de um Produto."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Produto.AjusteEstoque",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Produto.AjusteEstoque\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_produto\": 111222333\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula um ajuste de estoque para um Produto."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Produto.MovimentacaoEstoque",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Produto.MovimentacaoEstoque\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_produto\": 111222333\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula uma movimentação de estoque para um Produto."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         }
       ]
     },
     {
-      "name": "Evento Desconhecido (ignorado)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Outro.Evento\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"dados\": \"quaisquer\"\n  }\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{baseUrl}}/webhook/omie",
-          "host": ["{{baseUrl}}"],
-          "path": ["webhook", "omie"]
-        },
-        "description": "Evento não mapeado. O endpoint enfileira normalmente devolvendo 200 OK. O Worker irá retirá-lo da fila, ignorar o processamento (pois não faz match) e marcá-lo como 'Processed'."
-      },
-      "response": [
+      "name": "Vendedor",
+      "description": "Eventos de Vendedor. Handler: VendedorWebhookHandler → VendedorSyncService.SyncByIdAsync",
+      "item": [
         {
-          "name": "200 OK",
-          "status": "OK",
-          "code": 200,
-          "body": ""
+          "name": "Vendedor.Incluido",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Vendedor.Incluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo\": 444555666\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a inclusão de um novo Vendedor na Omie.\n\n1. Grava na tabela WebhookEvents (Pending)\n2. Retorna 200 OK (Fast Acknowledge)\n3. Background Worker chama VendedorSyncService.SyncByIdAsync\n4. Envia notificação 'Novo Vendedor'"
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Vendedor.Alterado",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Vendedor.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo\": 444555666\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a alteração de um Vendedor existente."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Vendedor.Excluido",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Vendedor.Excluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo\": 444555666\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a exclusão de um Vendedor."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         }
       ]
     },
     {
-      "name": "Mensagem Nula (ignorada)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Novo\",\n  \"author\": \"Omie\",\n  \"message\": null\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{baseUrl}}/webhook/omie",
-          "host": ["{{baseUrl}}"],
-          "path": ["webhook", "omie"]
-        },
-        "description": "Testa o comportamento quando `message` é nulo. O endpoint retorna 200 OK imediatamente sem processar."
-      },
-      "response": [
+      "name": "Financas.ContaCorrente",
+      "description": "Eventos de Conta Corrente. Handler: ContaCorrenteWebhookHandler → ContaCorrenteSyncService.SyncByIdAsync",
+      "item": [
         {
-          "name": "200 OK",
-          "status": "OK",
-          "code": 200,
-          "body": ""
+          "name": "Financas.ContaCorrente.Incluido",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Financas.ContaCorrente.Incluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"nCodCC\": 777888999\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a inclusão de uma nova Conta Corrente na Omie.\n\n1. Grava na tabela WebhookEvents (Pending)\n2. Retorna 200 OK (Fast Acknowledge)\n3. Background Worker chama ContaCorrenteSyncService.SyncByIdAsync\n4. Envia notificação 'Nova Conta Corrente'"
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Financas.ContaCorrente.Alterado",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Financas.ContaCorrente.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"nCodCC\": 777888999\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a alteração de uma Conta Corrente existente."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Financas.ContaCorrente.Excluido",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Financas.ContaCorrente.Excluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"nCodCC\": 777888999\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a exclusão de uma Conta Corrente."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         }
       ]
     },
     {
-      "name": "Trigger System Manual Sync",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/api/sync/trigger",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "sync", "trigger"]
+      "name": "Notas Fiscais (NFe / NFSe)",
+      "description": "Eventos de Nota Fiscal. Handler: NotaFiscalWebhookHandler → NotaFiscalSyncService.SyncByIdAsync",
+      "item": [
+        {
+          "name": "NFe.NotaAutorizada",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFe.NotaAutorizada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000123\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a autorização de uma NF-e na Omie.\n\n1. Grava na tabela WebhookEvents (Pending)\n2. Retorna 200 OK (Fast Acknowledge)\n3. Background Worker chama NotaFiscalSyncService.SyncByIdAsync\n4. Envia notificação 'NF-e Autorizada'"
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
-        "description": "Agenda uma sincronização completa (Full Sync) de todos os módulos Omie utilizando a infraestrutura de fila do PostgreSQL/Supabase."
-      },
-      "response": []
+        {
+          "name": "NFe.NotaCancelada",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFe.NotaCancelada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000123\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula o cancelamento de uma NF-e."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "NFe.NotaDevolucaoAutorizada",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFe.NotaDevolucaoAutorizada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000456\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a autorização de uma NF-e de devolução."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "NFSe.NotaAutorizada",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFSe.NotaAutorizada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 888999000,\n    \"numero_nf\": \"000789\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a autorização de uma NFS-e (Nota de Serviço)."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "NFSe.NotaCancelada",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFSe.NotaCancelada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 888999000,\n    \"numero_nf\": \"000789\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula o cancelamento de uma NFS-e."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "NFSe.NotaSubstituida",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFSe.NotaSubstituida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 888999000,\n    \"numero_nf\": \"000789\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Simula a substituição de uma NFS-e."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Faturamento.NotaFiscalEmitida (legado)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Faturamento.NotaFiscalEmitida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000123\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Formato legado de emissão de NF. Mapeado para NotaFiscalWebhookHandler."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        }
+      ]
+    },
+    {
+      "name": "Edge Cases",
+      "description": "Testes de borda: eventos desconhecidos, payload nulo, etc.",
+      "item": [
+        {
+          "name": "Evento Desconhecido (ignorado)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Outro.Evento\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"dados\": \"quaisquer\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Evento não mapeado. O endpoint enfileira normalmente devolvendo 200 OK. O Worker irá retirá-lo da fila, ignorar o processamento (DefaultWebhookHandler) e marcá-lo como 'Processed'."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Mensagem Nula (ignorada)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Incluida\",\n  \"author\": \"Omie\",\n  \"message\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/omie",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "omie"]
+            },
+            "description": "Testa o comportamento quando `message` é nulo. O endpoint retorna 200 OK imediatamente sem enfileirar."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        }
+      ]
+    },
+    {
+      "name": "System",
+      "description": "Endpoints de sistema (sincronização manual, health, etc.)",
+      "item": [
+        {
+          "name": "Trigger Manual Sync",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sync/trigger",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sync", "trigger"]
+            },
+            "description": "Agenda uma sincronização completa (Full Sync) de todos os módulos Omie utilizando a infraestrutura de fila do PostgreSQL/Supabase.\n\nCria um evento 'System.ManualSync' na tabela WebhookEvents que será processado pelo SystemManualSyncWebhookHandler."
+          },
+          "response": []
+        }
+      ]
     }
   ]
 }

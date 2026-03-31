@@ -54,9 +54,10 @@ public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logg
             try
             {
                 // Busca a próxima mensagem pendente travando a linha (Skip Locked) para concorrência segura
-                var sql = "SELECT * FROM \"WebhookEvents\" WHERE \"Status\" = 'Pending' ORDER BY \"CreatedAt\" ASC LIMIT 1 FOR UPDATE SKIP LOCKED";
+                var sql = "SELECT * FROM webhook_events WHERE status = 'Pending' ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED";
                 var webhookEvent = await dbContext.WebhookEvents
                     .FromSqlRaw(sql)
+                    .OrderBy(e => e.CreatedAt)
                     .FirstOrDefaultAsync(cancellationToken);
 
                 if (webhookEvent == null)

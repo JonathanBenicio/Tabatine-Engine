@@ -8,6 +8,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<EtapaFaturamento> builder)
         {
+            builder.ToTable("etapas_faturamento");
             builder.HasKey(e => e.Id);
             
             // Usamos o código da etapa dentro da operação como chave natural da Omie

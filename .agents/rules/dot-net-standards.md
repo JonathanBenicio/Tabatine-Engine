@@ -1,5 +1,5 @@
 ---
-trigger: model_decision
+trigger: always_on
 description: Padrões arquiteturais e de codificação obrigatórios para C# e .NET 10 no projeto Tabatine Engine.
 ---
 
@@ -10,7 +10,7 @@ description: Padrões arquiteturais e de codificação obrigatórios para C# e .
 O agente DEVE utilizar os recursos mais recentes do C# para manter o código limpo e conciso:
 
 - **File-scoped Namespaces:** Obrigatório em todos os arquivos. Não crie blocos `{ }` para namespaces. Seguir o padrão `Tabatine.<Projeto>.<Pasta>`. EX: `Tabatine.Infrastructure.Services`.
-- **Global Usings:** Não repita `using System;` ou `using System.Threading.Tasks;` se eles já estiverem configurados implicitamente no `.csproj`.
+- **Global Usings:** Use um arquivo `GlobalUsings.cs` na raiz de cada projeto para gerenciar namespaces comuns (EFCore, Entities, etc.). Evite poluir o topo de cada arquivo `.cs`.
 - **Primary Constructors:** Obrigatório para Injeção de Dependência. Não declare campos privados explicitamente nem crie o construtor clássico a menos que seja estritamente necessário para validações complexas.
 - **Classes e Interfaces**:
   - Iniciais em Maiúsculo (PascalCase).
@@ -40,7 +40,7 @@ public class ClienteSyncService(IOmieClient omieClient, ILogger<ClienteSyncServi
 ## Estrutura de Entidades (EF Core)
 
 - Todas as entidades da Omie devem herdar de `OmieEntityBase`.
-- Usar `DataAnnotation` ou `Fluent API` para mapear os nomes das colunas se necessário, especialmente para o Supabase.
+- **Mapeamento de Banco**: Use obrigatoriamente a Fluent API em classes isoladas de configuração. **NUNCA** use `DataAnnotation` (como `[Column]` ou `[Table]`) para forçar o `snake_case`. Confie na convenção automática do projeto.
 - **Campos Obrigatórios**:
   - `Id`: `Guid` (Chave Primária).
   - `OmieId`: `long` (ID numérico vindo da Omie).

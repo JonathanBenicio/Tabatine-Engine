@@ -57,3 +57,22 @@ SELECT * FROM "__EFMigrationsHistory" ORDER BY "MigrationId" DESC LIMIT 3;
 ### Dicas Úteis
 - **Remover última migração** (se ainda não aplicada): `dotnet ef migrations remove --project src/Tabatine.Infrastructure --startup-project src/Tabatine.Worker`
 - **Script SQL Offline**: Se precisar do script SQL para rodar manualmente: `dotnet ef migrations script --project src/Tabatine.Infrastructure --startup-project src/Tabatine.Worker`
+
+---
+
+### Resolução de Problemas (Troubleshooting)
+
+**ERRO: "O nome solicitado é válido, mas não foram encontrados dados do tipo solicitado" (DNS)**
+- O host direto (`db.xxx.supabase.co`) é apenas IPv6. Se sua rede for IPv4, use o host do Pooler (`aws-1-sa-east-1.pooler.supabase.com`).
+
+**ERRO: "ObjectDisposedException: Cannot access a disposed object (ManualResetEventSlim)"**
+- Causado por conflito entre o handhake do Npgsql e o Pooler do Supabase.
+- **Solução 1**: Adicione `No Reset On Close=true;Pooling=false;` na string de conexão.
+- **Solução 2**: Se estiver usando migrações automáticas no startup (`ApplyMigrations`), utilize o serviço `IMigrator` diretamente para pular a verificação de existência de banco (`Database.Exists()`):
+
+```csharp
+// Em Microsoft.EntityFrameworkCore.Infrastructure
+var migrator = dbContext.GetService<IMigrator>();
+migrator.Migrate();
+```
+

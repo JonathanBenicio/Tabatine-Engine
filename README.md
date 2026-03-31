@@ -1,6 +1,6 @@
 # Tabatine Engine - Omie Sync Service
 
-O **Tabatine Engine** é o núcleo de processamento e sincronização de dados entre o **Omie ERP** e o banco de dados local (Supabase/PostgreSQL). Desenvolvido em **.NET 10**, ele garante que as informações de vendas, clientes, produtos e notas fiscais estejam sempre atualizadas para consumo rápido pelo frontend.
+O **Tabatine Engine** é o núcleo de processamento e sincronização de dados entre o **Omie ERP** e o banco de dados local (Supabase/PostgreSQL). Desenvolvido em **.NET 10**, ele garante que as informações de vendas, clientes, produtos, notas fiscais, vendedores, contas correntes e outros 10+ módulos vitais estejam sempre atualizadas para consumo rápido pelo frontend.
 
 ## 🏗️ Arquitetura da Solução
 
@@ -18,6 +18,8 @@ O projeto segue os princípios de **Clean Architecture**, dividido em quatro cam
 - **Banco de Dados**: [PostgreSQL](https://www.postgresql.org/) (Hospedado no [Supabase](https://supabase.com/))
 - **Logs**: [Serilog](https://serilog.net/) (com sinks para Console e Tabela de Logs no DB)
 - **Monitoramento**: Health Checks integrados para status do banco e conectividade.
+- **Documentação API**: [Scalar](https://github.com/scalar/scalar) (disponível em `/scalar/v1`).
+- **Containerização**: [Docker](https://www.docker.com/) com suporte a multi-stage builds e Docker Compose.
 
 ## 🔄 Fluxo de Sincronização
 
@@ -41,17 +43,19 @@ graph TD
 
 ### Configuração
 1. Clone o repositório.
-2. Configure as variáveis de ambiente no `appsettings.json` ou `.env`:
-   ```json
-   {
-     "ConnectionStrings": {
-       "DefaultConnection": "Host=your_host;Database=postgres;Username=postgres;Password=your_password"
-     },
-     "OmieApi": {
-       "AppKey": "seu_app_key",
-       "AppSecret": "seu_app_secret"
-     }
-   }
+2. Crie um arquivo `.env.local` na raiz do projeto `src/Tabatine.Worker` (ou use variáveis de ambiente):
+   ```env
+   # Banco de Dados (Supabase)
+   ConnectionStrings__DefaultConnection="Host=...;Database=postgres;Username=postgres;Password=..."
+
+   # Omie API
+   Omie__AppKey="seu_app_key"
+   Omie__AppSecret="seu_app_secret"
+
+   # Telegram Bot
+   Telegram__BotToken="seu_bot_token"
+   Telegram__WebhookUrl="https://seu-dominio.com"
+   Telegram__WebhookSecret="token_de_seguranca_webhooks"
    ```
 
 ### Execução
@@ -59,7 +63,7 @@ graph TD
    ```bash
    dotnet restore
    ```
-2. Aplique as migrações ao banco de dados:
+2. Aplique as migrações (Opcional - o Worker aplica automaticamente no startup):
    ```bash
    dotnet ef database update --project src/Tabatine.Infrastructure --startup-project src/Tabatine.Worker
    ```
@@ -68,13 +72,57 @@ graph TD
    dotnet run --project src/Tabatine.Worker
    ```
 
+## 📖 Documentação Interativa (Scalar)
+
+O Engine expõe uma interface **Scalar** moderna para exploração da API em vez do Swagger tradicional.
+- **URL Local**: `http://localhost:5000/scalar/v1`
+- Através dela, você pode testar manualmente os endpoints de Webhook e Sincronização.
+
 ## 📡 Integração de Webhooks (Processamento Assíncrono)
 
 O Worker expõe o endpoint `/webhook/omie` para receber notificações em tempo real do Omie.
 Para respeitar o curto *timeout* da Omie de 7 segundos e evitar o bloqueio da fila original:
 1. **Ingestão (Fast Acknowledge)**: O endpoint apenas valida a estrutura, insere o payload bruto na tabela `WebhookEvents` do banco de dados e retorna `200 OK` instantaneamente.
-2. **Processamento (Background Worker)**: O serviço especializado `WebhookProcessorWorker` varre a fila no banco de dados com concorrência segura (`SELECT ... FOR UPDATE SKIP LOCKED`), processando os eventos de **Vendas** e **Notas Fiscais**, alterando o status para `Processed` ou `Failed` sem derrubar a aplicação.
+2. **Processamento (Background Worker)**: O serviço especializado `WebhookProcessorWorker` varre a fila no banco de dados com concorrência segura (`SELECT ... FOR UPDATE SKIP LOCKED`), processando os eventos de **Vendas**, **Notas Fiscais**, **Clientes**, **Produtos**, **Vendedores** e **Contas Correntes**, alterando o status para `Processed` ou `Failed` sem derrubar a aplicação.
+
+## 🔄 Gatilho de Sincronização Manual (Force Sync)
+
+Caso queira forçar uma sincronização completa de todos os módulos Omie sem esperar pelo agendamento ou webhooks:
+- **Endpoint**: `POST /api/sync/trigger`
+- **Ação**: Agenda um evento do tipo `System.ManualSync` na fila de processamento, que será capturado pelo Worker e executará o `SyncManager` para todos os serviços registrados.
 
 ## 📝 Logs e Auditoria
 
 Todas as operações críticas são registradas na tabela `Logs` do banco de dados através da entidade `LogEntry`, permitindo rastreabilidade total de falhas na sincronização.
+
+## 📱 Vinculação Telegram (Deep Link)
+
+O sistema permite que usuários autenticados vinculem sua conta do Telegram para receber notificações em tempo real através do bot **@Tabatine_bot**.
+
+### Fluxo de Vinculação
+
+```mermaid
+sequenceDiagram
+    actor U as Usuário
+    participant UI as Next.js (Dashboard)
+    participant DB as Supabase DB (perfis)
+    participant ENG as Engine C# (Worker)
+    participant TG as Telegram API
+
+    U->>UI: Clica em "Vincular Telegram"
+    UI->>DB: Upsert Perfil { TelegramLinkToken, ExpiresAt (15m) }
+    UI-->>U: Redireciona: t.me/Tabatine_bot?start=token
+    U->>TG: Comando /start token
+    TG->>ENG: POST /api/webhooks/telegram (Header: X-Secret-Token)
+    ENG->>ENG: Valida Secret Token
+    ENG->>DB: Busca Perfil por Token
+    ENG->>ENG: Verifica Expiração (Token < 15min?)
+    ENG->>DB: Update Perfil { TelegramChatId, Token=NULL }
+    ENG->>TG: Envia "✅ Sucesso!"
+    TG-->>U: Mensagem no Telegram
+```
+
+A segurança é garantida através de:
+- **Secret Token**: Validação do cabeçalho `X-Telegram-Bot-Api-Secret-Token`.
+- **Expiração**: Tokens de vinculação expiram automaticamente após 15 minutos.
+- **Isolamento**: O vínculo é feito na tabela `perfis`, desacoplado das entidades do ERP Omie.
