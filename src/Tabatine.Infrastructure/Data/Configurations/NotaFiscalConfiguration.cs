@@ -8,7 +8,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<NotaFiscal> builder)
         {
-            builder.ToTable("NotasFiscais");
+            builder.ToTable("notas_fiscais");
             builder.HasKey(n => n.Id);
             builder.HasIndex(n => n.OmieId).IsUnique();
             

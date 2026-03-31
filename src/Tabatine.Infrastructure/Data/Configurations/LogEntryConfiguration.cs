@@ -8,7 +8,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<LogEntry> builder)
         {
-            builder.ToTable("Logs");
+            builder.ToTable("logs");
             builder.HasKey(x => x.Id);
             builder.Property(x => x.Id).ValueGeneratedOnAdd();
         }

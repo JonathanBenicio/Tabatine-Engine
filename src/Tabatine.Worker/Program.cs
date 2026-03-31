@@ -3,6 +3,24 @@ using Serilog;
 using Tabatine.Worker.Endpoints;
 using Tabatine.Worker.Extensions;
 
+var isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+if (isDevelopment)
+{
+    var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env.local");
+    if (File.Exists(envPath))
+    {
+        foreach (var line in File.ReadAllLines(envPath))
+        {
+            var parts = line.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2)
+            {
+                Environment.SetEnvironmentVariable(parts[0].Trim(), parts[1].Trim());
+                Console.WriteLine($"[ENV] {parts[0].Trim()} carregado.");
+            }
+        }
+    }
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Modularized Configurations
@@ -22,6 +40,7 @@ app.MapScalarApiReference();
 // Modularized Mappings
 app.UseCustomHealthChecks();
 app.MapOmieWebhookEndpoints();
+app.MapTelegramWebhookEndpoints();
 app.MapSyncEndpoints();
 app.ApplyMigrations();
 

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Tabatine.Infrastructure.Data;
 using Serilog;
 
@@ -14,7 +16,11 @@ public static class MigrationExtensions
         try
         {
             Log.Information("Aplicando migrações de banco de dados...");
-            db.Database.Migrate();
+            
+            // Usar o Migrator diretamente para evitar o "Database.Exists" check interno que quebra no Pooler do Supabase
+            var migrator = db.GetService<IMigrator>();
+            migrator.Migrate();
+
             Log.Information("Migrações aplicadas com sucesso.");
         }
         catch (Exception ex)

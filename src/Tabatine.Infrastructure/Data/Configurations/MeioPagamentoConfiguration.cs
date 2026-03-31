@@ -8,7 +8,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<MeioPagamento> builder)
         {
-            builder.ToTable("MeiosPagamento");
+            builder.ToTable("meios_pagamento");
 
             builder.HasKey(m => m.Id);
 

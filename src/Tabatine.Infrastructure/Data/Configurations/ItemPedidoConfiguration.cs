@@ -8,7 +8,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<ItemPedido> builder)
         {
-            builder.ToTable("ItensPedido");
+            builder.ToTable("itens_pedido");
             builder.HasKey(i => i.Id);
             
             // Note: If Omie provides an ID for items, use HasIndex(p => p.OmieId).IsUnique();

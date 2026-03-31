@@ -8,16 +8,14 @@ namespace Tabatine.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<Notification> builder)
         {
-            builder.ToTable("Notifications", "public");
+            builder.ToTable("notifications");
             builder.HasKey(e => e.Id);
 
-            builder.Property(e => e.Id).HasColumnName("Id").ValueGeneratedOnAdd();
-            builder.Property(e => e.Title).HasColumnName("title").IsRequired();
-            builder.Property(e => e.Message).HasColumnName("message").IsRequired();
-            builder.Property(e => e.Type).HasColumnName("type").IsRequired();
-            builder.Property(e => e.ReferenceId).HasColumnName("reference_id");
-            builder.Property(e => e.IsRead).HasColumnName("is_read").HasDefaultValue(false);
-            builder.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            builder.Property(e => e.Title).IsRequired();
+            builder.Property(e => e.Message).IsRequired();
+            builder.Property(e => e.Type).IsRequired();
+            builder.Property(e => e.IsRead).HasDefaultValue(false);
+            builder.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
         }
     }
 }

@@ -25,14 +25,20 @@ public static class ServiceCollectionExtensions
                 b => b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
                      .EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)
                      .CommandTimeout(60)
-            ).ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
+            )
+            .UseSnakeCaseNamingConvention()
+            .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
         );
 
         // Configure Distributed Lock Service
         services.AddScoped<IDistributedLockService, DbDistributedLockService>();
         services.AddScoped<ISyncStateRepository, SyncStateRepository>();
         services.AddScoped<INotificationService, SupabaseNotificationService>();
-        services.AddScoped<INotificationService, TelegramNotificationService>();
+
+        // Telegram: registado como concreto (para o endpoint de webhook poder resolver directamente)
+        // e também como INotificationService (para broadcast via ISyncService)
+        services.AddHttpClient<TelegramNotificationService>();
+        services.AddScoped<INotificationService>(sp => sp.GetRequiredService<TelegramNotificationService>());
 
         // Sync Services
         services.AddScoped<ClienteSyncService>();

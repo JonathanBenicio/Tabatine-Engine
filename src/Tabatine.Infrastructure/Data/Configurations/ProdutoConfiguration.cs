@@ -8,7 +8,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<Produto> builder)
         {
-            builder.ToTable("Produtos");
+            builder.ToTable("produtos");
             builder.HasKey(p => p.Id);
             
             builder.HasIndex(p => p.OmieId).IsUnique();

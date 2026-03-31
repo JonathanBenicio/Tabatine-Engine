@@ -29,6 +29,7 @@ namespace Tabatine.Infrastructure.Data
         public DbSet<LogEntry> Logs => Set<LogEntry>();
         public DbSet<Notification> Notifications => Set<Notification>();
         public DbSet<WebhookEvent> WebhookEvents => Set<WebhookEvent>();
+        public DbSet<Perfil> Perfis => Set<Perfil>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

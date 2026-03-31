@@ -8,6 +8,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<CondicaoPagamento> builder)
         {
+            builder.ToTable("condicoes_pagamento");
             builder.HasKey(c => c.Id);
             builder.HasIndex(c => c.Codigo).IsUnique();
 

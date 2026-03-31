@@ -1,5 +1,5 @@
 ---
-trigger: model_decision
+trigger: always_on
 description: Regras estritas para modelagem de banco de dados usando EF Core e PostgreSQL (Supabase) no projeto Tabatine Engine.
 ---
 
@@ -101,3 +101,18 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 - **Migrações**: Devem ser geradas com o projeto de infraestrutura (`Tabatine.Infrastructure`) e executadas apontando para a string de conexão do Supabase.
 - Sempre teste migrações localmente antes de aplicar em produção.
 - Use `LogEntry` para auditar alterações massivas ou erros críticos de integridade de dados.
+
+---
+
+## 7. Conectividade Crítica (Npgsql + Supavisor)
+
+Ao usar o Pooler do Supabase (Supavisor) com .NET/Npgsql (especialmente em Windows), existem flags obrigatórias para evitar o crash `ObjectDisposedException` no handshake:
+
+- **Flags Obrigatórias na Connection String**:
+  - `Pooling=false`: O Pooler do Supabase já gerencia conexões; o pooling do lado do cliente causa conflitos de estado de sessão.
+  - `No Reset On Close=true`: Essencial para evitar o crash no `ManualResetEventSlim.Reset()` ao fechar conexões.
+  - `GssEncryptionMode=Disable`: Evita uma regressão de performance e handshake comum em proxies como o Supavisor.
+
+- **Seleção de Host**:
+  - **Direto (`db.[REF].supabase.co`)**: Geralmente é **apenas IPv6**. Se a rede local não suportar IPv6, a conexão falhará com erro de DNS.
+  - **Pooler (`[REGION].pooler.supabase.com`)**: Oferece **IPv4**. É a escolha recomendada para ambientes locais com suporte IPv6 limitado, desde que as flags acima sejam usadas.

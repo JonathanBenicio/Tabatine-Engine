@@ -31,16 +31,16 @@ dotnet ef migrations add <Name> --project src/Tabatine.Infrastructure --startup-
 
 ## Code Style Guidelines
 
-### Naming Conventions
-
-| Element | Convention | Example |
-|---------|------------|---------|
-| Namespaces | `Tabatine.<Projeto>.<Pasta>` | `Tabatine.Infrastructure.Services` |
-| Classes/Interfaces | PascalCase | `ClienteSyncService`, `IOmieClient` |
-| Interfaces | Start with `I` | `ISyncService` |
-| Properties | PascalCase | `RazaoSocial`, `OmieId` |
-| Private Fields | `_camelCase` | `_dbContext`, `_logger` |
 | Methods | PascalCase | `ListarClientesAsync` |
+
+### Global Usings
+
+To keep the codebase clean, each project should have a `GlobalUsings.cs` file in its root. Common namespaces to include:
+- `Microsoft.EntityFrameworkCore`
+- `Tabatine.Core.Entities`
+- `Tabatine.Infrastructure.Data`
+- `Tabatine.Infrastructure.Services`
+- `Tabatine.Omie.Client.Models`
 
 ### Language Rules
 
@@ -76,9 +76,16 @@ public abstract class OmieEntityBase
 
 ### Database
 
-- Use `public` schema by default
-- Consider snake_case for column names (e.g., `razao_social`)
-- Generate migrations from `Tabatine.Infrastructure`
+- Use `public` schema by default.
+- **Mandatory snake_case**: All database objects (tables, columns, indexes) MUST use `snake_case`. conversion is handled automatically by `EFCore.NamingConventions`. Do **NOT** use `[Column]` attributes.
+- Generate migrations from `Tabatine.Infrastructure`.
+
+### Connectivity (Supabase/Npgsql)
+
+When connecting to Supabase via Pooler (Supavisor) or Direct, use these mandatory flags in the connection string to prevent handshake crashes:
+- `Pooling=false` (Mandatory for Supavisor)
+- `No Reset On Close=true` (Prevents ObjectDisposedException)
+- `GssEncryptionMode=Disable` (Handshake compatibility)
 
 ---
 
@@ -146,7 +153,12 @@ src/
 │   └── Services/            # Sync services
 ├── Tabatine.Omie.Client/    # Omie API client
 │   └── Models/              # Request/Response DTOs
-└── Tabatine.Worker/         # Background service, endpoints
+├── Tabatine.Worker/         # Background service, endpoints
+└── Tabatine.ConnectionTester/ # Connectivity & Handshake validation tool
+
+doc/                         # API Samples, RLS Policies, Architecture docs
+├── client/                  # JavaScript/Postman samples
+└── supabase/                # SQL migrations & RLS scripts
 ```
 
 ---
@@ -166,6 +178,23 @@ Environment variables in `appsettings.json` or `.env`:
   }
 }
 ```
+
+---
+
+## User Profiles & Telegram
+
+### Perfil Entity
+
+Manages system users and their integration with external platforms (Telegram).
+
+- **Table**: `perfis`
+- **Fields**: `Id` (PK referencing `auth.users.id`), `Nome` (string), `TelegramChatId` (long), `TelegramLinkToken` (Guid), `UpdatedAt`.
+
+### Telegram Linking
+
+1. **Token Generation**: Generate a `TelegramLinkToken` (valid for 15-30m).
+2. **Bot Interaction**: User sends the token to the Telegram Bot.
+3. **Webhook Processing**: `TelegramWebhookEndpoints` validates the token and links the `TelegramId` to the User's `Perfil`.
 
 ---
 

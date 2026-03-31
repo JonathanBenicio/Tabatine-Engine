@@ -8,6 +8,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<Banco> builder)
         {
+            builder.ToTable("bancos");
             builder.HasKey(b => b.Id);
             builder.HasIndex(b => b.CodigoBanco).IsUnique();
             

@@ -44,3 +44,7 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+
+.agents/skills/supabase-postgres-best-practices
+
+.agent/

@@ -22,8 +22,10 @@ O projeto segue uma arquitetura limpa (Clean Architecture) e utiliza padrões **
 ### Pilares Arquiteturais (Obrigatórios)
 1. **Memory Safety**: Uso de `IAsyncEnumerable<T>` com `yield return` para evitar estouros de memória em listagens massivas.
 2. **Result Pattern**: Nunca use exceções para controle de fluxo de negócio. Utilize `Result<T>`.
-3. **Primary Constructors**: Padrão C# 10 obrigatório para Injeção de Dependência.
-4. **Snake Case Database**: O banco de dados (Supabase) deve seguir estritamente `snake_case`.
+3. **Primary Constructors**: Padrão C# obrigatório para Injeção de Dependência (.NET 10).
+4. **Global Usings**: Uso de `GlobalUsings.cs` em cada projeto para manter as classes limpas.
+5. **Snake Case Database**: O banco de dados (Supabase) deve seguir estritamente `snake_case`.
+6. **Resiliência Nativa**: Implementar Circuit Breaker e Exponential Backoff em todas as chamadas Omie.
 
 ### Fluxo de Sincronização
 ```mermaid

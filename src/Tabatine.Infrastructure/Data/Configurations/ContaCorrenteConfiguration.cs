@@ -8,6 +8,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<ContaCorrente> builder)
         {
+            builder.ToTable("contas_corrente");
             builder.HasKey(c => c.Id);
             builder.Property(c => c.OmieId).IsRequired();
             builder.HasIndex(c => c.OmieId).IsUnique();

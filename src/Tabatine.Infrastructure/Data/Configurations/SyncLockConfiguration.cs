@@ -8,7 +8,7 @@ public class SyncLockConfiguration : IEntityTypeConfiguration<SyncLock>
 {
     public void Configure(EntityTypeBuilder<SyncLock> builder)
     {
-        builder.ToTable("SyncLocks");
+        builder.ToTable("sync_locks");
 
         builder.HasKey(e => e.LockKey);
 
