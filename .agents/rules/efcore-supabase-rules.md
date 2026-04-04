@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+trigger: model_decision
 description: Regras estritas para modelagem de banco de dados usando EF Core e PostgreSQL (Supabase) no projeto Tabatine Engine.
 ---
 

@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Instruções Customizadas - Tabatine Engine
 
 ## Idioma e Comunicação

@@ -1,5 +1,5 @@
 ---
-trigger: model_decision
+trigger: always_on
 ---
 
 # Tabatine — Regras do Workspace (Engine)
@@ -61,4 +61,4 @@ Para detalhes específicos, consulte os documentos em `.agents/rules/`:
 
 Para implementação de fluxos específicos, use as **Skills**:
 - `omie-api-skills`: Validações de roteamento e payloads complexos.
-- `omie-webhooks`: Processamento assíncrono de notificações push.
+- `omie-webhooks`: Processamento assíncrono de notificações push.
