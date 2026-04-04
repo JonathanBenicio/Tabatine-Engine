@@ -25,6 +25,7 @@ public static class ServiceCollectionExtensions
                 b => b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
                      .EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)
                      .CommandTimeout(60)
+                     .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
             )
             .UseSnakeCaseNamingConvention()
             .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))

@@ -12,7 +12,8 @@ public static class OmieWebhookEndpoints
         app.MapPost("/webhook/omie", async (
             HttpContext httpContext,
             IServiceProvider serviceProvider,
-            ILoggerFactory loggerFactory) =>
+            ILoggerFactory loggerFactory,
+            Serilog.IDiagnosticContext diagnosticContext) =>
         {
             var logger = loggerFactory.CreateLogger("OmieWebhook");
 
@@ -28,6 +29,16 @@ public static class OmieWebhookEndpoints
 
                 var eventName = request.ResolvedEventName;
                 var payload = request.ResolvedPayload;
+
+                if (!string.IsNullOrEmpty(eventName))
+                {
+                    diagnosticContext.Set("Event", eventName);
+                }
+
+                if (!string.IsNullOrEmpty(request.MessageId))
+                {
+                    diagnosticContext.Set("MessageId", request.MessageId);
+                }
 
                 logger.LogInformation("Recebido Webhook Omie: Formato={Format}, Evento={Event}, MessageId={MessageId}",
                     request.IsConnect2 ? "Connect2.0" : "Legado",

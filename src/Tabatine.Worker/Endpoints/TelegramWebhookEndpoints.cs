@@ -14,7 +14,8 @@ public static class TelegramWebhookEndpoints
             HttpContext context,
             IServiceProvider serviceProvider,
             IConfiguration configuration,
-            ILoggerFactory loggerFactory) =>
+            ILoggerFactory loggerFactory,
+            Serilog.IDiagnosticContext diagnosticContext) =>
         {
             var logger = loggerFactory.CreateLogger("TelegramWebhook");
 
@@ -50,6 +51,8 @@ public static class TelegramWebhookEndpoints
 
                 var text = textElement.GetString() ?? string.Empty;
                 var chatId = chatIdElement.GetInt64();
+
+                diagnosticContext.Set("ChatId", chatId);
 
                 logger.LogInformation("Update Telegram recebido. ChatId={ChatId}, Text={Text}", chatId, text);
 
