@@ -1,5 +1,5 @@
 ---
-trigger: always_on
+trigger: model_decision
 description: Padrões arquiteturais e de codificação obrigatórios para C# e .NET 10 no projeto Tabatine Engine.
 ---
 
