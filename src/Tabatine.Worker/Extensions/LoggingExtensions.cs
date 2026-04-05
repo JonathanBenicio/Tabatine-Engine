@@ -17,6 +17,7 @@ public static class LoggingExtensions
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .MinimumLevel.Override("System", LogEventLevel.Warning)
             .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+            .MinimumLevel.Override("Polly", LogEventLevel.Warning)
             .Enrich.FromLogContext()
             .WriteTo.Console(
                 restrictedToMinimumLevel: LogEventLevel.Debug,
