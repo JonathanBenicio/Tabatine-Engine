@@ -82,7 +82,7 @@ public static class ServiceCollectionExtensions
         {
             pipelineBuilder.AddRetry(new HttpRetryStrategyOptions
             {
-                MaxRetryAttempts = 1,
+                MaxRetryAttempts = 3,
                 BackoffType = DelayBackoffType.Exponential,
                 UseJitter = true,
                 Delay = TimeSpan.FromSeconds(3),
