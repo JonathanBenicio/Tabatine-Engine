@@ -23,6 +23,9 @@ dotnet ef database update --project src/Tabatine.Infrastructure --startup-projec
 
 # Create migration
 dotnet ef migrations add <Name> --project src/Tabatine.Infrastructure --startup-project src/Tabatine.Worker
+
+# Run single test (when tests exist)
+dotnet test --filter "FullyQualifiedName~TestClassName.MethodName"
 ```
 
 > **Note**: This project currently has no test suite. Agents should create tests when implementing new features.
@@ -31,16 +34,15 @@ dotnet ef migrations add <Name> --project src/Tabatine.Infrastructure --startup-
 
 ## Code Style Guidelines
 
+### Naming Conventions
+
+| Element | Convention | Example |
+|---------|-----------|---------|
 | Methods | PascalCase | `ListarClientesAsync` |
-
-### Global Usings
-
-To keep the codebase clean, each project should have a `GlobalUsings.cs` file in its root. Common namespaces to include:
-- `Microsoft.EntityFrameworkCore`
-- `Tabatine.Core.Entities`
-- `Tabatine.Infrastructure.Data`
-- `Tabatine.Infrastructure.Services`
-- `Tabatine.Omie.Client.Models`
+| Properties | PascalCase | `RazaoSocial` |
+| Private Fields | camelCase + underscore | `_omieClient` |
+| Interfaces | PascalCase + I prefix | `ISyncService` |
+| Classes | PascalCase | `ClienteSyncService` |
 
 ### Language Rules
 
@@ -49,14 +51,96 @@ To keep the codebase clean, each project should have a `GlobalUsings.cs` file in
 - **Architecture/Infrastructure**: Use English
   - `SyncService`, `DbContext`, `Repository`, `Worker`
 
+### Global Usings
+
+Each project has a `GlobalUsings.cs` in its root. Common namespaces:
+- `Tabatine.Core.Entities`
+- `Tabatine.Infrastructure.Data`
+- `Tabatine.Infrastructure.Services`
+- `Tabatine.Omie.Client.Models`
+- `Microsoft.EntityFrameworkCore`
+
+### File-Scoped Namespaces
+
+Use file-scoped namespaces in all files. Follow pattern `Tabatine.<Project>.<Folder>`:
+```csharp
+namespace Tabatine.Infrastructure.Services;
+```
+
+### Comments
+
+- **Comments**: Write in Portuguese for business logic, English for infrastructure
+- **NO comments** on trivial code or obvious implementations
+- Use comments to explain *why*, not *what*
+
+---
+
+## C# 10+ Patterns
+
+### Primary Constructors
+
+Use Primary Constructors for dependency injection. Avoid explicit private fields:
+```csharp
+// CORRETO
+public class ClienteSyncService(
+    IOmieClient omieClient,
+    ILogger<ClienteSyncService> logger) : ISyncService
+{
+    public async Task SyncAsync(CancellationToken ct)
+    {
+        logger.LogInformation("Sync started...");
+    }
+}
+
+// EVITAR
+public class ClienteSyncService
+{
+    private readonly IOmieClient _omieClient;
+    public ClienteSyncService(IOmieClient omieClient) => _omieClient = omieClient;
+}
+```
+
+### DTOs (Records)
+
+DTOs in `Tabatine.Omie.Client.Models` must use `record` with `{ get; init; }`:
+```csharp
+public record ClienteDto
+{
+    [JsonPropertyName("codigo_cliente_omie")]
+    public long CodigoClienteOmie { get; init; }
+    
+    [JsonPropertyName("razao_social")]
+    public string RazaoSocial { get; init; } = string.Empty;
+}
+```
+
+### Memory Safety (Antigravity Rule)
+
+**NEVER** return `List<T>` in paginated methods. Use `IAsyncEnumerable<T>`:
+```csharp
+public async IAsyncEnumerable<Cliente> FetchClientesAsync(
+    [EnumeratorCancellation] CancellationToken ct)
+{
+    int page = 1;
+    while (true)
+    {
+        var response = await _client.ListarClientesAsync(page, ct);
+        if (response.Clientes.Count == 0) break;
+        
+        foreach (var dto in response.Clientes)
+            yield return MapToDomain(dto);
+        page++;
+    }
+}
+```
+
 ---
 
 ## Entity Framework Core
 
 ### Base Entity
 
-All Omie entities must inherit from `OmieEntityBase`:
-
+All Omie entities inherit from `OmieEntityBase`:
 ```csharp
 public abstract class OmieEntityBase
 {
@@ -64,71 +148,67 @@ public abstract class OmieEntityBase
     public long OmieId { get; set; }       // Omie numeric ID
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public DateTime? OmieUpdatedAt { get; set; }  // Last Omie update
+    public DateTime? OmieUpdatedAt { get; set; }
 }
 ```
 
-### Required Fields
+### Configuration Files
 
-- `Id`: `Guid` (primary key)
-- `OmieId`: `long` (for upsert/sync)
-- `CreatedAt`, `UpdatedAt`, `OmieUpdatedAt`
+Each entity has a dedicated configuration class in `Data/Configurations/`:
+```csharp
+public class ClienteConfiguration : IEntityTypeConfiguration<Cliente>
+{
+    public void Configure(EntityTypeBuilder<Cliente> builder)
+    {
+        builder.ToTable("clientes");
+        builder.HasKey(c => c.Id);
+        builder.HasIndex(c => c.OmieId).IsUnique();
+        builder.Property(c => c.RazaoSocial).HasMaxLength(255).IsRequired();
+    }
+}
+```
 
-### Database
+**Rules**:
+- **NO** `[Column]` or `[Table]` attributes (use Fluent API)
+- **NO** adding config in `OnModelCreating` directly
+- Use `modelBuilder.ApplyConfigurationsFromAssembly()` in DbContext
+- Database uses **snake_case** automatically via `UseSnakeCaseNamingConvention()`
 
-- Use `public` schema by default.
-- **Mandatory snake_case**: All database objects (tables, columns, indexes) MUST use `snake_case`. conversion is handled automatically by `EFCore.NamingConventions`. Do **NOT** use `[Column]` attributes.
-- Generate migrations from `Tabatine.Infrastructure`.
+### Connection String (Supabase/Supavisor)
 
-### Connectivity (Supabase/Npgsql)
-
-When connecting to Supabase via Pooler (Supavisor) or Direct, use these mandatory flags in the connection string to prevent handshake crashes:
-- `Pooling=false` (Mandatory for Supavisor)
-- `No Reset On Close=true` (Prevents ObjectDisposedException)
-- `GssEncryptionMode=Disable` (Handshake compatibility)
-
----
-
-## API Omie Integration
-
-### Rate Limits (Mandatory)
-
-- **Max requests**: 240/minute
-- **Simultaneous**: max 4 requests
-- **Block per ID**: 60s between calls to same ID
-- **HTTP 425**: After 10 incorrect requests = 30min block
-
-### Pagination
-
-- Use `registros_por_pagina`: 50-100 (max 100)
-- Always use incremental sync with `filtrar_por_data_de`
-- Handle empty responses (codes `Client-5113`, `Client-101`)
-
-### Structure
-
-- DTOs in: `Tabatine.Omie.Client.Models`
-- Use "Upsert" pattern: check `OmieId` exists before insert
+Mandatory flags to prevent handshake crashes:
+- `Pooling=false`
+- `No Reset On Close=true`
+- `GssEncryptionMode=Disable`
 
 ---
 
-## Logging & Error Handling
+## Error Handling
 
-### Log Levels
+### Result Pattern (Mandatory)
+
+**NEVER** throw exceptions for business flow control. Use `Result<T>`:
+```csharp
+public async Task<Result<Cliente>> GetClienteAsync(long omieId, CancellationToken ct)
+{
+    var cliente = await _dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieId, ct);
+    if (cliente == null)
+        return Result<Cliente>.Failure("Cliente não encontrado");
+    return Result<Cliente>.Success(cliente);
+}
+```
+
+### When to Use try/catch
+
+Reserve for critical infrastructure failures only (network, DB connection).
+
+### Logging
 
 | Level | Usage |
 |-------|-------|
 | `Information` | Process milestones, sync page X |
 | `Warning` | Recoverable errors, inconsistencies |
 | `Error` | Critical failures stopping sync |
-
-- Use `ILogger<T>` injetado via **Primary Constructor**
-- Log critical operations to `LogEntry` table for audit
-
-### Error Handling
-
-- Don't throw for expected flows (use `Result<T>` pattern)
-- Implement Circuit Breaker with Polly for API resilience
-- Use exponential backoff for retries
 
 ---
 
@@ -137,8 +217,30 @@ When connecting to Supabase via Pooler (Supavisor) or Direct, use these mandator
 | Service Type | Lifetime |
 |--------------|----------|
 | DbContext-dependent | `AddScoped` |
-| API Clients (stateless) | `AddSingleton` |
+| API Clients (HttpClient) | `AddSingleton` |
 | Configuration | `IOptions<T>` |
+
+---
+
+## Omie API Integration
+
+### Rate Limits
+- **Max requests**: 240/minute
+- **Simultaneous**: max 4 requests
+- **Block per ID**: 60s between calls to same ID
+- **HTTP 425**: After 10 incorrect requests = 30min block
+
+### Pagination
+- Use `registros_por_pagina`: max **100**
+- Always use incremental sync with `filtrar_por_data_de`
+- Handle empty responses (codes `Client-5113`, `Client-101`)
+
+### Sync Pattern
+1. Get last sync date from `ISyncStateRepository`
+2. Fetch paginated data from Omie
+3. Upsert (check `OmieId` exists before insert)
+4. Compare `OmieUpdatedAt` to avoid redundant updates
+5. Save sync cursor
 
 ---
 
@@ -147,77 +249,20 @@ When connecting to Supabase via Pooler (Supavisor) or Direct, use these mandator
 ```
 src/
 ├── Tabatine.Core/           # Domain entities, interfaces
-│   └── Entities/            # POCO classes
+│   ├── Entities/            # POCO classes (Portuguese names)
+│   └── Interfaces/          # ISyncService, IOmieClient
 ├── Tabatine.Infrastructure/ # EF Core, sync services
-│   ├── Data/                # DbContext, Configurations
-│   └── Services/            # Sync services
+│   ├── Data/Configurations/ # IEntityTypeConfiguration classes
+│   ├── Repositories/        # Data access
+│   └── Services/            # Sync services (Portuguese entity names)
 ├── Tabatine.Omie.Client/    # Omie API client
-│   └── Models/              # Request/Response DTOs
+│   └── Models/             # DTOs (records, Portuguese names)
 ├── Tabatine.Worker/         # Background service, endpoints
-└── Tabatine.ConnectionTester/ # Connectivity & Handshake validation tool
-
-doc/                         # API Samples, RLS Policies, Architecture docs
-├── client/                  # JavaScript/Postman samples
-└── supabase/                # SQL migrations & RLS scripts
+│   ├── Endpoints/           # Minimal API endpoints
+│   ├── Extensions/          # DI registration
+│   └── Services/           # Background workers
+└── Tabatine.ConnectionTester/
 ```
-
----
-
-## Configuration
-
-Environment variables in `appsettings.json` or `.env`:
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=...;Database=postgres;..."
-  },
-  "OmieApi": {
-    "AppKey": "...",
-    "AppSecret": "..."
-  }
-}
-```
-
----
-
-## User Profiles & Telegram
-
-### Perfil Entity
-
-Manages system users and their integration with external platforms (Telegram).
-
-- **Table**: `perfis`
-- **Fields**: `Id` (PK referencing `auth.users.id`), `Nome` (string), `TelegramChatId` (long), `TelegramLinkToken` (Guid), `UpdatedAt`.
-
-### Telegram Linking
-
-1. **Token Generation**: Generate a `TelegramLinkToken` (valid for 15-30m).
-2. **Bot Interaction**: User sends the token to the Telegram Bot.
-3. **Webhook Processing**: `TelegramWebhookEndpoints` validates the token and links the `TelegramId` to the User's `Perfil`.
-
----
-
-## Existing Agent Rules
-
-Refer to these files for core architecture rules:
-
-- `.agents/rules/geral.md` - Project overview & entry point
-- `.agents/rules/dot-net-standards.md` - C# 10 standards & Primary Constructors
-- `.agents/rules/efcore-supabase-rules.md` - Database & EF Core standards
-- `.agents/rules/omie-api-rules.md` - Omie API & Memory Safety (Antigravity Rules)
-
-### Specialized Skills
-
-For specific tasks, view the `SKILL.md` in:
-- `.agents/skills/omie-api-skills/` - Omie API Integration & Validation
-- `.agents/skills/omie-webhooks/` - Omie Webhooks (Fast Acknowledge & Processing)
-- `.agents/skills/omie-webhook-skills/` - Webhook Ingestion Infrastructure
-
-### Workflows
-
-- `.agents/workflows/omie-api-workflow.md` - Omie API integration workflow
-- `.agents/workflows/omie-webhook-workflow.md` - Omie webhook handling workflow
 
 ---
 
@@ -225,5 +270,22 @@ For specific tasks, view the `SKILL.md` in:
 
 1. **Incremental Sync**: Always use date filters to fetch only changes
 2. **Idempotency**: Jobs must be restartable without duplicating data
-3. **Distributed Lock**: Use `IDistributedLockService` for multi-container deployments
+3. **Distributed Lock**: Use `IDistributedLockService` for multi-container
 4. **Health Checks**: Endpoint `/health` monitors DB and Omie connectivity
+
+---
+
+## Existing Agent Rules
+
+Refer to these files for detailed architecture rules:
+
+- `.agents/rules/dot-net-standards.md` - C# 10 standards & Primary Constructors
+- `.agents/rules/efcore-supabase-rules.md` - Database & EF Core standards
+- `.agents/rules/omie-api-rules.md` - Omie API & Memory Safety
+- `.agents/rules/custom_instructions.md` - Language and communication rules
+
+### Specialized Skills
+
+- `.agents/skills/omie-api-skills/SKILL.md` - Omie API integration
+- `.agents/skills/omie-webhooks/SKILL.md` - Omie Webhooks
+- `.agents/skills/supabase-postgres-best-practices/SKILL.md` - Postgres optimization

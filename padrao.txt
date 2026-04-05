@@ -30,7 +30,6 @@ Você já possui uma tabela de `Logs`, mas pode elevar o nível:
 * **Circuit Breaker**: Implemente a biblioteca **Polly** no `OmieClient` para gerenciar retentativas (Retries) com "Exponential Backoff" e abrir o circuito caso a API da Omie fique instável, evitando que o Worker consuma recursos desnecessários.
 * **Documentação de Campos**: Mantenha os arquivos de referência de campos (como `listar-venda.txt`) atualizados, pois APIs de ERP mudam frequentemente e o mapeamento manual é um ponto comum de falha.
 
-
 ### Resumo da Estrutura Atual vs Sugerida:
 * **Injeção de Dependência**: Continue usando `AddScoped` para serviços com `DbContext` e `AddSingleton` para clientes de API.
 * **Lock Distribuído**: O uso do `IDistributedLockService` no `SyncManager` é uma excelente prática para evitar condições de corrida em ambientes com múltiplos containers.
