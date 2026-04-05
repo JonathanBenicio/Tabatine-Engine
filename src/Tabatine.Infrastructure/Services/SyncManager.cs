@@ -37,7 +37,10 @@ namespace Tabatine.Infrastructure.Services
                 typeof(ClienteSyncService), 
                 typeof(ProdutoSyncService),
                 typeof(PedidoSyncService),
-                typeof(NotaFiscalSyncService)
+                typeof(NotaFiscalSyncService),
+                // Módulo Financeiro: executado após NF pois pode referenciar clientes e contas correntes
+                typeof(ContasReceberSyncService),
+                typeof(ContasPagarSyncService)
             };
 
         foreach (var type in serviceTypes)

@@ -53,6 +53,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<FormaPagamentoSyncService>();
         services.AddScoped<CondicaoPagamentoSyncService>();
         services.AddScoped<MeioPagamentoSyncService>();
+        services.AddScoped<ContasReceberSyncService>();
+        services.AddScoped<ContasPagarSyncService>();
 
         // Webhook Handlers
         services.AddScoped<IWebhookEventHandler, PedidoWebhookHandler>();
