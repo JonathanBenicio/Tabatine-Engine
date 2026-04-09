@@ -645,6 +645,88 @@
       ]
     },
     {
+      "name": "Admin - Webhooks",
+      "description": "Endpoints administrativos para gestão da Dead-Letter Queue (DLQ) de webhooks.",
+      "item": [
+        {
+          "name": "List Webhooks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/webhooks?page=1&pageSize=20&status=Failed",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "webhooks"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "status", "value": "Failed", "description": "Filtro por status: Pending, Processed, Failed, DeadLetter" },
+                { "key": "eventType", "value": "", "description": "Filtro por tipo de evento (ex: ClienteFornecedor.Incluido)" }
+              ]
+            },
+            "description": "Retorna uma lista paginada de eventos de webhook com filtros opcionais."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Webhook Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/webhooks/{{webhookId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "webhooks", "{{webhookId}}"]
+            },
+            "description": "Retorna os detalhes completos de um webhook, incluindo o payload JSON original."
+          },
+          "response": []
+        },
+        {
+          "name": "Retry Webhook",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/webhooks/{{webhookId}}/retry",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "webhooks", "{{webhookId}}", "retry"]
+            },
+            "description": "Reseta o contador de tentativas e coloca o webhook de volta na fila (status Pending) para processamento imediato."
+          },
+          "response": []
+        },
+        {
+          "name": "Dismiss Webhook",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/webhooks/{{webhookId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "webhooks", "{{webhookId}}"]
+            },
+            "description": "Remove um webhook da fila (Soft Delete / Marcar como Processado ou removido conforme lógica interna)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Webhook Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/webhooks/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "webhooks", "stats"]
+            },
+            "description": "Retorna estatísticas resumidas (counts por status) para o dashboard."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "System",
       "description": "Endpoints de sistema (sincronização manual, health, etc.)",
       "item": [
