@@ -34,79 +34,54 @@ namespace Tabatine.Infrastructure.Services
             var lastSyncDate = await _syncState.GetLastSyncDateAsync("ContasCorrente", ct);
             var syncStartTime = DateTime.UtcNow;
 
-            // Rastreia OmieIds já processados neste ciclo para evitar duplicatas
-            var processedOmieIds = new HashSet<long>();
+            // Carrega lookups locais para evitar N+1
+            var existingLookup = await _dbContext.ContasCorrente.ToDictionaryAsync(c => c.OmieId, ct);
+            var bancosLookup = await _dbContext.Bancos.ToDictionaryAsync(b => b.CodigoBanco, ct);
+            int count = 0;
 
-            int pagina = 1;
-            bool temMais = true;
-
-            while (temMais && !ct.IsCancellationRequested)
+            await foreach (var omieItem in _omieClient.StreamContasCorrentesAsync(filtrarDe: lastSyncDate, cancellationToken: ct))
             {
-                var response = await _omieClient.ListarContasCorrentesAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                var omieId = omieItem.Codigo;
                 
-                if (response == null || response.ContasCorrentes == null || response.ContasCorrentes.Count == 0) break;
+                bancosLookup.TryGetValue(omieItem.CodigoBanco ?? string.Empty, out var banco);
 
-                var omieIds = response.ContasCorrentes.Select(c => c.Codigo).ToList();
-                var omieBancoCodigos = response.ContasCorrentes.Where(c => c.CodigoBanco != null).Select(c => c.CodigoBanco!).Distinct().ToList();
-
-                var existingContas = await _dbContext.ContasCorrente
-                    .Where(c => omieIds.Contains(c.OmieId))
-                    .ToDictionaryAsync(c => c.OmieId, ct);
-
-                var bancos = await _dbContext.Bancos
-                    .Where(b => omieBancoCodigos.Contains(b.CodigoBanco))
-                    .ToDictionaryAsync(b => b.CodigoBanco, ct);
-
-                foreach (var omieItem in response.ContasCorrentes)
+                if (existingLookup.TryGetValue(omieId, out var existing))
                 {
-                    var omieId = omieItem.Codigo;
-
-                    // Pula se já processamos este OmieId neste ciclo (evita erros de constraint unique se a API repetir dados)
-                    if (!processedOmieIds.Add(omieId))
+                    existing.Descricao = omieItem.Descricao;
+                    existing.CodigoIntegracao = omieItem.CodigoIntegracao;
+                    existing.Tipo = omieItem.Tipo;
+                    existing.Inativa = omieItem.Inativo == "S";
+                    existing.BancoId = banco?.Id;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    var novaConta = new ContaCorrente
                     {
-                        _logger.LogDebug("Conta Corrente OmieId {OmieId} duplicada na resposta. Pulando.", omieId);
-                        continue;
-                    }
-
-                    existingContas.TryGetValue(omieId, out var existing);
-                    bancos.TryGetValue(omieItem.CodigoBanco ?? string.Empty, out var banco);
-
-                    if (existing == null)
-                    {
-                        var novaConta = new ContaCorrente
-                        {
-                            Id = Guid.NewGuid(),
-                            OmieId = omieId,
-                            Descricao = omieItem.Descricao,
-                            CodigoIntegracao = omieItem.CodigoIntegracao,
-                            Tipo = omieItem.Tipo,
-                            Inativa = omieItem.Inativo == "S",
-                            BancoId = banco?.Id,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        };
-                        _dbContext.ContasCorrente.Add(novaConta);
-                        existingContas[omieId] = novaConta; // Adiciona ao dicionário local para evitar duplicatas se o ID se repetir na mesma página
-                    }
-                    else
-                    {
-                        existing.Descricao = omieItem.Descricao;
-                        existing.CodigoIntegracao = omieItem.CodigoIntegracao;
-                        existing.Tipo = omieItem.Tipo;
-                        existing.Inativa = omieItem.Inativo == "S";
-                        existing.BancoId = banco?.Id;
-                        existing.UpdatedAt = DateTime.UtcNow;
-                    }
+                        Id = Guid.NewGuid(),
+                        OmieId = omieId,
+                        Descricao = omieItem.Descricao,
+                        CodigoIntegracao = omieItem.CodigoIntegracao,
+                        Tipo = omieItem.Tipo,
+                        Inativa = omieItem.Inativo == "S",
+                        BancoId = banco?.Id,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _dbContext.ContasCorrente.Add(novaConta);
+                    existingLookup[omieId] = novaConta;
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de contas correntes sincronizada.", pagina, response.TotalDePaginas);
-                temMais = pagina < response.TotalDePaginas;
-                pagina++;
+                if (++count % 500 == 0)
+                {
+                    await _dbContext.SaveChangesAsync(ct);
+                    _logger.LogInformation("{Count} contas correntes processadas...", count);
+                }
             }
 
+            await _dbContext.SaveChangesAsync(ct);
             await _syncState.SetLastSyncDateAsync("ContasCorrente", syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Contas Correntes finalizada.");
+            _logger.LogInformation("Sincronização de Contas Correntes finalizada. Total: {Count}", count);
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)

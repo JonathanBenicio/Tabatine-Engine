@@ -34,69 +34,50 @@ namespace Tabatine.Infrastructure.Services
             
             var syncStartTime = DateTime.UtcNow;
 
-            int pagina = 1;
-            bool temMais = true;
+            // Carrega lookup local para evitar N+1
+            var existingLookup = await _dbContext.FormasPagamento.ToDictionaryAsync(f => f.Codigo, ct);
+            int count = 0;
 
-            while (temMais && !ct.IsCancellationRequested)
+            await foreach (var omieForma in _omieClient.StreamFormasPagVendasAsync(ct))
             {
-                var response = await _omieClient.ListarFormasPagVendasAsync(pagina, ct);
-                
-                if (response == null) break;
+                if (string.IsNullOrWhiteSpace(omieForma.Codigo)) continue;
 
-                var rawFormas = response.FormasPagamento ?? new List<OmieFormaPagamento>();
-                var processedCodes = new HashSet<string>();
-
-                var codigos = rawFormas.Where(f => !string.IsNullOrWhiteSpace(f.Codigo)).Select(f => f.Codigo).ToList();
-                var existingFormas = await _dbContext.FormasPagamento
-                    .Where(f => codigos.Contains(f.Codigo))
-                    .ToDictionaryAsync(f => f.Codigo, ct);
-
-                foreach (var omieForma in rawFormas)
+                if (existingLookup.TryGetValue(omieForma.Codigo, out var existing))
                 {
-                    if (string.IsNullOrWhiteSpace(omieForma.Codigo)) continue;
-                    if (!processedCodes.Add(omieForma.Codigo))
+                    existing.Descricao = omieForma.Descricao;
+                    existing.QuantidadeParcelas = omieForma.QuantidadeParcelas;
+                    existing.DiasParcelas = omieForma.DiasParcelas;
+                    existing.ListaParcelas = omieForma.ListaParcelas;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    var nova = new FormaPagamento
                     {
-                        _logger.LogWarning("Forma de Pagamento Código {Cod} duplicado na resposta da Omie. Pulando.", omieForma.Codigo);
-                        continue;
-                    }
-
-                    existingFormas.TryGetValue(omieForma.Codigo, out var existing);
-
-                    if (existing == null)
-                    {
-                        var nova = new FormaPagamento
-                        {
-                            Id = Guid.NewGuid(),
-                            Codigo = omieForma.Codigo,
-                            Descricao = omieForma.Descricao,
-                            QuantidadeParcelas = omieForma.QuantidadeParcelas,
-                            DiasParcelas = omieForma.DiasParcelas,
-                            ListaParcelas = omieForma.ListaParcelas,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow,
-                            OmieId = 0
-                        };
-                        _dbContext.FormasPagamento.Add(nova);
-                        existingFormas[omieForma.Codigo] = nova;
-                    }
-                    else
-                    {
-                        existing.Descricao = omieForma.Descricao;
-                        existing.QuantidadeParcelas = omieForma.QuantidadeParcelas;
-                        existing.DiasParcelas = omieForma.DiasParcelas;
-                        existing.ListaParcelas = omieForma.ListaParcelas;
-                        existing.UpdatedAt = DateTime.UtcNow;
-                    }
+                        Id = Guid.NewGuid(),
+                        Codigo = omieForma.Codigo,
+                        Descricao = omieForma.Descricao,
+                        QuantidadeParcelas = omieForma.QuantidadeParcelas,
+                        DiasParcelas = omieForma.DiasParcelas,
+                        ListaParcelas = omieForma.ListaParcelas,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        OmieId = 0
+                    };
+                    _dbContext.FormasPagamento.Add(nova);
+                    existingLookup[omieForma.Codigo] = nova;
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de formas de pagamento sincronizada.", pagina, response.TotalDePaginas);
-                temMais = pagina < response.TotalDePaginas;
-                pagina++;
+                if (++count % 500 == 0)
+                {
+                    await _dbContext.SaveChangesAsync(ct);
+                    _logger.LogInformation("{Count} formas de pagamento processadas...", count);
+                }
             }
 
+            await _dbContext.SaveChangesAsync(ct);
             await _syncState.SetLastSyncDateAsync("FormasPagamento", syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Formas de Pagamento finalizada.");
+            _logger.LogInformation("Sincronização de Formas de Pagamento finalizada. Total: {Count}", count);
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)

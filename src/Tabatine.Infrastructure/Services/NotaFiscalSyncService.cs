@@ -21,27 +21,70 @@ namespace Tabatine.Infrastructure.Services
         {
             _logger.LogInformation("Iniciando sincronização de Notas Fiscais...");
 
-            DateTime? lastSyncDate = await _syncState.GetLastSyncDateAsync("NotasFiscais", ct);
-            DateTime syncStartTime = DateTime.UtcNow;
+            var lastSyncDate = await _syncState.GetLastSyncDateAsync("NotasFiscais", ct);
+            var syncStartTime = DateTime.UtcNow;
 
-            int pagina = 1;
-            bool temMais = true;
+            // Carrega lookups locais exaustivos (Gold Standard)
+            var clientesLookup = await _dbContext.Clientes.ToDictionaryAsync(c => c.OmieId, ct);
+            var produtosLookup = await _dbContext.Produtos.ToDictionaryAsync(p => p.CodigoProduto, ct);
+            var pedidosLookup = await _dbContext.PedidosVenda.ToDictionaryAsync(p => p.OmieId, ct);
+            var vendedoresLookup = await _dbContext.Vendedores.ToDictionaryAsync(v => v.OmieId, ct);
+            
+            // Notas existentes (apenas IDs para controle de insert/update)
+            var existingNfIds = await _dbContext.NotasFiscais.Select(n => n.OmieId).ToListAsync(ct);
+            var processedOmieIds = new HashSet<long>();
+            int count = 0;
 
-            while (temMais && !ct.IsCancellationRequested)
+            await foreach (var omieNf in _omieClient.StreamNotasFiscaisAsync(filtrarDe: lastSyncDate, cancellationToken: ct))
             {
-                ListarNotasFiscaisResponse response = await _omieClient.ListarNotasFiscaisAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                var omieId = omieNf.Compl.IdNf;
+                if (!processedOmieIds.Add(omieId)) continue;
 
-                if (response == null || response.NotasFiscais == null || response.NotasFiscais.Count == 0) break;
+                if (!clientesLookup.TryGetValue(omieNf.Destinatario.CodigoCliente, out var cliente))
+                {
+                    _logger.LogWarning("Cliente {Id} não encontrado. Pulando nota {Nf}.", omieNf.Destinatario.CodigoCliente, omieNf.Ide.Numero);
+                    continue;
+                }
 
-                await ProcessNotaFiscalBatchAsync(response.NotasFiscais, ct);
+                // Busca a NF completa se existir para tratar itens/títulos
+                var existingNf = existingNfIds.Contains(omieId)
+                    ? await _dbContext.NotasFiscais
+                        .Include(n => n.Itens)
+                        .Include(n => n.Titulos)
+                        .FirstOrDefaultAsync(n => n.OmieId == omieId, ct)
+                    : null;
 
-                _logger.LogInformation("Página {Pagina} de {Total} de notas fiscais sincronizada.", pagina, response.TotalDePaginas);
-                temMais = pagina < response.TotalDePaginas;
-                pagina++;
+                pedidosLookup.TryGetValue(omieNf.Compl.IdPedido ?? 0, out var pedido);
+
+                if (existingNf == null)
+                {
+                    var novaNf = MapToNovaNf(omieNf, cliente, pedido);
+                    _dbContext.NotasFiscais.Add(novaNf);
+                    UpdateItensETitulos(novaNf, omieNf, produtosLookup, vendedoresLookup, pedido);
+                }
+                else
+                {
+                    var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieNf.Info?.DAlt, omieNf.Info?.HAlt);
+                    if (existingNf.OmieUpdatedAt.HasValue && omieLastAlt.HasValue && 
+                        existingNf.OmieUpdatedAt.Value == omieLastAlt.Value)
+                    {
+                        continue;
+                    }
+
+                    AtualizarNfExistente(existingNf, omieNf, cliente, pedido);
+                    UpdateItensETitulos(existingNf, omieNf, produtosLookup, vendedoresLookup, pedido);
+                }
+
+                if (++count % 500 == 0)
+                {
+                    await _dbContext.SaveChangesAsync(ct);
+                    _logger.LogInformation("{Count} notas fiscais processadas...", count);
+                }
             }
 
+            await _dbContext.SaveChangesAsync(ct);
             await _syncState.SetLastSyncDateAsync("NotasFiscais", syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Notas Fiscais finalizada.");
+            _logger.LogInformation("Sincronização de Notas Fiscais finalizada. Total: {Count}", count);
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
@@ -51,253 +94,221 @@ namespace Tabatine.Infrastructure.Services
 
             if (omieNf != null)
             {
-                await ProcessNotaFiscalBatchAsync(new List<OmieNotaFiscal> { omieNf }, ct);
-            }
-            else
-            {
-                _logger.LogWarning("Nota Fiscal OmieId {OmieId} não encontrada na Omie para consulta individual.", omieId);
-            }
-        }
+                var cliente = await _dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieNf.Destinatario.CodigoCliente, ct);
+                if (cliente == null) return;
 
-        private async Task ProcessNotaFiscalBatchAsync(List<OmieNotaFiscal> notasFiscaisOmie, CancellationToken ct)
-        {
-            List<long> omieNfIds = notasFiscaisOmie.Select(n => n.Compl.IdNf).ToList();
-            List<long> omieClienteIds = notasFiscaisOmie.Select(n => n.Destinatario.CodigoCliente).Distinct().ToList();
-            List<long> omiePedidoIds = notasFiscaisOmie.Where(n => n.Compl.IdPedido.HasValue).Select(n => n.Compl.IdPedido!.Value).Distinct().ToList();
+                var prodIds = omieNf.Det.Select(d => d.Prod.Codigo.ToString()).ToList();
+                var prods = await _dbContext.Produtos.Where(p => prodIds.Contains(p.CodigoProduto)).ToDictionaryAsync(p => p.CodigoProduto, ct);
+                
+                var existing = await _dbContext.NotasFiscais
+                    .Include(n => n.Itens)
+                    .Include(n => n.Titulos)
+                    .FirstOrDefaultAsync(n => n.OmieId == omieId, ct);
 
-            List<long> omieVendedorIds = notasFiscaisOmie
-                .Where(n => n.Titulos != null)
-                .SelectMany(n => n.Titulos!)
-                .Select(t => t.CodigoVendedor)
-                .Where(id => id > 0)
-                .Distinct().ToList();
+                var pedido = omieNf.Compl.IdPedido.HasValue 
+                    ? await _dbContext.PedidosVenda.FirstOrDefaultAsync(p => p.OmieId == omieNf.Compl.IdPedido.Value, ct)
+                    : null;
 
-            Dictionary<long, NotaFiscal> existingNfs = await _dbContext.NotasFiscais
-                        .Include(n => n.Itens)
-                        .Include(n => n.Titulos)
-                        .Where(n => omieNfIds.Contains(n.OmieId))
-                        .ToDictionaryAsync(n => n.OmieId, ct);
-
-            Dictionary<long, Cliente> clientes = await _dbContext.Clientes
-                        .Where(c => omieClienteIds.Contains(c.OmieId))
-                        .ToDictionaryAsync(c => c.OmieId, ct);
-
-            var allOmieProdIds = notasFiscaisOmie.SelectMany(n => n.Det.Select(d => d.Prod.Codigo.ToString())).Distinct().ToList();
-            var produtos = await _dbContext.Produtos
-                        .Where(p => allOmieProdIds.Contains(p.CodigoProduto))
-                        .ToDictionaryAsync(p => p.CodigoProduto, ct);
-
-            Dictionary<long, PedidoVenda> pedidos = await _dbContext.PedidosVenda
-                        .Where(p => omiePedidoIds.Contains(p.OmieId))
-                        .ToDictionaryAsync(p => p.OmieId, ct);
-
-            Dictionary<long, Vendedor> vendedores = await _dbContext.Vendedores
-                        .Where(v => omieVendedorIds.Contains(v.OmieId))
-                        .ToDictionaryAsync(v => v.OmieId, ct);
-
-            HashSet<long> processedBatchIds = new HashSet<long>();
-
-            foreach (OmieNotaFiscal omieNf in notasFiscaisOmie)
-            {
-                long omieId = omieNf.Compl.IdNf;
-
-                if (!processedBatchIds.Add(omieId)) continue;
-
-                if (!clientes.TryGetValue(omieNf.Destinatario.CodigoCliente, out Cliente? cliente)) continue;
-
-                _ = pedidos.TryGetValue(omieNf.Compl.IdPedido ?? 0, out PedidoVenda? pedido);
-                _ = existingNfs.TryGetValue(omieId, out NotaFiscal? existing);
-
-                DateTime dataEmissao = DateTime.UtcNow;
-                if (DateTime.TryParseExact(omieNf.Ide.DataEmissao, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dataParsed))
-                {
-                    dataEmissao = DateTime.SpecifyKind(dataParsed, DateTimeKind.Utc);
-                }
-
-                string status = omieNf.Ide.Situacao switch
-                {
-                    "101" => "CANCELADA",
-                    "110" => "DENEGADA",
-                    "301" => "DENEGADA",
-                    _ => omieNf.Ide.Denegada == "S" ? "DENEGADA" : "AUTORIZADA"
-                };
-
-                TimeSpan? horaEmissao = null;
-                if (TimeSpan.TryParse(omieNf.Ide.HoraEmissao, out TimeSpan horaParsed)) horaEmissao = horaParsed;
+                var vendedores = await _dbContext.Vendedores.ToDictionaryAsync(v => v.OmieId, ct);
 
                 if (existing == null)
                 {
-                    existing = new NotaFiscal
-                    {
-                        Id = Guid.NewGuid(),
-                        OmieId = omieId,
-                        NumeroNf = omieNf.Ide.Numero,
-                        ChaveAcesso = omieNf.Compl.ChaveNfe,
-                        Status = status,
-                        CodigoStatus = int.TryParse(omieNf.Ide.Situacao, out int cs) ? cs : 0,
-                        DataEmissao = dataEmissao,
-                        HoraEmissao = horaEmissao,
-                        NaturezaOperacao = omieNf.Compl.XNatureza,
-                        Serie = omieNf.Ide.Serie,
-                        Modelo = omieNf.Ide.Modelo,
-                        TipoOperacao = omieNf.Ide.TipoNf,
-                        Finalidade = omieNf.Ide.Finalidade,
-                        Ambiente = omieNf.Ide.Ambiente,
-                        InformacoesComplementares = omieNf.Compl.InformacoesComplementares,
-                        InformacoesFisco = omieNf.Compl.InformacoesFisco,
-                        ImportadoApi = true,
-                        ValorTotal = omieNf.Total.IcmsTot.ValorNota,
-                        ValorFrete = omieNf.Total.IcmsTot.ValorFrete,
-                        ValorSeguro = omieNf.Total.IcmsTot.ValorSeguro,
-                        ValorDesconto = omieNf.Total.IcmsTot.ValorDesconto,
-                        ValorOutrasDespesas = omieNf.Total.IcmsTot.ValorOutrasDespesas,
-                        IssqnBaseCalculo = omieNf.Total.IssqnTot?.BaseCalculo ?? 0,
-                        ValorIss = omieNf.Total.IssqnTot?.ValorIss ?? 0,
-                        ValorIr = omieNf.Total.RetTrib?.ValorIrrf ?? 0,
-                        ValorCsll = omieNf.Total.RetTrib?.ValorCsll ?? 0,
-                        ValorPisRetido = omieNf.Total.RetTrib?.ValorPis ?? 0,
-                        ValorCofinsRetido = omieNf.Total.RetTrib?.ValorCofins ?? 0,
-                        ValorIpi = omieNf.Total.IcmsTot.ValorIpi,
-                        ValorPis = omieNf.Total.IcmsTot.ValorPis,
-                        ValorCofins = omieNf.Total.IcmsTot.ValorCofins,
-                        ValorProd = omieNf.Total.IcmsTot.ValorProdutos,
-                        IcmsBaseCalculo = omieNf.Total.IcmsTot.BaseCalculoIcms,
-                        IcmsValor = omieNf.Total.IcmsTot.ValorIcms,
-                        ValorIbs = omieNf.Total.IcmsTot.ValorIbs,
-                        ValorCbs = omieNf.Total.IcmsTot.ValorCbs,
-                        Denegada = omieNf.Ide.Denegada == "S",
-                        ClienteId = cliente.Id,
-                        PedidoVendaId = pedido?.Id,
-                        VendedorId = pedido?.VendedorId,
-                        ContaCorrenteId = pedido?.ContaCorrenteId,
-                        IdTransportadora = omieNf.Compl.IdTransportadora,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
-                        Itens = new List<ItemNotaFiscal>(),
-                        Titulos = new List<NotaFiscalTitulo>()
-                    };
-
-                    if (DateTime.TryParseExact(omieNf.Ide.DataSaida, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dSai)) existing.DataSaida = DateTime.SpecifyKind(dSai, DateTimeKind.Utc);
-                    if (TimeSpan.TryParse(omieNf.Ide.HoraSaida, out var hSai)) existing.HoraSaida = hSai;
-
-                    _dbContext.NotasFiscais.Add(existing);
+                    var nova = MapToNovaNf(omieNf, cliente, pedido);
+                    _dbContext.NotasFiscais.Add(nova);
+                    UpdateItensETitulos(nova, omieNf, prods, vendedores, pedido);
                 }
                 else
                 {
-                    var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieNf.Info?.DAlt, omieNf.Info?.HAlt);
-                    if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue && existing.OmieUpdatedAt.Value == omieLastAlt.Value) continue;
-
-                    existing.Status = status;
-                    existing.CodigoStatus = int.TryParse(omieNf.Ide.Situacao, out int csUpd) ? csUpd : 0;
-                    existing.ChaveAcesso = omieNf.Compl.ChaveNfe;
-                    existing.HoraEmissao = horaEmissao;
-                    existing.ValorIss = omieNf.Total.IssqnTot?.ValorIss ?? 0;
-                    existing.ValorIr = omieNf.Total.RetTrib?.ValorIrrf ?? 0;
-                    existing.ValorCsll = omieNf.Total.RetTrib?.ValorCsll ?? 0;
-                    existing.ValorPisRetido = omieNf.Total.RetTrib?.ValorPis ?? 0;
-                    existing.ValorCofinsRetido = omieNf.Total.RetTrib?.ValorCofins ?? 0;
-                    existing.NaturezaOperacao = omieNf.Compl.XNatureza;
-                    existing.Serie = omieNf.Ide.Serie;
-                    existing.Modelo = omieNf.Ide.Modelo;
-                    existing.TipoOperacao = omieNf.Ide.TipoNf;
-                    existing.Finalidade = omieNf.Ide.Finalidade;
-                    existing.Ambiente = omieNf.Ide.Ambiente;
-                    existing.InformacoesComplementares = omieNf.Compl.InformacoesComplementares;
-                    existing.InformacoesFisco = omieNf.Compl.InformacoesFisco;
-                    existing.ValorFrete = omieNf.Total.IcmsTot.ValorFrete;
-                    existing.ValorSeguro = omieNf.Total.IcmsTot.ValorSeguro;
-                    existing.ValorDesconto = omieNf.Total.IcmsTot.ValorDesconto;
-                    existing.ValorOutrasDespesas = omieNf.Total.IcmsTot.ValorOutrasDespesas;
-                    existing.IssqnBaseCalculo = omieNf.Total.IssqnTot?.BaseCalculo ?? 0;
-                    existing.ValorIpi = omieNf.Total.IcmsTot.ValorIpi;
-                    existing.ValorPis = omieNf.Total.IcmsTot.ValorPis;
-                    existing.ValorCofins = omieNf.Total.IcmsTot.ValorCofins;
-                    existing.ValorProd = omieNf.Total.IcmsTot.ValorProdutos;
-                    existing.IcmsBaseCalculo = omieNf.Total.IcmsTot.BaseCalculoIcms;
-                    existing.IcmsValor = omieNf.Total.IcmsTot.ValorIcms;
-                    existing.ValorIbs = omieNf.Total.IcmsTot.ValorIbs;
-                    existing.ValorCbs = omieNf.Total.IcmsTot.ValorCbs;
-                    existing.Denegada = omieNf.Ide.Denegada == "S";
-                    existing.VendedorId = pedido?.VendedorId;
-                    existing.ContaCorrenteId = pedido?.ContaCorrenteId;
-                    existing.IdTransportadora = omieNf.Compl.IdTransportadora;
-                    existing.UpdatedAt = DateTime.UtcNow;
-                    existing.OmieUpdatedAt = omieLastAlt;
-
-                    if (DateTime.TryParseExact(omieNf.Ide.DataSaida, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dSaiU)) existing.DataSaida = DateTime.SpecifyKind(dSaiU, DateTimeKind.Utc);
-                    else existing.DataSaida = null;
-                    if (TimeSpan.TryParse(omieNf.Ide.HoraSaida, out var hSaiU)) existing.HoraSaida = hSaiU;
-                    else existing.HoraSaida = null;
-
-                    foreach (var item in existing.Itens.ToList()) _dbContext.ItensNotaFiscal.Remove(item);
-                    existing.Itens.Clear();
-                    foreach (var titulo in existing.Titulos.ToList()) _dbContext.NotaFiscalTitulos.Remove(titulo);
-                    existing.Titulos.Clear();
+                    AtualizarNfExistente(existing, omieNf, cliente, pedido);
+                    UpdateItensETitulos(existing, omieNf, prods, vendedores, pedido);
                 }
 
-                foreach (var det in omieNf.Det)
+                await _dbContext.SaveChangesAsync(ct);
+            }
+        }
+
+        private void UpdateItensETitulos(NotaFiscal nf, OmieNotaFiscal omie, Dictionary<string, Produto> produtos, Dictionary<long, Vendedor> vendedores, PedidoVenda? pedido)
+        {
+            // Limpa existentes para simplicidade de Upsert
+            foreach (var item in nf.Itens.ToList()) _dbContext.ItensNotaFiscal.Remove(item);
+            nf.Itens.Clear();
+
+            foreach (var det in omie.Det)
+            {
+                if (produtos.TryGetValue(det.Prod.Codigo.ToString(), out var produto))
                 {
-                    if (produtos.TryGetValue(det.Prod.Codigo, out var produto))
+                    nf.Itens.Add(new ItemNotaFiscal
                     {
-                        existing.Itens.Add(new ItemNotaFiscal
+                        Id = Guid.NewGuid(),
+                        NotaFiscalId = nf.Id,
+                        ProdutoId = produto.Id,
+                        Quantidade = det.Prod.Quantidade,
+                        ValorUnitario = det.Prod.ValorUnitario,
+                        ValorTotal = det.Prod.ValorTotal,
+                        Cfop = det.Prod.Cfop,
+                        Ncm = det.Prod.Ncm,
+                        BaseIcms = det.Imposto?.Icms?.Base ?? 0,
+                        AliqIcms = det.Imposto?.Icms?.Aliquota ?? 0,
+                        CstIcms = det.Imposto?.Icms?.Cst,
+                        BaseIpi = det.Imposto?.Ipi?.Base ?? 0,
+                        AliqIpi = det.Imposto?.Ipi?.Aliquota ?? 0,
+                        CstIpi = det.Imposto?.Ipi?.Cst,
+                        ValorIpi = det.Imposto?.Ipi?.Valor ?? 0,
+                        ValorPis = det.Imposto?.Pis?.Valor ?? 0,
+                        ValorCofins = det.Imposto?.Cofins?.Valor ?? 0,
+                        ValorIbs = det.Imposto?.Ibs?.ValorIbs ?? 0,
+                        AliqIbs = det.Imposto?.Ibs?.AliquotaIbs ?? 0,
+                        ValorCbs = det.Imposto?.Cbs?.ValorCbs ?? 0,
+                        AliqCbs = det.Imposto?.Cbs?.AliquotaCbs ?? 0,
+                        BaseIbsCbs = det.Imposto?.IbsCbs?.BaseIbsCbs ?? 0
+                    });
+                }
+            }
+
+            foreach (var titulo in nf.Titulos.ToList()) _dbContext.NotaFiscalTitulos.Remove(titulo);
+            nf.Titulos.Clear();
+
+            if (omie.Titulos != null)
+            {
+                foreach (var tit in omie.Titulos)
+                {
+                    if (DateTime.TryParseExact(tit.DataVencimento, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtVenc))
+                    {
+                        vendedores.TryGetValue(tit.CodigoVendedor, out var titVendedor);
+                        nf.Titulos.Add(new NotaFiscalTitulo
                         {
                             Id = Guid.NewGuid(),
-                            NotaFiscalId = existing.Id,
-                            ProdutoId = produto.Id,
-                            Quantidade = det.Prod.Quantidade,
-                            ValorUnitario = det.Prod.ValorUnitario,
-                            ValorTotal = det.Prod.ValorTotal,
-                            Cfop = det.Prod.Cfop,
-                            Ncm = det.Prod.Ncm,
-                            BaseIcms = det.Imposto?.Icms?.Base ?? 0,
-                            AliqIcms = det.Imposto?.Icms?.Aliquota ?? 0,
-                            CstIcms = det.Imposto?.Icms?.Cst,
-                            BaseIpi = det.Imposto?.Ipi?.Base ?? 0,
-                            AliqIpi = det.Imposto?.Ipi?.Aliquota ?? 0,
-                            CstIpi = det.Imposto?.Ipi?.Cst,
-                            ValorIpi = det.Imposto?.Ipi?.Valor ?? 0,
-                            ValorPis = det.Imposto?.Pis?.Valor ?? 0,
-                            ValorCofins = det.Imposto?.Cofins?.Valor ?? 0,
-                            ValorIbs = det.Imposto?.Ibs?.ValorIbs ?? 0,
-                            AliqIbs = det.Imposto?.Ibs?.AliquotaIbs ?? 0,
-                            ValorCbs = det.Imposto?.Cbs?.ValorCbs ?? 0,
-                            AliqCbs = det.Imposto?.Cbs?.AliquotaCbs ?? 0,
-                            BaseIbsCbs = det.Imposto?.IbsCbs?.BaseIbsCbs ?? 0
+                            NotaFiscalId = nf.Id,
+                            OmieIdTitulo = tit.OmieIdTitulo,
+                            NumeroParcela = tit.Parcela,
+                            Valor = tit.Valor,
+                            DataVencimento = DateTime.SpecifyKind(dtVenc, DateTimeKind.Utc),
+                            ContaCorrenteId = pedido?.ContaCorrenteId,
+                            VendedorId = titVendedor?.Id
                         });
                     }
                 }
+            }
+        }
 
-                if (omieNf.Titulos != null)
-                {
-                    foreach (var tit in omieNf.Titulos)
-                    {
-                        if (DateTime.TryParseExact(tit.DataVencimento, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dtVenc))
-                        {
-                            vendedores.TryGetValue(tit.CodigoVendedor, out var titVendedor);
-                            existing.Titulos.Add(new NotaFiscalTitulo
-                            {
-                                Id = Guid.NewGuid(),
-                                NotaFiscalId = existing.Id,
-                                OmieIdTitulo = tit.OmieIdTitulo,
-                                NumeroParcela = tit.Parcela,
-                                Valor = tit.Valor,
-                                DataVencimento = DateTime.SpecifyKind(dtVenc, DateTimeKind.Utc),
-                                ContaCorrenteId = pedido?.ContaCorrenteId,
-                                VendedorId = titVendedor?.Id
-                            });
-                        }
-                    }
-                }
-            }
+        private NotaFiscal MapToNovaNf(OmieNotaFiscal omie, Cliente cliente, PedidoVenda? pedido)
+        {
+            var status = StatusHelper(omie.Ide.Situacao, omie.Ide.Denegada == "S");
+            var nf = new NotaFiscal
+            {
+                Id = Guid.NewGuid(),
+                OmieId = omie.Compl.IdNf,
+                NumeroNf = omie.Ide.Numero,
+                ChaveAcesso = omie.Compl.ChaveNfe,
+                Status = status,
+                CodigoStatus = int.TryParse(omie.Ide.Situacao, out int cs) ? cs : 0,
+                NaturezaOperacao = omie.Compl.XNatureza,
+                Serie = omie.Ide.Serie,
+                Modelo = omie.Ide.Modelo,
+                TipoOperacao = omie.Ide.TipoNf,
+                Finalidade = omie.Ide.Finalidade,
+                Ambiente = omie.Ide.Ambiente,
+                InformacoesComplementares = omie.Compl.InformacoesComplementares,
+                InformacoesFisco = omie.Compl.InformacoesFisco,
+                ImportadoApi = true,
+                ValorTotal = omie.Total.IcmsTot.ValorNota,
+                ValorFrete = omie.Total.IcmsTot.ValorFrete,
+                ValorSeguro = omie.Total.IcmsTot.ValorSeguro,
+                ValorDesconto = omie.Total.IcmsTot.ValorDesconto,
+                ValorOutrasDespesas = omie.Total.IcmsTot.ValorOutrasDespesas,
+                IssqnBaseCalculo = omie.Total.IssqnTot?.BaseCalculo ?? 0,
+                ValorIss = omie.Total.IssqnTot?.ValorIss ?? 0,
+                ValorIr = omie.Total.RetTrib?.ValorIrrf ?? 0,
+                ValorCsll = omie.Total.RetTrib?.ValorCsll ?? 0,
+                ValorPisRetido = omie.Total.RetTrib?.ValorPis ?? 0,
+                ValorCofinsRetido = omie.Total.RetTrib?.ValorCofins ?? 0,
+                ValorIpi = omie.Total.IcmsTot.ValorIpi,
+                ValorPis = omie.Total.IcmsTot.ValorPis,
+                ValorCofins = omie.Total.IcmsTot.ValorCofins,
+                ValorProd = omie.Total.IcmsTot.ValorProdutos,
+                IcmsBaseCalculo = omie.Total.IcmsTot.BaseCalculoIcms,
+                IcmsValor = omie.Total.IcmsTot.ValorIcms,
+                ValorIbs = omie.Total.IcmsTot.ValorIbs,
+                ValorCbs = omie.Total.IcmsTot.ValorCbs,
+                Denegada = omie.Ide.Denegada == "S",
+                ClienteId = cliente.Id,
+                PedidoVendaId = pedido?.Id,
+                VendedorId = pedido?.VendedorId,
+                ContaCorrenteId = pedido?.ContaCorrenteId,
+                IdTransportadora = omie.Compl.IdTransportadora,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                OmieUpdatedAt = OmieTimestampHelper.ParseOmieDateTime(omie.Info?.DAlt, omie.Info?.HAlt),
+                Itens = new List<ItemNotaFiscal>(),
+                Titulos = new List<NotaFiscalTitulo>()
+            };
 
-            try
+            if (DateTime.TryParseExact(omie.Ide.DataEmissao, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dEmi))
             {
-                await _dbContext.SaveChangesAsync(ct);
+                nf.DataEmissao = DateTime.SpecifyKind(dEmi, DateTimeKind.Utc);
             }
-            catch (DbUpdateConcurrencyException)
+            if (TimeSpan.TryParse(omie.Ide.HoraEmissao, out var hEmi)) nf.HoraEmissao = hEmi;
+            if (DateTime.TryParseExact(omie.Ide.DataSaida, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dSai)) nf.DataSaida = DateTime.SpecifyKind(dSai, DateTimeKind.Utc);
+            if (TimeSpan.TryParse(omie.Ide.HoraSaida, out var hSai)) nf.HoraSaida = hSai;
+
+            return nf;
+        }
+
+        private void AtualizarNfExistente(NotaFiscal existing, OmieNotaFiscal omie, Cliente cliente, PedidoVenda? pedido)
+        {
+            var status = StatusHelper(omie.Ide.Situacao, omie.Ide.Denegada == "S");
+            existing.Status = status;
+            existing.CodigoStatus = int.TryParse(omie.Ide.Situacao, out int csUpd) ? csUpd : 0;
+            existing.ChaveAcesso = omie.Compl.ChaveNfe;
+            existing.ValorIss = omie.Total.IssqnTot?.ValorIss ?? 0;
+            existing.ValorIr = omie.Total.RetTrib?.ValorIrrf ?? 0;
+            existing.ValorCsll = omie.Total.RetTrib?.ValorCsll ?? 0;
+            existing.ValorPisRetido = omie.Total.RetTrib?.ValorPis ?? 0;
+            existing.ValorCofinsRetido = omie.Total.RetTrib?.ValorCofins ?? 0;
+            existing.NaturezaOperacao = omie.Compl.XNatureza;
+            existing.Serie = omie.Ide.Serie;
+            existing.Modelo = omie.Ide.Modelo;
+            existing.TipoOperacao = omie.Ide.TipoNf;
+            existing.Finalidade = omie.Ide.Finalidade;
+            existing.Ambiente = omie.Ide.Ambiente;
+            existing.InformacoesComplementares = omie.Compl.InformacoesComplementares;
+            existing.InformacoesFisco = omie.Compl.InformacoesFisco;
+            existing.ValorFrete = omie.Total.IcmsTot.ValorFrete;
+            existing.ValorSeguro = omie.Total.IcmsTot.ValorSeguro;
+            existing.ValorDesconto = omie.Total.IcmsTot.ValorDesconto;
+            existing.ValorOutrasDespesas = omie.Total.IcmsTot.ValorOutrasDespesas;
+            existing.IssqnBaseCalculo = omie.Total.IssqnTot?.BaseCalculo ?? 0;
+            existing.ValorIpi = omie.Total.IcmsTot.ValorIpi;
+            existing.ValorPis = omie.Total.IcmsTot.ValorPis;
+            existing.ValorCofins = omie.Total.IcmsTot.ValorCofins;
+            existing.ValorProd = omie.Total.IcmsTot.ValorProdutos;
+            existing.IcmsBaseCalculo = omie.Total.IcmsTot.BaseCalculoIcms;
+            existing.IcmsValor = omie.Total.IcmsTot.ValorIcms;
+            existing.ValorIbs = omie.Total.IcmsTot.ValorIbs;
+            existing.ValorCbs = omie.Total.IcmsTot.ValorCbs;
+            existing.Denegada = omie.Ide.Denegada == "S";
+            existing.PedidoVendaId = pedido?.Id;
+            existing.VendedorId = pedido?.VendedorId;
+            existing.ContaCorrenteId = pedido?.ContaCorrenteId;
+            existing.IdTransportadora = omie.Compl.IdTransportadora;
+            existing.UpdatedAt = DateTime.UtcNow;
+            existing.OmieUpdatedAt = OmieTimestampHelper.ParseOmieDateTime(omie.Info?.DAlt, omie.Info?.HAlt);
+
+            if (DateTime.TryParseExact(omie.Ide.DataSaida, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dSaiU)) existing.DataSaida = DateTime.SpecifyKind(dSaiU, DateTimeKind.Utc);
+            else existing.DataSaida = null;
+            if (TimeSpan.TryParse(omie.Ide.HoraSaida, out var hSaiU)) existing.HoraSaida = hSaiU;
+            else existing.HoraSaida = null;
+        }
+
+        private string StatusHelper(string situacao, bool denegada)
+        {
+            return situacao switch
             {
-                foreach (var entry in _dbContext.ChangeTracker.Entries().ToList()) entry.State = EntityState.Detached;
-            }
+                "101" => "CANCELADA",
+                "110" => "DENEGADA",
+                "301" => "DENEGADA",
+                _ => denegada ? "DENEGADA" : "AUTORIZADA"
+            };
         }
     }
 }

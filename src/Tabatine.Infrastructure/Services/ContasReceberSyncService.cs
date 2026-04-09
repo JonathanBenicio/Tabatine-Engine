@@ -42,83 +42,43 @@ namespace Tabatine.Infrastructure.Services
             var lastSyncDate = await _syncState.GetLastSyncDateAsync(SyncKey, ct);
             var syncStartTime = DateTime.UtcNow;
 
-            var processedOmieIds = new HashSet<long>();
-            int pagina = 1;
-            bool temMais = true;
+            // Lookups locais para evitar N+1
+            var existingLookup = await _dbContext.TitulosReceber.ToDictionaryAsync(t => t.OmieId, ct);
+            var clientesLookup = await _dbContext.Clientes.ToDictionaryAsync(c => c.OmieId, ct);
+            var vendedoresLookup = await _dbContext.Vendedores.ToDictionaryAsync(v => v.OmieId, ct);
+            var contasCorrenteLookup = await _dbContext.ContasCorrente.ToDictionaryAsync(cc => cc.OmieId, ct);
+            
+            int count = 0;
 
-            while (temMais && !ct.IsCancellationRequested)
+            await foreach (var omieItem in _omieClient.StreamContasReceberAsync(filtrarDe: lastSyncDate, cancellationToken: ct))
             {
-                var response = await _omieClient.ListarContasReceberAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                var omieId = omieItem.CodigoLancamentoOmie;
 
-                if (response?.ContasReceber == null || response.ContasReceber.Count == 0) break;
+                clientesLookup.TryGetValue(omieItem.CodigoClienteFornecedor, out var cliente);
+                vendedoresLookup.TryGetValue(omieItem.CodigoVendedor ?? 0, out var vendedor);
+                contasCorrenteLookup.TryGetValue(omieItem.CodigoContaCorrente ?? 0, out var contaCorrente);
 
-                // Pré-carrega clientes e contas correntes referenciados nesta página
-                var omieClienteIds = response.ContasReceber
-                    .Where(t => t.CodigoClienteFornecedor > 0)
-                    .Select(t => t.CodigoClienteFornecedor).Distinct().ToList();
-
-                var omieVendedorIds = response.ContasReceber
-                    .Where(t => t.CodigoVendedor.HasValue)
-                    .Select(t => t.CodigoVendedor!.Value).Distinct().ToList();
-
-                var omieContaIds = response.ContasReceber
-                    .Where(t => t.CodigoContaCorrente.HasValue)
-                    .Select(t => t.CodigoContaCorrente!.Value).Distinct().ToList();
-
-                var clientes = await _dbContext.Clientes
-                    .Where(c => omieClienteIds.Contains(c.OmieId))
-                    .ToDictionaryAsync(c => c.OmieId, ct);
-
-                var vendedores = await _dbContext.Vendedores
-                    .Where(v => omieVendedorIds.Contains(v.OmieId))
-                    .ToDictionaryAsync(v => v.OmieId, ct);
-
-                var contasCorrente = await _dbContext.ContasCorrente
-                    .Where(cc => omieContaIds.Contains(cc.OmieId))
-                    .ToDictionaryAsync(cc => cc.OmieId, ct);
-
-                var omieIds = response.ContasReceber.Select(t => t.CodigoLancamentoOmie).ToList();
-                var existingTitulos = await _dbContext.TitulosReceber
-                    .Where(t => omieIds.Contains(t.OmieId))
-                    .ToDictionaryAsync(t => t.OmieId, ct);
-
-                foreach (var omieItem in response.ContasReceber)
+                if (existingLookup.TryGetValue(omieId, out var existing))
                 {
-                    var omieId = omieItem.CodigoLancamentoOmie;
-
-                    if (!processedOmieIds.Add(omieId))
-                    {
-                        _logger.LogDebug("TituloReceber OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
-                        continue;
-                    }
-
-                    clientes.TryGetValue(omieItem.CodigoClienteFornecedor, out var cliente);
-                    vendedores.TryGetValue(omieItem.CodigoVendedor ?? 0, out var vendedor);
-                    contasCorrente.TryGetValue(omieItem.CodigoContaCorrente ?? 0, out var contaCorrente);
-
-                    existingTitulos.TryGetValue(omieId, out var existing);
-
-                    if (existing == null)
-                    {
-                        var novo = MapToEntity(omieItem, cliente, vendedor, contaCorrente);
-                        _dbContext.TitulosReceber.Add(novo);
-                        existingTitulos[omieId] = novo;
-                    }
-                    else
-                    {
-                        AtualizarEntidade(existing, omieItem, cliente, vendedor, contaCorrente);
-                    }
+                    AtualizarEntidade(existing, omieItem, cliente, vendedor, contaCorrente);
+                }
+                else
+                {
+                    var novo = MapToEntity(omieItem, cliente, vendedor, contaCorrente);
+                    _dbContext.TitulosReceber.Add(novo);
+                    existingLookup[omieId] = novo;
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de títulos a receber sincronizada.", pagina, response.TotalDePaginas);
-
-                temMais = pagina < response.TotalDePaginas;
-                pagina++;
+                if (++count % 500 == 0)
+                {
+                    await _dbContext.SaveChangesAsync(ct);
+                    _logger.LogInformation("{Count} títulos a receber processados...", count);
+                }
             }
 
+            await _dbContext.SaveChangesAsync(ct);
             await _syncState.SetLastSyncDateAsync(SyncKey, syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Contas a Receber finalizada. Total processado: {Count}", processedOmieIds.Count);
+            _logger.LogInformation("Sincronização de Contas a Receber finalizada. Total: {Count}", count);
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)

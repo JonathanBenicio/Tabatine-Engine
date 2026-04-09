@@ -36,81 +36,59 @@ namespace Tabatine.Infrastructure.Services
             var lastSyncDate = await _syncState.GetLastSyncDateAsync("Vendedores", ct);
             var syncStartTime = DateTime.UtcNow;
 
-            // Rastreia OmieIds já processados neste ciclo para evitar duplicatas
-            var processedOmieIds = new HashSet<long>();
+            // Carrega lookup local para evitar N+1
+            var existingLookup = await _dbContext.Vendedores.ToDictionaryAsync(v => v.OmieId, ct);
+            int count = 0;
 
-            int pagina = 1;
-            bool temMais = true;
-
-            while (temMais && !ct.IsCancellationRequested)
+            await foreach (var omieItem in _omieClient.StreamVendedoresAsync(filtrarDe: lastSyncDate, cancellationToken: ct))
             {
-                var response = await _omieClient.ListarVendedoresAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                var omieId = omieItem.Codigo;
+                var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieItem.DAlt, omieItem.HAlt);
 
-                if (response == null || response.Vendedores == null || response.Vendedores.Count == 0) break;
-
-                var omieIds = response.Vendedores.Select(v => v.Codigo).ToList();
-                var existingVendedores = await _dbContext.Vendedores
-                    .Where(v => omieIds.Contains(v.OmieId))
-                    .ToDictionaryAsync(v => v.OmieId, ct);
-
-                foreach (var omieItem in response.Vendedores)
+                if (existingLookup.TryGetValue(omieId, out var existing))
                 {
-                    var omieId = omieItem.Codigo;
-
-                    // Pula se já processamos este OmieId neste ciclo
-                    if (!processedOmieIds.Add(omieId))
+                    // Se o timestamp da Omie for igual ao que já temos, pula o update
+                    if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
+                        existing.OmieUpdatedAt.Value == omieLastAlt.Value)
                     {
-                        _logger.LogDebug("Vendedor OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
                         continue;
                     }
 
-                    existingVendedores.TryGetValue(omieId, out var existing);
-                    var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieItem.DAlt, omieItem.HAlt);
-
-                    if (existing == null)
+                    existing.Nome = omieItem.Nome;
+                    existing.Email = omieItem.Email;
+                    existing.Comissao = omieItem.Comissao;
+                    existing.Inativo = omieItem.Inativo == "S";
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    existing.OmieUpdatedAt = omieLastAlt;
+                }
+                else
+                {
+                    var novoVendedor = new Vendedor
                     {
-                        var novoVendedor = new Vendedor
-                        {
-                            Id = Guid.NewGuid(),
-                            OmieId = omieId,
-                            Nome = omieItem.Nome,
-                            Email = omieItem.Email,
-                            Comissao = omieItem.Comissao,
-                            Inativo = omieItem.Inativo == "S",
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow,
-                            OmieUpdatedAt = omieLastAlt
-                        };
-                        _dbContext.Vendedores.Add(novoVendedor);
-                        existingVendedores[omieId] = novoVendedor;
-                    }
-                    else
-                    {
-                        // Se o timestamp da Omie for igual ao que já temos, pula o update
-                        if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
-                            existing.OmieUpdatedAt.Value == omieLastAlt.Value)
-                        {
-                            _logger.LogDebug("Vendedor OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
-                            continue;
-                        }
-
-                        existing.Nome = omieItem.Nome;
-                        existing.Email = omieItem.Email;
-                        existing.Comissao = omieItem.Comissao;
-                        existing.Inativo = omieItem.Inativo == "S";
-                        existing.UpdatedAt = DateTime.UtcNow;
-                        existing.OmieUpdatedAt = omieLastAlt;
-                    }
+                        Id = Guid.NewGuid(),
+                        OmieId = omieId,
+                        Nome = omieItem.Nome,
+                        Email = omieItem.Email,
+                        Comissao = omieItem.Comissao,
+                        Inativo = omieItem.Inativo == "S",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        OmieUpdatedAt = omieLastAlt
+                    };
+                    _dbContext.Vendedores.Add(novoVendedor);
+                    existingLookup[omieId] = novoVendedor;
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de vendedores sincronizada.", pagina, response.TotalDePaginas);
-                temMais = pagina < response.TotalDePaginas;
-                pagina++;
+                if (++count % 500 == 0)
+                {
+                    await _dbContext.SaveChangesAsync(ct);
+                    _logger.LogInformation("{Count} vendedores processados...", count);
+                }
             }
 
+            await _dbContext.SaveChangesAsync(ct);
             await _syncState.SetLastSyncDateAsync("Vendedores", syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Vendedores finalizada.");
+            _logger.LogInformation("Sincronização de Vendedores finalizada. Total: {Count}", count);
         }
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
