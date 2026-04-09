@@ -38,6 +38,20 @@ namespace Tabatine.Omie.Client
         Task<OmieNotaFiscal?> ConsultarNotaFiscalAsync(long codigoNfOmie, CancellationToken cancellationToken = default);
         Task<OmieVendedor?> ConsultarVendedorAsync(long codigoVendedorOmie, CancellationToken cancellationToken = default);
 
+        // Streaming de Listagem
+        IAsyncEnumerable<OmieCliente> StreamClientesAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<OmieProduto> StreamProdutosAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<OmiePedido> StreamPedidosAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<OmieNotaFiscal> StreamNotasFiscaisAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<OmieVendedor> StreamVendedoresAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<OmieContaCorrente> StreamContasCorrentesAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<OmieOperacaoEtapa> StreamEtapasFaturamentoAsync(CancellationToken cancellationToken = default);
+        IAsyncEnumerable<OmieFormaPagamento> StreamFormasPagVendasAsync(CancellationToken cancellationToken = default);
+        IAsyncEnumerable<OmieBanco> StreamBancosAsync(CancellationToken cancellationToken = default);
+        IAsyncEnumerable<ParcelaOmie> StreamParcelasAsync(CancellationToken cancellationToken = default);
+        IAsyncEnumerable<OmieContaPagar> StreamContasPagarAsync(long? codigoVendedor = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<OmieContaReceber> StreamContasReceberAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default);
+
         // Estoque
         IAsyncEnumerable<LocalEstoqueDto> ListarLocaisEstoqueAsync(CancellationToken cancellationToken = default);
         Task<PosicaoEstoqueResponse> ConsultarPosicaoEstoqueAsync(PosicaoEstoqueRequest request, CancellationToken cancellationToken = default);
