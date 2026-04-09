@@ -31,79 +31,63 @@ namespace Tabatine.Infrastructure.Services
         {
             _logger.LogInformation("Iniciando sincronização de Etapas de Faturamento...");
             
-            // Etapas geralmente não filtram por data, sincronizamos tudo
             var syncStartTime = DateTime.UtcNow;
 
-            int pagina = 1;
-            bool temMais = true;
+            // Carrega lookup local para evitar N+1 (Chave composta: CodigoOperacao + CodigoEtapa)
+            var existingLookup = await _dbContext.EtapasFaturamento
+                .ToDictionaryAsync(e => $"{e.CodigoOperacao}-{e.Codigo}", ct);
+            
+            int count = 0;
 
-            while (temMais && !ct.IsCancellationRequested)
+            await foreach (var operacao in _omieClient.StreamEtapasFaturamentoAsync(ct))
             {
-                var response = await _omieClient.ListarEtapasFaturamentoAsync(pagina, ct);
-                
-                if (response == null || response.Cadastros == null || response.Cadastros.Count == 0) break;
+                var codOperacao = operacao.CodigoOperacao;
+                var descOperacao = operacao.DescricaoOperacao;
 
-                // Batch load ALL existing etapas for ALL operations in this page
-                var allCodOperacao = response.Cadastros.Select(c => c.CodigoOperacao).ToList();
-                var allCodEtapas = response.Cadastros.SelectMany(c => c.Etapas.Select(e => e.Codigo)).Distinct().ToList();
-
-                var existingEtapas = await _dbContext.EtapasFaturamento
-                    .Where(e => allCodOperacao.Contains(e.CodigoOperacao) && allCodEtapas.Contains(e.Codigo))
-                    .ToListAsync(ct);
-
-                // Dictionary keyed by [CodigoOperacao-CodigoEtapa] for unique matching
-                var existingDict = existingEtapas.ToDictionary(e => $"{e.CodigoOperacao}-{e.Codigo}");
-                var processedKeys = new HashSet<string>();
-
-                foreach (var operacao in response.Cadastros)
+                foreach (var omieEtapa in operacao.Etapas)
                 {
-                    var codOperacao = operacao.CodigoOperacao;
-                    var descOperacao = operacao.DescricaoOperacao;
-
-                    foreach (var omieEtapa in operacao.Etapas)
+                    var key = $"{codOperacao}-{omieEtapa.Codigo}";
+                    
+                    if (existingLookup.TryGetValue(key, out var existing))
                     {
-                        var key = $"{codOperacao}-{omieEtapa.Codigo}";
-                        if (!processedKeys.Add(key)) continue;
-
-                        existingDict.TryGetValue(key, out var existing);
-
-                        if (existing == null)
-                        {
-                            var nova = new EtapaFaturamento
-                            {
-                                Id = Guid.NewGuid(),
-                                Codigo = omieEtapa.Codigo,
-                                Descricao = omieEtapa.Descricao,
-                                DescricaoPadrao = omieEtapa.DescricaoPadrao,
-                                Inativa = omieEtapa.Inativo == "S",
-                                CodigoOperacao = codOperacao,
-                                DescricaoOperacao = descOperacao,
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow,
-                                OmieId = 0 // Não há ID numérico para etapas no endpoint Listar
-                            };
-                            _dbContext.EtapasFaturamento.Add(nova);
-                            existingDict[key] = nova;
-                        }
-                        else
-                        {
-                            existing.Descricao = omieEtapa.Descricao;
-                            existing.DescricaoPadrao = omieEtapa.DescricaoPadrao;
-                            existing.Inativa = omieEtapa.Inativo == "S";
-                            existing.DescricaoOperacao = descOperacao;
-                            existing.UpdatedAt = DateTime.UtcNow;
-                        }
+                        existing.Descricao = omieEtapa.Descricao;
+                        existing.DescricaoPadrao = omieEtapa.DescricaoPadrao;
+                        existing.Inativa = omieEtapa.Inativo == "S";
+                        existing.DescricaoOperacao = descOperacao;
+                        existing.UpdatedAt = DateTime.UtcNow;
                     }
+                    else
+                    {
+                        var nova = new EtapaFaturamento
+                        {
+                            Id = Guid.NewGuid(),
+                            Codigo = omieEtapa.Codigo,
+                            Descricao = omieEtapa.Descricao,
+                            DescricaoPadrao = omieEtapa.DescricaoPadrao,
+                            Inativa = omieEtapa.Inativo == "S",
+                            CodigoOperacao = codOperacao,
+                            DescricaoOperacao = descOperacao,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow,
+                            OmieId = 0
+                        };
+                        _dbContext.EtapasFaturamento.Add(nova);
+                        existingLookup[key] = nova;
+                    }
+
+                    count++;
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de etapas sincronizada.", pagina, response.TotalDePaginas);
-                temMais = pagina < response.TotalDePaginas;
-                pagina++;
+                if (count > 0 && count % 500 == 0)
+                {
+                    await _dbContext.SaveChangesAsync(ct);
+                    _logger.LogInformation("{Count} etapas processadas...", count);
+                }
             }
 
+            await _dbContext.SaveChangesAsync(ct);
             await _syncState.SetLastSyncDateAsync("EtapasFaturamento", syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Etapas de Faturamento finalizada.");
+            _logger.LogInformation("Sincronização de Etapas de Faturamento finalizada. Total: {Count}", count);
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)

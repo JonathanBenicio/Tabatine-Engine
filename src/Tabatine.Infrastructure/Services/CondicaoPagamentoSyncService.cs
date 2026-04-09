@@ -34,65 +34,50 @@ namespace Tabatine.Infrastructure.Services
 
             var syncStartTime = DateTime.UtcNow;
 
-            int pagina = 1;
-            bool temMais = true;
+            // Carrega lookup local para evitar N+1
+            var existingLookup = await _dbContext.CondicoesPagamento.ToDictionaryAsync(c => c.Codigo, ct);
+            int count = 0;
 
-            while (temMais && !ct.IsCancellationRequested)
+            await foreach (var omieCondicao in _omieClient.StreamParcelasAsync(ct))
             {
-                var response = await _omieClient.ListarParcelasAsync(pagina, ct);
+                if (omieCondicao.Codigo <= 0) continue;
 
-                if (response == null) break;
-
-                var rawCadastros = response.Cadastros ?? new List<ParcelaOmie>();
-                var processedOmieIds = new HashSet<long>();
-
-                var codigos = rawCadastros.Where(c => c.Codigo > 0).Select(c => c.Codigo.ToString()).ToList();
-                var existingCondicoes = await _dbContext.CondicoesPagamento
-                    .Where(c => codigos.Contains(c.Codigo))
-                    .ToDictionaryAsync(c => c.Codigo, ct);
-
-                foreach (var omieCondicao in rawCadastros)
+                var codigoStr = omieCondicao.Codigo.ToString();
+                if (existingLookup.TryGetValue(codigoStr, out var existing))
                 {
-                    if (omieCondicao.Codigo <= 0) continue;
-                    if (!processedOmieIds.Add(omieCondicao.Codigo)) continue;
-
-                    var codigoStr = omieCondicao.Codigo.ToString();
-                    existingCondicoes.TryGetValue(codigoStr, out var existing);
-
-                    if (existing == null)
+                    existing.Descricao = omieCondicao.Descricao;
+                    existing.QuantidadeParcelas = omieCondicao.QuantidadeParcelas;
+                    existing.DiaFixo = omieCondicao.DiaFixo;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    existing.OmieId = omieCondicao.Codigo;
+                }
+                else
+                {
+                    var nova = new CondicaoPagamento
                     {
-                        var nova = new CondicaoPagamento
-                        {
-                            Id = Guid.NewGuid(),
-                            Codigo = codigoStr,
-                            Descricao = omieCondicao.Descricao,
-                            QuantidadeParcelas = omieCondicao.QuantidadeParcelas,
-                            DiaFixo = omieCondicao.DiaFixo,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow,
-                            OmieId = omieCondicao.Codigo // Use the nCodigo as OmieId too
-                        };
-                        _dbContext.CondicoesPagamento.Add(nova);
-                        existingCondicoes[codigoStr] = nova;
-                    }
-                    else
-                    {
-                        existing.Descricao = omieCondicao.Descricao;
-                        existing.QuantidadeParcelas = omieCondicao.QuantidadeParcelas;
-                        existing.DiaFixo = omieCondicao.DiaFixo;
-                        existing.UpdatedAt = DateTime.UtcNow;
-                        existing.OmieId = omieCondicao.Codigo;
-                    }
+                        Id = Guid.NewGuid(),
+                        Codigo = codigoStr,
+                        Descricao = omieCondicao.Descricao,
+                        QuantidadeParcelas = omieCondicao.QuantidadeParcelas,
+                        DiaFixo = omieCondicao.DiaFixo,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        OmieId = omieCondicao.Codigo
+                    };
+                    _dbContext.CondicoesPagamento.Add(nova);
+                    existingLookup[codigoStr] = nova;
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de condições de pagamento sincronizada.", pagina, response.TotalDePaginas);
-                temMais = pagina < response.TotalDePaginas;
-                pagina++;
+                if (++count % 500 == 0)
+                {
+                    await _dbContext.SaveChangesAsync(ct);
+                    _logger.LogInformation("{Count} condições de pagamento processadas...", count);
+                }
             }
 
+            await _dbContext.SaveChangesAsync(ct);
             await _syncState.SetLastSyncDateAsync("CondicoesPagamento", syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Condições de Pagamento finalizada.");
+            _logger.LogInformation("Sincronização de Condições de Pagamento finalizada. Total: {Count}", count);
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)

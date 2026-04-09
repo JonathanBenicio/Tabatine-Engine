@@ -32,70 +32,52 @@ namespace Tabatine.Infrastructure.Services
             _logger.LogInformation("Iniciando sincronização de Bancos...");
             
             var syncStartTime = DateTime.UtcNow;
+            
+            // Carrega lookup local para evitar N+1
+            var existingLookup = await _dbContext.Bancos.ToDictionaryAsync(b => b.CodigoBanco, ct);
+            int count = 0;
 
-            var processedCodes = new HashSet<string>();
-            int pagina = 1;
-            bool temMais = true;
-
-            while (temMais && !ct.IsCancellationRequested)
+            await foreach (var omieBanco in _omieClient.StreamBancosAsync(ct))
             {
-                var response = await _omieClient.ListarBancosAsync(pagina, ct);
-                
-                if (response == null || response.Bancos == null || response.Bancos.Count == 0) break;
-
-                var codigos = response.Bancos.Select(b => b.Codigo).ToList();
-                var existingBancos = await _dbContext.Bancos
-                    .Where(b => codigos.Contains(b.CodigoBanco))
-                    .ToDictionaryAsync(b => b.CodigoBanco, ct);
-
-                foreach (var omieBanco in response.Bancos)
+                if (existingLookup.TryGetValue(omieBanco.Codigo, out var existing))
                 {
-                    if (!processedCodes.Add(omieBanco.Codigo))
+                    existing.Nome = omieBanco.Nome;
+                    existing.CodigoIspb = omieBanco.CodigoIspb;
+                    existing.Tipo = omieBanco.Tipo;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                }
+                else
+                {
+                    var novoBanco = new Banco
                     {
-                        _logger.LogWarning("Banco Código {Cod} duplicado na resposta da Omie. Pulando.", omieBanco.Codigo);
-                        continue;
+                        Id = Guid.NewGuid(),
+                        CodigoBanco = omieBanco.Codigo,
+                        Nome = omieBanco.Nome,
+                        CodigoIspb = omieBanco.CodigoIspb,
+                        Tipo = omieBanco.Tipo,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    if (long.TryParse(omieBanco.Codigo, out long omieId))
+                    {
+                        novoBanco.OmieId = omieId;
                     }
 
-                    existingBancos.TryGetValue(omieBanco.Codigo, out var existing);
-
-                    if (existing == null)
-                    {
-                        var novoBanco = new Banco
-                        {
-                            Id = Guid.NewGuid(),
-                            CodigoBanco = omieBanco.Codigo,
-                            Nome = omieBanco.Nome,
-                            CodigoIspb = omieBanco.CodigoIspb,
-                            Tipo = omieBanco.Tipo,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
-                        };
-
-                        if (long.TryParse(omieBanco.Codigo, out long omieId))
-                        {
-                            novoBanco.OmieId = omieId;
-                        }
-
-                        _dbContext.Bancos.Add(novoBanco);
-                        existingBancos[omieBanco.Codigo] = novoBanco;
-                    }
-                    else
-                    {
-                        existing.Nome = omieBanco.Nome;
-                        existing.CodigoIspb = omieBanco.CodigoIspb;
-                        existing.Tipo = omieBanco.Tipo;
-                        existing.UpdatedAt = DateTime.UtcNow;
-                    }
+                    _dbContext.Bancos.Add(novoBanco);
+                    existingLookup[omieBanco.Codigo] = novoBanco;
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de bancos sincronizada.", pagina, response.TotalDePaginas);
-                temMais = pagina < response.TotalDePaginas;
-                pagina++;
+                if (++count % 500 == 0)
+                {
+                    await _dbContext.SaveChangesAsync(ct);
+                    _logger.LogInformation("{Count} bancos processados...", count);
+                }
             }
 
+            await _dbContext.SaveChangesAsync(ct);
             await _syncState.SetLastSyncDateAsync("Bancos", syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Bancos finalizada.");
+            _logger.LogInformation("Sincronização de Bancos finalizada. Total: {Count}", count);
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
