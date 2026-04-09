@@ -62,7 +62,7 @@ namespace Tabatine.Omie.Client
             {
                 using var content = new StringContent(json, System.Text.Encoding.UTF8);
                 content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-                
+
                 var response = await _httpClient.PostAsync(url, content, ct);
                 var responseJson = await response.Content.ReadAsStringAsync(ct);
 
@@ -73,7 +73,7 @@ namespace Tabatine.Omie.Client
                         _logger.LogDebug("<<< Omie retornou sem registros (5113/101) para {Url}. Call: {Call}", url, call);
                         return default!;
                     }
-                    
+
                     _logger.LogError("<<< Erro Omie {StatusCode} em {Url}. Call: {Call}. Resposta: {ErrorBody}", response.StatusCode, url, call, responseJson);
                     throw new HttpRequestException($"Erro Omie {response.StatusCode} em {call}: {responseJson}");
                 }
@@ -91,71 +91,43 @@ namespace Tabatine.Omie.Client
         public async Task<ListarClientesResponse> ListarClientesAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
             var param = new ListarClientesParam { Pagina = pagina };
-            if (filtrarDe.HasValue || filtrarAte.HasValue)
-            {
-                param.FiltrarPorDataDe = filtrarDe?.ToString("dd/MM/yyyy");
-                param.FiltrarPorDataAte = filtrarAte?.ToString("dd/MM/yyyy");
-            }
-
             return await SendRequestAsync<ListarClientesParam, ListarClientesResponse>("geral/clientes/", "ListarClientes", param, cancellationToken);
         }
 
         public async Task<ListarProdutosResponse> ListarProdutosAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
             var param = new ListarProdutosParam { Pagina = pagina };
-            if (filtrarDe.HasValue || filtrarAte.HasValue)
-            {
-                param.FiltrarPorDataDe = filtrarDe?.ToString("dd/MM/yyyy");
-                param.FiltrarPorDataAte = filtrarAte?.ToString("dd/MM/yyyy");
-            }
-
             return await SendRequestAsync<ListarProdutosParam, ListarProdutosResponse>("geral/produtos/", "ListarProdutos", param, cancellationToken);
         }
 
         public async Task<ListarPedidosResponse> ListarPedidosAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
             var param = new ListarPedidosParam { Pagina = pagina };
-            if (filtrarDe.HasValue || filtrarAte.HasValue)
-            {
-                param.FiltrarPorDataDe = filtrarDe?.ToString("dd/MM/yyyy");
-                param.FiltrarPorDataAte = filtrarAte?.ToString("dd/MM/yyyy");
-            }
-
             return await SendRequestAsync<ListarPedidosParam, ListarPedidosResponse>("produtos/pedido/", "ListarPedidos", param, cancellationToken);
         }
 
         public async Task<ListarNotasFiscaisResponse> ListarNotasFiscaisAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
             var param = new ListarNotasFiscaisParam { Pagina = pagina };
-            if (filtrarDe.HasValue || filtrarAte.HasValue)
-            {
-                param.FiltrarPorDataDe = filtrarDe?.ToString("dd/MM/yyyy");
-                param.FiltrarPorDataAte = filtrarAte?.ToString("dd/MM/yyyy");
-            }
-
             return await SendRequestAsync<ListarNotasFiscaisParam, ListarNotasFiscaisResponse>("produtos/nfconsultar/", "ListarNF", param, cancellationToken);
         }
 
         public async Task<ListarVendedoresResponse> ListarVendedoresAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
             var param = new ListarVendedoresParam { Pagina = pagina };
-            if (filtrarDe.HasValue || filtrarAte.HasValue)
-            {
-                param.FiltrarPorDataDe = filtrarDe?.ToString("dd/MM/yyyy");
-                param.FiltrarPorDataAte = filtrarAte?.ToString("dd/MM/yyyy");
-            }
+            // if (filtrarDe.HasValue || filtrarAte.HasValue)
+            // {
+            //     param.FiltrarPorDataDe = filtrarDe?.ToString("dd/MM/yyyy");
+            //     param.FiltrarPorDataAte = filtrarAte?.ToString("dd/MM/yyyy");
+            // }
 
             return await SendRequestAsync<ListarVendedoresParam, ListarVendedoresResponse>("geral/vendedores/", "ListarVendedores", param, cancellationToken);
         }
 
         public async Task<ListarContaCorrenteResponse> ListarContasCorrentesAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
+            // Nota: o endpoint geral/contacorrente/ da Omie não suporta filtros de data.
             var param = new ListarContaCorrenteParam { Pagina = pagina };
-            if (filtrarDe.HasValue || filtrarAte.HasValue)
-            {
-                param.FiltrarPorDataDe = filtrarDe?.ToString("dd/MM/yyyy");
-                param.FiltrarPorDataAte = filtrarAte?.ToString("dd/MM/yyyy");
-            }
 
             return await SendRequestAsync<ListarContaCorrenteParam, ListarContaCorrenteResponse>("geral/contacorrente/", "ListarContasCorrentes", param, cancellationToken);
         }
@@ -192,34 +164,52 @@ namespace Tabatine.Omie.Client
 
         public async Task<ListarContasPagarResponse> ListarContasPagarAsync(int pagina = 1, long? codigoVendedor = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default)
         {
-            var param = new ListarContasPagarParam 
-            { 
+            var param = new ListarContasPagarParam
+            {
                 Pagina = pagina,
                 RegistrosPorPagina = 100 // Limite padrão para evitar 500 em algumas instâncias
             };
-            
+
             // Removido filtrar_por_vendedor pois a Omie retorna 500 para este endpoint
-                
-            if (filtrarDe.HasValue && filtrarDe.Value > DateTime.MinValue)
-                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
-                
-            if (filtrarAte.HasValue && filtrarAte.Value > DateTime.MinValue)
-                param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
-                
+
+
+
             if (!string.IsNullOrEmpty(status))
                 param.FiltrarPorStatus = status;
 
             return await SendRequestAsync<ListarContasPagarParam, ListarContasPagarResponse>("financas/contapagar/", "ListarContasPagar", param, cancellationToken);
         }
+
+        public async Task<ListarContasReceberResponse> ListarContasReceberAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default)
+        {
+            var param = new ListarContasReceberParam
+            {
+                Pagina = pagina,
+                RegistrosPorPagina = 100
+            };
+
+
+            if (!string.IsNullOrEmpty(status))
+                param.FiltrarPorStatus = status;
+
+            return await SendRequestAsync<ListarContasReceberParam, ListarContasReceberResponse>("financas/contareceber/", "ListarContasReceber", param, cancellationToken);
+        }
+
         public async Task<OmieCliente?> ConsultarClienteAsync(long codigoClienteOmie, CancellationToken cancellationToken = default)
         {
             var param = new { codigo_cliente_omie = codigoClienteOmie };
             return await SendRequestAsync<object, OmieCliente>("geral/clientes/", "ConsultarCliente", param, cancellationToken);
         }
 
+        public async Task<OmieProduto?> ConsultarProdutoAsync(long codigoProdutoOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new { codigo_produto = codigoProdutoOmie };
+            return await SendRequestAsync<object, OmieProduto>("geral/produtos/", "ConsultarProduto", param, cancellationToken);
+        }
+
         public async Task<OmiePedido?> ConsultarPedidoAsync(long codigoPedidoOmie, CancellationToken cancellationToken = default)
         {
-            var param = new { codigo_pedido_omie = codigoPedidoOmie };
+            var param = new { codigo_pedido = codigoPedidoOmie };
             var response = await SendRequestAsync<object, OmiePedido>("produtos/pedido/", "ConsultarPedido", param, cancellationToken);
             return response;
         }
@@ -229,6 +219,12 @@ namespace Tabatine.Omie.Client
             var param = new { codigo_nf = codigoNfOmie };
             var response = await SendRequestAsync<object, OmieNotaFiscal>("produtos/nfconsultar/", "ConsultarNF", param, cancellationToken);
             return response;
+        }
+
+        public async Task<OmieVendedor?> ConsultarVendedorAsync(long codigoVendedorOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new { codigo = codigoVendedorOmie };
+            return await SendRequestAsync<object, OmieVendedor>("geral/vendedores/", "ConsultarVendedor", param, cancellationToken);
         }
     }
 }

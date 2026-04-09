@@ -34,14 +34,14 @@ namespace Tabatine.Infrastructure.Services
             var lastSyncDate = await _syncState.GetLastSyncDateAsync("Clientes", ct);
             var syncStartTime = DateTime.UtcNow;
 
+            var processedOmieIds = new HashSet<long>();
             int pagina = 1;
             bool temMais = true;
 
             while (temMais && !ct.IsCancellationRequested)
             {
                 var response = await _omieClient.ListarClientesAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
-                
-                // Resposta nula = sem registros (Client-5113)
+
                 if (response == null || response.ClientesCadastro == null || response.ClientesCadastro.Count == 0) break;
 
                 var omieIds = response.ClientesCadastro.Select(c => c.CodigoClienteOmie).ToList();
@@ -51,12 +51,20 @@ namespace Tabatine.Infrastructure.Services
 
                 foreach (var omieCliente in response.ClientesCadastro)
                 {
-                    existingClientes.TryGetValue(omieCliente.CodigoClienteOmie, out var existing);
+                    var omieId = omieCliente.CodigoClienteOmie;
+
+                    if (!processedOmieIds.Add(omieId))
+                    {
+                        _logger.LogWarning("Cliente OmieId {OmieId} duplicado na resposta da Omie. Pulando.", omieId);
+                        continue;
+                    }
+
+                    existingClientes.TryGetValue(omieId, out var existing);
                     var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieCliente.DAlt, omieCliente.HAlt);
 
                     if (existing == null)
                     {
-                        _dbContext.Clientes.Add(new Cliente
+                        var novo = new Cliente
                         {
                             Id = Guid.NewGuid(),
                             OmieId = omieCliente.CodigoClienteOmie,
@@ -78,12 +86,15 @@ namespace Tabatine.Infrastructure.Services
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow,
                             OmieUpdatedAt = omieLastAlt
-                        });
+                        };
+
+                        _dbContext.Clientes.Add(novo);
+                        existingClientes[omieId] = novo;
                     }
                     else
                     {
                         // Se o timestamp da Omie for igual ao que já temos, pula o update
-                        if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue && 
+                        if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
                             existing.OmieUpdatedAt.Value == omieLastAlt.Value)
                         {
                             _logger.LogDebug("Cliente OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieCliente.CodigoClienteOmie);
@@ -122,8 +133,75 @@ namespace Tabatine.Infrastructure.Services
         }
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            // Opcional: Implementar se necessário para webhooks de clientes
-            await Task.CompletedTask;
+            _logger.LogInformation("Sincronizando Cliente/Fornecedor específico OmieId: {OmieId}", omieId);
+            var omieCliente = await _omieClient.ConsultarClienteAsync(omieId, ct);
+
+            if (omieCliente != null)
+            {
+                var existing = await _dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieId, ct);
+                var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieCliente.DAlt, omieCliente.HAlt);
+
+                if (existing == null)
+                {
+                    _dbContext.Clientes.Add(new Cliente
+                    {
+                        Id = Guid.NewGuid(),
+                        OmieId = omieCliente.CodigoClienteOmie,
+                        RazaoSocial = omieCliente.RazaoSocial,
+                        NomeFantasia = omieCliente.NomeFantasia,
+                        CnpjCpf = omieCliente.CnpjCpf,
+                        Email = omieCliente.Email,
+                        Telefone = omieCliente.Telefone,
+                        Endereco = omieCliente.Endereco,
+                        EnderecoNumero = omieCliente.EnderecoNumero,
+                        EnderecoComplemento = omieCliente.Complemento,
+                        Bairro = omieCliente.Bairro,
+                        Cep = omieCliente.Cep,
+                        Estado = omieCliente.Estado,
+                        Cidade = omieCliente.Cidade,
+                        InscricaoEstadual = omieCliente.InscricaoEstadual,
+                        InscricaoMunicipal = omieCliente.InscricaoMunicipal,
+                        OptanteSimplesNacional = omieCliente.OptanteSimplesNacional == "S",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        OmieUpdatedAt = omieLastAlt
+                    });
+                }
+                else
+                {
+                    if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
+                        existing.OmieUpdatedAt.Value == omieLastAlt.Value)
+                    {
+                        _logger.LogDebug("Cliente OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
+                        return;
+                    }
+
+                    existing.RazaoSocial = omieCliente.RazaoSocial;
+                    existing.NomeFantasia = omieCliente.NomeFantasia;
+                    existing.CnpjCpf = omieCliente.CnpjCpf;
+                    existing.Email = omieCliente.Email;
+                    existing.Telefone = omieCliente.Telefone;
+                    existing.Endereco = omieCliente.Endereco;
+                    existing.EnderecoNumero = omieCliente.EnderecoNumero;
+                    existing.EnderecoComplemento = omieCliente.Complemento;
+                    existing.Bairro = omieCliente.Bairro;
+                    existing.Cep = omieCliente.Cep;
+                    existing.Estado = omieCliente.Estado;
+                    existing.Cidade = omieCliente.Cidade;
+                    existing.InscricaoEstadual = omieCliente.InscricaoEstadual;
+                    existing.InscricaoMunicipal = omieCliente.InscricaoMunicipal;
+                    existing.OptanteSimplesNacional = omieCliente.OptanteSimplesNacional == "S";
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    existing.OmieUpdatedAt = omieLastAlt;
+                }
+
+                await _dbContext.SaveChangesAsync(ct);
+                _logger.LogInformation("Cliente/Fornecedor OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
+            }
+            else
+            {
+                _logger.LogWarning("Cliente/Fornecedor OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
+            }
         }
     }
 }

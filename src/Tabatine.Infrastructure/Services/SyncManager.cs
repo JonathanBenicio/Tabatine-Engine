@@ -19,14 +19,14 @@ namespace Tabatine.Infrastructure.Services
                 return;
             }
 
-      try
-      {
-        logger.LogInformation("Iniciando Ciclo de Sincronização Global...");
+            try
+            {
+                logger.LogInformation("Iniciando Ciclo de Sincronização Global...");
 
-        // Ordem de faturamento: Clientes -> Produtos -> Pedidos/Vendas -> Notas Fiscais
+                // Ordem de faturamento: Clientes -> Produtos -> Pedidos/Vendas -> Notas Fiscais
 
-        var serviceTypes = new[]
-        { 
+                var serviceTypes = new[]
+                {
                 typeof(BancoSyncService),
                 typeof(MeioPagamentoSyncService),
                 typeof(EtapaFaturamentoSyncService),
@@ -34,46 +34,62 @@ namespace Tabatine.Infrastructure.Services
                 typeof(CondicaoPagamentoSyncService),
                 typeof(VendedorSyncService),
                 typeof(ContaCorrenteSyncService),
-                typeof(ClienteSyncService), 
+                typeof(ClienteSyncService),
                 typeof(ProdutoSyncService),
                 typeof(PedidoSyncService),
-                typeof(NotaFiscalSyncService)
+                typeof(NotaFiscalSyncService),
+                // Módulo Financeiro: executado após NF pois pode referenciar clientes e contas correntes
+                typeof(ContasReceberSyncService),
+                typeof(ContasPagarSyncService)
             };
 
-        foreach (var type in serviceTypes)
-        {
-          if (ct.IsCancellationRequested) break;
+                foreach (var type in serviceTypes)
+                {
+                    if (ct.IsCancellationRequested) break;
 
-          try
-          {
-            // Cria um scope novo para cada serviço de sync,
-            // garantindo um DbContext isolado por serviço.
-            using var scope = serviceProvider.CreateScope();
-            var service = (ISyncService)scope.ServiceProvider.GetRequiredService(type);
-            await service.SyncAllAsync(ct);
-          }
-          catch (HttpRequestException ex) when (ex.Message.Contains("REDUNDANT"))
-          {
-            logger.LogWarning("Consumo redundante detectado pela Omie para {Service}. Aguardando 30s antes de continuar...", type.Name);
-            await Task.Delay(TimeSpan.FromSeconds(30), ct);
-          }
-          catch (Exception ex)
-          {
-            logger.LogError(ex, "Falha ao sincronizar serviço {Service}", type.Name);
-          }
+                    var retryCount = 0;
+                    while (retryCount <= 1)
+                    {
+                        try
+                        {
+                            // Cria um scope novo para cada serviço de sync,
+                            // garantindo um DbContext isolado por serviço.
+                            using var scope = serviceProvider.CreateScope();
+                            var service = (ISyncService)scope.ServiceProvider.GetRequiredService(type);
+                            await service.SyncAllAsync(ct);
+                            break; // Sucesso, sai do loop de retry
+                        }
+                        catch (HttpRequestException ex) when (ex.Message.Contains("REDUNDANT") || ex.Message.Contains("redundante"))
+                        {
+                            if (retryCount >= 1)
+                            {
+                                logger.LogWarning("Consumo redundante persistiu para {Service} após retry. Pulando para o próximo.", type.Name);
+                                break;
+                            }
 
-          // Aguarda entre serviços para evitar "consumo redundante" na Omie
-          if (!ct.IsCancellationRequested)
-            await Task.Delay(TimeSpan.FromSeconds(5), ct);
+                            logger.LogWarning("Consumo redundante detectado pela Omie para {Service}. Tentando novamente em 60s...", type.Name);
+                            await Task.Delay(TimeSpan.FromSeconds(60), ct);
+                            retryCount++;
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "Falha ao sincronizar serviço {Service}", type.Name);
+                            break; // Outros erros não retentam no manager
+                        }
+                    }
+
+                    // Aguarda entre serviços para evitar "consumo redundante" na Omie
+                    if (!ct.IsCancellationRequested)
+                        await Task.Delay(TimeSpan.FromSeconds(5), ct);
+                }
+            }
+
+            finally
+            {
+                await lockService.ReleaseLockAsync(LockKey, lockToken, ct);
+                logger.LogInformation("Ciclo de Sincronização Global finalizado e trava liberada.");
+            }
         }
-      }
-
-      finally
-      {
-        await lockService.ReleaseLockAsync(LockKey, lockToken, ct);
-        logger.LogInformation("Ciclo de Sincronização Global finalizado e trava liberada.");
-      }
-    }
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
             // O SyncManager coordena o ciclo total. Sincronização por ID deve ser feita no serviço específico.

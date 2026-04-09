@@ -1,39 +1,34 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+namespace Tabatine.Core.Entities;
 
-namespace Tabatine.Core.Entities
+public class WebhookEvent
 {
-    public class WebhookEvent
-    {
-        [Key]
-        public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; set; } = Guid.NewGuid();
 
-        [Required]
-        [MaxLength(200)]
-        public string AppKey { get; set; } = string.Empty;
+    public string AppKey { get; set; } = string.Empty;
 
-        [Required]
-        [MaxLength(100)]
-        public string Event { get; set; } = string.Empty;
+    public string Event { get; set; } = string.Empty;
 
-        [Required]
-        [Column(TypeName = "jsonb")]
-        public string Payload { get; set; } = string.Empty;
+    public string Payload { get; set; } = string.Empty;
 
-        [Required]
-        [MaxLength(50)]
-        public string Status { get; set; } = "Pending";
+    public string Status { get; set; } = "Pending";
 
-        public string? ErrorMessage { get; set; }
+    public string? LastErrorDetail { get; set; }
 
-        /// <summary>
-        /// Omie Connect 2.0 messageId for idempotent deduplication.
-        /// </summary>
-        [MaxLength(100)]
-        public string? MessageId { get; set; }
+    /// <summary>
+    /// Omie Connect 2.0 messageId for idempotent deduplication.
+    /// </summary>
+    public string? MessageId { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public int RetryCount { get; set; }
+    
+    public int MaxRetries { get; set; } = 5;
 
-        public DateTime? ProcessedAt { get; set; }
-    }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public DateTime? ProcessedAt { get; set; }
+    
+    public DateTime? LastAttemptAt { get; set; }
+    
+    public DateTime? NextRetryAt { get; set; }
 }
+

@@ -5,54 +5,39 @@ using Tabatine.Core.Entities;
 
 namespace Tabatine.Infrastructure.Services;
 
-public class DbDistributedLockService : IDistributedLockService
+// Usa IDbContextFactory para criar uma conexão independente a cada operação.
+// Isso é obrigatório para evitar que o lock participe de transações externas.
+public class DbDistributedLockService(IDbContextFactory<AppDbContext> dbFactory) : IDistributedLockService
 {
-    private readonly AppDbContext _db;
-
-    public DbDistributedLockService(AppDbContext db)
-    {
-        _db = db;
-    }
-
     public async Task<bool> TryAcquireLockAsync(string key, string token, TimeSpan expiry, CancellationToken ct = default)
     {
-        // Limpeza de locks expirados
-        var expiredLocks = _db.SyncLocks.Where(l => l.ExpiresAt < DateTime.UtcNow);
-        if (await expiredLocks.AnyAsync(ct))
-        {
-            _db.SyncLocks.RemoveRange(expiredLocks);
-            await _db.SaveChangesAsync(ct);
-        }
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var now = DateTime.UtcNow;
+        var expiresAt = now.Add(expiry);
 
-        try
-        {
-            var expiresAt = DateTime.UtcNow.Add(expiry);
-            var newLock = new SyncLock 
-            { 
-                LockKey = key, 
-                LockToken = token, 
-                ExpiresAt = expiresAt 
-            };
-            _db.SyncLocks.Add(newLock);
-            await _db.SaveChangesAsync(ct);
-            return true;
-        }
-        catch (DbUpdateException)
-        {
-            // Trata conflito de PK (lock já existente)
-            return false;
-        }
+        // Atômico: Limpa o lock apenas se ele já existir e estiver expirado.
+        await db.SyncLocks
+            .Where(l => l.LockKey == key && l.ExpiresAt <= now)
+            .ExecuteDeleteAsync(ct);
+
+        // Tenta inserir o novo lock com ON CONFLICT.
+        // O Postgres retornará 1 se inserido, 0 se houve conflito (lock ainda válido).
+        // Isso evita o ruído de DbUpdateException nos logs.
+        var affectedRows = await db.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO sync_locks (lock_key, lock_token, expires_at) VALUES ({key}, {token}, {expiresAt}) ON CONFLICT (lock_key) DO NOTHING", 
+            ct);
+
+        return affectedRows > 0;
     }
 
     public async Task ReleaseLockAsync(string key, string token, CancellationToken ct = default)
     {
-        var @lock = await _db.SyncLocks
-            .FirstOrDefaultAsync(l => l.LockKey == key && l.LockToken == token, ct);
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
         
-        if (@lock != null)
-        {
-            _db.SyncLocks.Remove(@lock);
-            await _db.SaveChangesAsync(ct);
-        }
+        // Atômico: Remove apenas se a chave E o token coincidirem.
+        // O ExecuteDeleteAsync é ideal aqui porque não carrega a entidade para memória.
+        await db.SyncLocks
+            .Where(l => l.LockKey == key && l.LockToken == token)
+            .ExecuteDeleteAsync(ct);
     }
 }

@@ -33,6 +33,7 @@ namespace Tabatine.Infrastructure.Services
             
             var syncStartTime = DateTime.UtcNow;
 
+            var processedCodes = new HashSet<string>();
             int pagina = 1;
             bool temMais = true;
 
@@ -49,6 +50,12 @@ namespace Tabatine.Infrastructure.Services
 
                 foreach (var omieBanco in response.Bancos)
                 {
+                    if (!processedCodes.Add(omieBanco.Codigo))
+                    {
+                        _logger.LogWarning("Banco Código {Cod} duplicado na resposta da Omie. Pulando.", omieBanco.Codigo);
+                        continue;
+                    }
+
                     existingBancos.TryGetValue(omieBanco.Codigo, out var existing);
 
                     if (existing == null)
@@ -70,6 +77,7 @@ namespace Tabatine.Infrastructure.Services
                         }
 
                         _dbContext.Bancos.Add(novoBanco);
+                        existingBancos[omieBanco.Codigo] = novoBanco;
                     }
                     else
                     {
@@ -90,6 +98,10 @@ namespace Tabatine.Infrastructure.Services
             _logger.LogInformation("Sincronização de Bancos finalizada.");
         }
 
-        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default) => await Task.CompletedTask;
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            _logger.LogWarning("SyncById solicitado para Banco OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
+            await Task.CompletedTask;
+        }
     }
 }

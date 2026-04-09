@@ -38,11 +38,18 @@ namespace Tabatine.Infrastructure.Services
                 return;
             }
 
+            var processedCodes = new HashSet<string>();
             var existingMeios = await _dbContext.MeiosPagamento.ToDictionaryAsync(m => m.Codigo, ct);
 
             foreach (var omieMeio in response.MeiosPagamentoLista)
             {
                 if (string.IsNullOrWhiteSpace(omieMeio.Codigo)) continue;
+
+                if (!processedCodes.Add(omieMeio.Codigo))
+                {
+                    _logger.LogWarning("Meio de Pagamento Código {Cod} duplicado na resposta da Omie. Pulando.", omieMeio.Codigo);
+                    continue;
+                }
 
                 if (existingMeios.TryGetValue(omieMeio.Codigo, out var existingMeio))
                 {
@@ -55,7 +62,7 @@ namespace Tabatine.Infrastructure.Services
                     long omieId = 0;
                     foreach (char c in omieMeio.Codigo) omieId = (omieId * 31) + c;
                     omieId = Math.Abs(omieId);
-                    _dbContext.MeiosPagamento.Add(new MeioPagamento
+                    var novo = new MeioPagamento
                     {
                         Id = Guid.NewGuid(),
                         OmieId = omieId,
@@ -63,7 +70,9 @@ namespace Tabatine.Infrastructure.Services
                         Descricao = omieMeio.Descricao,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
-                    });
+                    };
+                    _dbContext.MeiosPagamento.Add(novo);
+                    existingMeios[omieMeio.Codigo] = novo;
                 }
             }
 
@@ -72,6 +81,10 @@ namespace Tabatine.Infrastructure.Services
             _logger.LogInformation("Sincronização de Meios de Pagamento finalizada.");
         }
 
-        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default) => await Task.CompletedTask;
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            _logger.LogWarning("SyncById solicitado para MeioPagamento OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
+            await Task.CompletedTask;
+        }
     }
 }

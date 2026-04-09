@@ -13,7 +13,6 @@ Este fluxo deve ser executado por Jobs de sincronização periódicos.
 2. **Montar Requisição:**
    - Preencher a *AppKey* e *AppSecret*.
    - Definir `pagina` = 1 e `registros_por_pagina` = 100.
-   - Aplicar filtros de data (ex: `filtrar_por_data_de` = `LastSyncDate`).
 3. **Loop de Paginação:**
    - Executar a chamada à API.
    - Processar e persistir os 100 registos na base de dados local de forma idempotente (usar *Upsert* baseado no `codigo_..._omie`).

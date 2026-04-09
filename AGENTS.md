@@ -232,7 +232,6 @@ Reserve for critical infrastructure failures only (network, DB connection).
 
 ### Pagination
 - Use `registros_por_pagina`: max **100**
-- Always use incremental sync with `filtrar_por_data_de`
 - Handle empty responses (codes `Client-5113`, `Client-101`)
 
 ### Sync Pattern
@@ -268,10 +267,9 @@ src/
 
 ## Key Patterns
 
-1. **Incremental Sync**: Always use date filters to fetch only changes
-2. **Idempotency**: Jobs must be restartable without duplicating data
-3. **Distributed Lock**: Use `IDistributedLockService` for multi-container
-4. **Health Checks**: Endpoint `/health` monitors DB and Omie connectivity
+1. **Idempotency**: Jobs must be restartable without duplicating data
+2. **Distributed Lock**: Use `IDistributedLockService` for multi-container
+3. **Health Checks**: Endpoint `/health` monitors DB and Omie connectivity
 
 ---
 

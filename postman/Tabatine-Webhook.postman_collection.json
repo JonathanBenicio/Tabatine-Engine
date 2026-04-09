@@ -23,6 +23,12 @@
       "value": "{{OMIE_APP_HASH}}",
       "type": "string",
       "description": "App Hash/Secret da Omie"
+    },
+    {
+      "key": "telegramSecretToken",
+      "value": "{{TELEGRAM_SECRET_TOKEN}}",
+      "type": "string",
+      "description": "Secret Token do Webhook do Telegram"
     }
   ],
   "item": [
@@ -639,6 +645,88 @@
       ]
     },
     {
+      "name": "Admin - Webhooks",
+      "description": "Endpoints administrativos para gestão da Dead-Letter Queue (DLQ) de webhooks.",
+      "item": [
+        {
+          "name": "List Webhooks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/webhooks?page=1&pageSize=20&status=Failed",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "webhooks"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "status", "value": "Failed", "description": "Filtro por status: Pending, Processed, Failed, DeadLetter" },
+                { "key": "eventType", "value": "", "description": "Filtro por tipo de evento (ex: ClienteFornecedor.Incluido)" }
+              ]
+            },
+            "description": "Retorna uma lista paginada de eventos de webhook com filtros opcionais."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Webhook Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/webhooks/{{webhookId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "webhooks", "{{webhookId}}"]
+            },
+            "description": "Retorna os detalhes completos de um webhook, incluindo o payload JSON original."
+          },
+          "response": []
+        },
+        {
+          "name": "Retry Webhook",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/webhooks/{{webhookId}}/retry",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "webhooks", "{{webhookId}}", "retry"]
+            },
+            "description": "Reseta o contador de tentativas e coloca o webhook de volta na fila (status Pending) para processamento imediato."
+          },
+          "response": []
+        },
+        {
+          "name": "Dismiss Webhook",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/webhooks/{{webhookId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "webhooks", "{{webhookId}}"]
+            },
+            "description": "Remove um webhook da fila (Soft Delete / Marcar como Processado ou removido conforme lógica interna)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Webhook Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/webhooks/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "webhooks", "stats"]
+            },
+            "description": "Retorna estatísticas resumidas (counts por status) para o dashboard."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "System",
       "description": "Endpoints de sistema (sincronização manual, health, etc.)",
       "item": [
@@ -653,6 +741,72 @@
               "path": ["api", "sync", "trigger"]
             },
             "description": "Agenda uma sincronização completa (Full Sync) de todos os módulos Omie utilizando a infraestrutura de fila do PostgreSQL/Supabase.\n\nCria um evento 'System.ManualSync' na tabela WebhookEvents que será processado pelo SystemManualSyncWebhookHandler."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Telegram",
+      "description": "Endpoints para integração e configuração do Telegram Bot.",
+      "item": [
+        {
+          "name": "Receber Update Telegram",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Telegram-Bot-Api-Secret-Token",
+                "value": "{{telegramSecretToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"update_id\": 123456789,\n  \"message\": {\n    \"message_id\": 1,\n    \"from\": {\n      \"id\": 987654321,\n      \"is_bot\": false,\n      \"first_name\": \"John\",\n      \"last_name\": \"Doe\"\n    },\n    \"chat\": {\n      \"id\": 987654321,\n      \"first_name\": \"John\",\n      \"last_name\": \"Doe\",\n      \"type\": \"private\"\n    },\n    \"date\": 1712581200,\n    \"text\": \"/start 00000000-0000-0000-0000-000000000000\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/telegram",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "telegram"
+              ]
+            },
+            "description": "Simula o recebimento de um webhook (update) do Telegram contendo um comando /start para vincular a conta."
+          },
+          "response": []
+        },
+        {
+          "name": "Setup Webhook (Telegram)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/telegram/setup-webhook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "telegram",
+                "setup-webhook"
+              ]
+            },
+            "description": "Registra a URL do webhook na API do Telegram. Requer as configurações `Telegram:BotToken` e `Telegram:WebhookUrl`."
           },
           "response": []
         }

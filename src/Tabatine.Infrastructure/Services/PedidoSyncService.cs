@@ -199,8 +199,8 @@ namespace Tabatine.Infrastructure.Services
                         
                         UsuarioInclusao = omiePedido.InfoCadastro?.UsuarioInclusao,
                         UsuarioAlteracao = omiePedido.InfoCadastro?.UsuarioAlteracao,
-                        DataInclusao = ParseOmieDateTime(omiePedido.InfoCadastro?.DInc, omiePedido.InfoCadastro?.HInc),
-                        OmieUpdatedAt = ParseOmieDateTime(omiePedido.InfoCadastro?.DAlt, omiePedido.InfoCadastro?.HAlt),
+                        DataInclusao = OmieTimestampHelper.ParseOmieDateTime(omiePedido.InfoCadastro?.DInc, omiePedido.InfoCadastro?.HInc),
+                        OmieUpdatedAt = OmieTimestampHelper.ParseOmieDateTime(omiePedido.InfoCadastro?.DAlt, omiePedido.InfoCadastro?.HAlt),
                         Faturado = omiePedido.InfoCadastro?.Faturado == "S",
                         Cancelado = omiePedido.InfoCadastro?.Cancelado == "S",
                         Devolvido = omiePedido.InfoCadastro?.Devolvido == "S",
@@ -306,7 +306,7 @@ namespace Tabatine.Infrastructure.Services
                     existingPedido.Autorizado = omiePedido.InfoCadastro?.Autorizado == "S";
                     existingPedido.Denegado = omiePedido.InfoCadastro?.Denegado == "S";
                     existingPedido.UsuarioAlteracao = omiePedido.InfoCadastro?.UsuarioAlteracao;
-                    existingPedido.OmieUpdatedAt = ParseOmieDateTime(omiePedido.InfoCadastro?.DAlt, omiePedido.InfoCadastro?.HAlt);
+                    existingPedido.OmieUpdatedAt = OmieTimestampHelper.ParseOmieDateTime(omiePedido.InfoCadastro?.DAlt, omiePedido.InfoCadastro?.HAlt);
 
                     if (DateTime.TryParseExact(omiePedido.Frete?.PrevisaoEntrega, "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtPrevEntEx))
                     {
@@ -414,19 +414,5 @@ namespace Tabatine.Infrastructure.Services
             }
         }
 
-        private DateTime? ParseOmieDateTime(string? date, string? time)
-        {
-            if (string.IsNullOrWhiteSpace(date)) return null;
-            
-            var combined = string.IsNullOrWhiteSpace(time) ? date : $"{date} {time}";
-            var format = string.IsNullOrWhiteSpace(time) ? "dd/MM/yyyy" : "dd/MM/yyyy HH:mm:ss";
-
-            if (DateTime.TryParseExact(combined, format, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dt))
-            {
-                return DateTime.SpecifyKind(dt, DateTimeKind.Utc);
-            }
-
-            return null;
-        }
     }
 }

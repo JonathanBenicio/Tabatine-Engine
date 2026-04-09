@@ -44,37 +44,27 @@ namespace Tabatine.Infrastructure.Services
                 if (response == null) break;
 
                 var rawFormas = response.FormasPagamento ?? new List<OmieFormaPagamento>();
+                var processedCodes = new HashSet<string>();
 
-                var invalidCount = rawFormas.Count(f => string.IsNullOrWhiteSpace(f.Codigo));
-                if (invalidCount > 0)
-                {
-                    _logger.LogWarning("{Count} formas de pagamento ignoradas por falta de código.", invalidCount);
-                }
-
-                var validFormas = rawFormas
-                    .Where(f => !string.IsNullOrWhiteSpace(f.Codigo))
-                    .GroupBy(f => f.Codigo)
-                    .Select(g => g.First())
-                    .ToList();
-
-                if (validFormas.Count < (rawFormas.Count - invalidCount))
-                {
-                    _logger.LogWarning("{Count} formas de pagamento com código duplicado ignoradas na página {Pagina}.", 
-                        rawFormas.Count - invalidCount - validFormas.Count, pagina);
-                }
-
-                var codigos = validFormas.Select(f => f.Codigo).ToList();
+                var codigos = rawFormas.Where(f => !string.IsNullOrWhiteSpace(f.Codigo)).Select(f => f.Codigo).ToList();
                 var existingFormas = await _dbContext.FormasPagamento
                     .Where(f => codigos.Contains(f.Codigo))
                     .ToDictionaryAsync(f => f.Codigo, ct);
 
-                foreach (var omieForma in validFormas)
+                foreach (var omieForma in rawFormas)
                 {
+                    if (string.IsNullOrWhiteSpace(omieForma.Codigo)) continue;
+                    if (!processedCodes.Add(omieForma.Codigo))
+                    {
+                        _logger.LogWarning("Forma de Pagamento Código {Cod} duplicado na resposta da Omie. Pulando.", omieForma.Codigo);
+                        continue;
+                    }
+
                     existingFormas.TryGetValue(omieForma.Codigo, out var existing);
 
                     if (existing == null)
                     {
-                        _dbContext.FormasPagamento.Add(new FormaPagamento
+                        var nova = new FormaPagamento
                         {
                             Id = Guid.NewGuid(),
                             Codigo = omieForma.Codigo,
@@ -85,7 +75,9 @@ namespace Tabatine.Infrastructure.Services
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow,
                             OmieId = 0
-                        });
+                        };
+                        _dbContext.FormasPagamento.Add(nova);
+                        existingFormas[omieForma.Codigo] = nova;
                     }
                     else
                     {
@@ -107,6 +99,10 @@ namespace Tabatine.Infrastructure.Services
             _logger.LogInformation("Sincronização de Formas de Pagamento finalizada.");
         }
 
-        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default) => await Task.CompletedTask;
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            _logger.LogWarning("SyncById solicitado para FormaPagamento OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
+            await Task.CompletedTask;
+        }
     }
 }

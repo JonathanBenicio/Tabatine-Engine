@@ -44,27 +44,24 @@ namespace Tabatine.Infrastructure.Services
                 if (response == null) break;
 
                 var rawCadastros = response.Cadastros ?? new List<ParcelaOmie>();
-                
-                // Omie returns nCodigo as int. We treat it as string in our DB.
-                var validCadastros = rawCadastros
-                    .Where(c => c.Codigo > 0)
-                    .GroupBy(c => c.Codigo)
-                    .Select(g => g.First())
-                    .ToList();
+                var processedOmieIds = new HashSet<long>();
 
-                var codigos = validCadastros.Select(c => c.Codigo.ToString()).ToList();
+                var codigos = rawCadastros.Where(c => c.Codigo > 0).Select(c => c.Codigo.ToString()).ToList();
                 var existingCondicoes = await _dbContext.CondicoesPagamento
                     .Where(c => codigos.Contains(c.Codigo))
                     .ToDictionaryAsync(c => c.Codigo, ct);
 
-                foreach (var omieCondicao in validCadastros)
+                foreach (var omieCondicao in rawCadastros)
                 {
+                    if (omieCondicao.Codigo <= 0) continue;
+                    if (!processedOmieIds.Add(omieCondicao.Codigo)) continue;
+
                     var codigoStr = omieCondicao.Codigo.ToString();
                     existingCondicoes.TryGetValue(codigoStr, out var existing);
 
                     if (existing == null)
                     {
-                        _dbContext.CondicoesPagamento.Add(new CondicaoPagamento
+                        var nova = new CondicaoPagamento
                         {
                             Id = Guid.NewGuid(),
                             Codigo = codigoStr,
@@ -74,7 +71,9 @@ namespace Tabatine.Infrastructure.Services
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow,
                             OmieId = omieCondicao.Codigo // Use the nCodigo as OmieId too
-                        });
+                        };
+                        _dbContext.CondicoesPagamento.Add(nova);
+                        existingCondicoes[codigoStr] = nova;
                     }
                     else
                     {
@@ -96,6 +95,10 @@ namespace Tabatine.Infrastructure.Services
             _logger.LogInformation("Sincronização de Condições de Pagamento finalizada.");
         }
 
-        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default) => await Task.CompletedTask;
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            _logger.LogWarning("SyncById solicitado para CondicaoPagamento OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
+            await Task.CompletedTask;
+        }
     }
 }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Tabatine.Infrastructure.Data;
@@ -11,9 +12,11 @@ using Tabatine.Infrastructure.Data;
 namespace Tabatine.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260405015142_AddTitulosFinanceiros")]
+    partial class AddTitulosFinanceiros
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1898,10 +1901,12 @@ namespace Tabatine.Infrastructure.Migrations
                         .HasColumnName("app_key");
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("now()");
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text")
+                        .HasColumnName("error_message");
 
                     b.Property<string>("Event")
                         .IsRequired()
@@ -1909,28 +1914,10 @@ namespace Tabatine.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("event");
 
-                    b.Property<DateTime?>("LastAttemptAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_attempt_at");
-
-                    b.Property<string>("LastErrorDetail")
-                        .HasColumnType("text")
-                        .HasColumnName("last_error_detail");
-
-                    b.Property<int>("MaxRetries")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(5)
-                        .HasColumnName("max_retries");
-
                     b.Property<string>("MessageId")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("message_id");
-
-                    b.Property<DateTime?>("NextRetryAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("next_retry_at");
 
                     b.Property<string>("Payload")
                         .IsRequired()
@@ -1941,12 +1928,6 @@ namespace Tabatine.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("processed_at");
 
-                    b.Property<int>("RetryCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("retry_count");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -1955,19 +1936,6 @@ namespace Tabatine.Infrastructure.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_webhook_events");
-
-                    b.HasIndex("Event")
-                        .HasDatabaseName("ix_webhook_events_event");
-
-                    b.HasIndex("MessageId")
-                        .HasDatabaseName("ix_webhook_events_message_id");
-
-                    b.HasIndex("NextRetryAt")
-                        .HasDatabaseName("ix_webhook_events_next_retry_at")
-                        .HasFilter("\"status\" = 'Failed'");
-
-                    b.HasIndex("Status")
-                        .HasDatabaseName("ix_webhook_events_status");
 
                     b.ToTable("webhook_events", (string)null);
                 });

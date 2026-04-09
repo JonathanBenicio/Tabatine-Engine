@@ -20,7 +20,9 @@ namespace Tabatine.Infrastructure.Repositories
         public async Task<DateTime?> GetLastSyncDateAsync(string moduleName, CancellationToken ct = default)
         {
             var state = await _dbContext.Set<IntegrationSyncState>()
-                .FirstOrDefaultAsync(s => s.ModuleName == moduleName, ct);
+                .Where(s => s.ModuleName == moduleName)
+                .OrderBy(s => s.ModuleName)
+                .FirstOrDefaultAsync(ct);
             
             return state?.LastSyncDate;
         }
@@ -28,7 +30,9 @@ namespace Tabatine.Infrastructure.Repositories
         public async Task SetLastSyncDateAsync(string moduleName, DateTime syncDate, CancellationToken ct = default)
         {
             var state = await _dbContext.Set<IntegrationSyncState>()
-                .FirstOrDefaultAsync(s => s.ModuleName == moduleName, ct);
+                .Where(s => s.ModuleName == moduleName)
+                .OrderBy(s => s.ModuleName)
+                .FirstOrDefaultAsync(ct);
 
             if (state == null)
             {
