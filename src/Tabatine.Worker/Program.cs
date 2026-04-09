@@ -45,6 +45,7 @@ app.MapScalarApiReference();
 // Modularized Mappings
 app.UseCustomHealthChecks();
 app.MapOmieWebhookEndpoints();
+app.MapAdminWebhookEndpoints();
 app.MapTelegramWebhookEndpoints();
 app.MapSyncEndpoints();
 app.ApplyMigrations();

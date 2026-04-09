@@ -7,8 +7,9 @@ namespace Tabatine.Worker.Services;
 public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logger, IServiceScopeFactory scopeFactory) : BackgroundService
 {
     private const string StatusPending = "Pending";
-    private const string StatusProcessed = "Processed";
+    private const string StatusProcessed = "Completed"; // De acordo com a spec
     private const string StatusFailed = "Failed";
+    private const string StatusDeadLetter = "DeadLetter";
 
     private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(5);
 
@@ -56,7 +57,14 @@ public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logg
             await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
             try
             {
-                var sql = $"SELECT * FROM webhook_events WHERE status = '{StatusPending}' ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED";
+                var sql = $@"
+                    SELECT * FROM webhook_events 
+                    WHERE status = '{StatusPending}' 
+                       OR (status = '{StatusFailed}' AND next_retry_at <= NOW())
+                    ORDER BY created_at ASC 
+                    LIMIT 1 
+                    FOR UPDATE SKIP LOCKED";
+                
                 var ev = await dbContext.WebhookEvents
                     .FromSqlRaw(sql)
                     .FirstOrDefaultAsync(cancellationToken);
@@ -95,14 +103,29 @@ public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logg
 
             webhookEvent.Status = StatusProcessed;
             webhookEvent.ProcessedAt = DateTime.UtcNow;
+            webhookEvent.LastAttemptAt = DateTime.UtcNow;
             LogWebhookProcessado(logger, webhookEvent.Id, webhookEvent.Event);
         }
         catch (Exception ex)
         {
-            webhookEvent.Status = StatusFailed;
-            webhookEvent.ErrorMessage = ex.Message;
-            webhookEvent.ProcessedAt = DateTime.UtcNow;
-            LogErroProcessandoWebhook(logger, webhookEvent.Id, ex);
+            webhookEvent.RetryCount++;
+            webhookEvent.LastErrorDetail = ex.ToString(); // Stacktrace completo para o Admin
+            webhookEvent.LastAttemptAt = DateTime.UtcNow;
+
+            if (webhookEvent.RetryCount >= webhookEvent.MaxRetries)
+            {
+                webhookEvent.Status = StatusDeadLetter;
+                webhookEvent.NextRetryAt = null;
+                LogErroProcessandoWebhook(logger, webhookEvent.Id, ex);
+            }
+            else
+            {
+                webhookEvent.Status = StatusFailed;
+                // Backoff Exponencial: 2, 4, 8, 16, 32 minutos
+                var delayMinutes = Math.Pow(2, webhookEvent.RetryCount);
+                webhookEvent.NextRetryAt = DateTime.UtcNow.AddMinutes(delayMinutes);
+                LogWebhookFalhouTentativa(logger, webhookEvent.Id, webhookEvent.RetryCount, webhookEvent.NextRetryAt.Value);
+            }
         }
 
         // 3. Atualização Final
@@ -134,6 +157,9 @@ public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logg
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Erro processando Webhook ID: {WebhookId}")]
     private static partial void LogErroProcessandoWebhook(ILogger logger, Guid webhookId, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Webhook ID: {WebhookId} falhou. Tentativa {RetryCount}. Próxima tentativa em: {NextRetryAt}")]
+    private static partial void LogWebhookFalhouTentativa(ILogger logger, Guid webhookId, int retryCount, DateTime nextRetryAt);
 
     #endregion
 }
