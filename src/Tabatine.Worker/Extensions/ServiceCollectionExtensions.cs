@@ -18,21 +18,26 @@ public static class ServiceCollectionExtensions
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("DefaultConnection not found");
 
-        // Configure DbContext
-        services.AddDbContext<AppDbContext>(options =>
+        // Register DbContext Factory (Fonte única de verdade)
+        // Usamos Singleton para a factory e configuramos as opções uma única vez
+        services.AddPooledDbContextFactory<AppDbContext>(options =>
             options.UseNpgsql(
                 connectionString,
                 b => b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
                      .EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)
-                     .CommandTimeout(60)
+                     .CommandTimeout(60) // Timeout padrão para queries longas de sync
                      .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
             )
             .UseSnakeCaseNamingConvention()
-            .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
-        );
+            .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)))
+        ;
 
-        // Configure Distributed Lock Service
-        services.AddScoped<IDistributedLockService, DbDistributedLockService>();
+        // O AppDbContext (Scoped) agora é resolvido a partir da Factory
+        // Isso garante que ele use exatamente as mesmas DbContextOptions
+        services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext());
+
+        // Singleton: cria seu próprio DbContext via factory, sem depender de scopes
+        services.AddSingleton<IDistributedLockService, DbDistributedLockService>();
         services.AddScoped<ISyncStateRepository, SyncStateRepository>();
         services.AddScoped<INotificationService, SupabaseNotificationService>();
 

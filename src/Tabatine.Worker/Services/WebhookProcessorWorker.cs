@@ -1,10 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Tabatine.Infrastructure.Data;
+using Tabatine.Worker.Services.Handlers;
 
 namespace Tabatine.Worker.Services;
 
 public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logger, IServiceScopeFactory scopeFactory) : BackgroundService
 {
+    private const string StatusPending = "Pending";
+    private const string StatusProcessed = "Processed";
+    private const string StatusFailed = "Failed";
+
     private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(5);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -53,11 +58,12 @@ public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logg
 
             try
             {
-                // Busca a próxima mensagem pendente travando a linha (Skip Locked) para concorrência segura
-                var sql = "SELECT * FROM webhook_events WHERE status = 'Pending' ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED";
+                // Busca a próxima mensagem pendente travando a linha (Skip Locked) para concorrência segura.
+                // Usamos o SQL diretamente para garantir o FOR UPDATE SKIP LOCKED, removendo OrderBy do LINQ
+                // para evitar que o EF Core envolva a query original em um sub-SELECT redundante.
+                var sql = $"SELECT * FROM webhook_events WHERE status = '{StatusPending}' ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED";
                 var webhookEvent = await dbContext.WebhookEvents
                     .FromSqlRaw(sql)
-                    .OrderBy(e => e.CreatedAt)
                     .FirstOrDefaultAsync(cancellationToken);
 
                 if (webhookEvent == null)
@@ -70,19 +76,19 @@ public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logg
 
                 try
                 {
-                    var handlerFactory = scope.ServiceProvider.GetRequiredService<Tabatine.Worker.Services.Handlers.WebhookHandlerFactory>();
+                    var handlerFactory = scope.ServiceProvider.GetRequiredService<WebhookHandlerFactory>();
                     var handler = handlerFactory.GetHandler(webhookEvent.Event);
                     await handler.HandleAsync(webhookEvent, cancellationToken);
 
                     // Sucesso
-                    webhookEvent.Status = "Processed";
+                    webhookEvent.Status = StatusProcessed;
                     webhookEvent.ProcessedAt = DateTime.UtcNow;
-                    LogWebhookProcessado(logger, webhookEvent.Id);
+                    LogWebhookProcessado(logger, webhookEvent.Id, webhookEvent.Event);
                 }
                 catch (Exception ex)
                 {
                     // Falha no processamento da regra de negócio (Dead Letter Queue marker)
-                    webhookEvent.Status = "Failed";
+                    webhookEvent.Status = StatusFailed;
                     webhookEvent.ErrorMessage = ex.Message;
                     webhookEvent.ProcessedAt = DateTime.UtcNow;
                     LogErroProcessandoWebhook(logger, webhookEvent.Id, ex);
@@ -117,8 +123,8 @@ public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logg
     [LoggerMessage(Level = LogLevel.Information, Message = "Processando Webhook ID: {WebhookId} - Evento: {WebhookEvent}")]
     private static partial void LogProcessandoWebhook(ILogger logger, Guid webhookId, string webhookEvent);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Webhook ID: {WebhookId} processado com sucesso.")]
-    private static partial void LogWebhookProcessado(ILogger logger, Guid webhookId);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Webhook ID: {WebhookId} ({WebhookEvent}) processado com sucesso.")]
+    private static partial void LogWebhookProcessado(ILogger logger, Guid webhookId, string webhookEvent);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Erro processando Webhook ID: {WebhookId}")]
     private static partial void LogErroProcessandoWebhook(ILogger logger, Guid webhookId, Exception ex);
