@@ -15,10 +15,12 @@ using Tabatine.Omie.Client.Models.FormaPagamento;
 using Tabatine.Omie.Client.Models.Bancos;
 using Tabatine.Omie.Client.Models.Geral;
 using Tabatine.Omie.Client.Models.Financeiro;
+using Tabatine.Omie.Client.Models.Estoque;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -225,6 +227,74 @@ namespace Tabatine.Omie.Client
         {
             var param = new { codigo = codigoVendedorOmie };
             return await SendRequestAsync<object, OmieVendedor>("geral/vendedores/", "ConsultarVendedor", param, cancellationToken);
+        }
+
+        // Estoque
+
+        public async IAsyncEnumerable<LocalEstoqueDto> ListarLocaisEstoqueAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var request = new ListarLocaisEstoqueRequest { Pagina = current, RegPorPagina = 100 };
+                var response = await SendRequestAsync<ListarLocaisEstoqueRequest, ListarLocaisEstoqueResponse>("estoque/local/", "ListarLocaisEstoque", request, cancellationToken);
+                total = response.TotPaginas;
+                foreach (var item in response.Locais) yield return item;
+                current++;
+            }
+        }
+
+        public async Task<PosicaoEstoqueResponse> ConsultarPosicaoEstoqueAsync(PosicaoEstoqueRequest request, CancellationToken cancellationToken = default)
+        {
+            return await SendRequestAsync<PosicaoEstoqueRequest, PosicaoEstoqueResponse>("estoque/consulta/", "PosicaoEstoque", request, cancellationToken);
+        }
+
+        public async IAsyncEnumerable<ProdutoEstoqueDto> StreamPosicaoEstoqueAsync(ListarPosEstoqueRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var req = request with { Pagina = current, RegPorPagina = 100 };
+                var response = await SendRequestAsync<ListarPosEstoqueRequest, ListarPosEstoqueResponse>("estoque/consulta/", "ListarPosEstoque", req, cancellationToken);
+                total = response.TotPaginas;
+                foreach (var item in response.Produtos) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<MovimentoEstoqueDto> StreamMovimentoEstoqueAsync(ListarMovimentoEstoqueRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var req = request with { Pagina = current, RegPorPagina = 100 };
+                var response = await SendRequestAsync<ListarMovimentoEstoqueRequest, ListarMovimentoEstoqueResponse>("estoque/consulta/", "ListarMovimentoEstoque", req, cancellationToken);
+                total = response.TotPaginas;
+                foreach (var item in response.Movimentos) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<MovimentoProdutoDto> StreamMovimentosAsync(ListarMovimentosRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var req = request with { Pagina = current, RegistrosPorPagina = 100 };
+                var response = await SendRequestAsync<ListarMovimentosRequest, ListarMovimentosResponse>("estoque/movestoque/", "ListarMovimentos", req, cancellationToken);
+                total = response.TotalPaginas;
+                foreach (var item in response.Cadastros) yield return item;
+                current++;
+            }
+        }
+
+        public async Task<ObterEstoqueProdutoResponse> ObterResumoEstoqueProdutoAsync(ObterEstoqueProdutoRequest request, CancellationToken cancellationToken = default)
+        {
+            return await SendRequestAsync<ObterEstoqueProdutoRequest, ObterEstoqueProdutoResponse>("estoque/resumo/", "ObterEstoqueProduto", request, cancellationToken);
         }
     }
 }
