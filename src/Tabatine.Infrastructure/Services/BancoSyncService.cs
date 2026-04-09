@@ -98,6 +98,10 @@ namespace Tabatine.Infrastructure.Services
             _logger.LogInformation("Sincronização de Bancos finalizada.");
         }
 
-        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default) => await Task.CompletedTask;
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            _logger.LogWarning("SyncById solicitado para Banco OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
+            await Task.CompletedTask;
+        }
     }
 }
