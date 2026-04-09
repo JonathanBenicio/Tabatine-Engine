@@ -9,7 +9,9 @@ using Tabatine.Omie.Client.Models.FormaPagamento;
 using Tabatine.Omie.Client.Models.Bancos;
 using Tabatine.Omie.Client.Models.Geral;
 using Tabatine.Omie.Client.Models.Financeiro;
+using Tabatine.Omie.Client.Models.Estoque;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,8 +22,8 @@ namespace Tabatine.Omie.Client
         Task<ListarClientesResponse> ListarClientesAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
         Task<ListarProdutosResponse> ListarProdutosAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
         Task<ListarPedidosResponse> ListarPedidosAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
-        Task<ListarNotasFiscaisResponse> ListarNotasFiscaisAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
-        Task<ListarVendedoresResponse> ListarVendedoresAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
+        Task<ListarNotasFiscaisResponse> ListarNotasFiscaisAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);   
+        Task<ListarVendedoresResponse> ListarVendedoresAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);       
         Task<ListarContaCorrenteResponse> ListarContasCorrentesAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
         Task<ListarEtapasFaturamentoResponse> ListarEtapasFaturamentoAsync(int pagina = 1, CancellationToken cancellationToken = default);
         Task<ListarFormasPagVendasResponse> ListarFormasPagVendasAsync(int pagina = 1, CancellationToken cancellationToken = default);
@@ -35,5 +37,13 @@ namespace Tabatine.Omie.Client
         Task<OmiePedido?> ConsultarPedidoAsync(long codigoPedidoOmie, CancellationToken cancellationToken = default);
         Task<OmieNotaFiscal?> ConsultarNotaFiscalAsync(long codigoNfOmie, CancellationToken cancellationToken = default);
         Task<OmieVendedor?> ConsultarVendedorAsync(long codigoVendedorOmie, CancellationToken cancellationToken = default);
+
+        // Estoque
+        IAsyncEnumerable<LocalEstoqueDto> ListarLocaisEstoqueAsync(CancellationToken cancellationToken = default);
+        Task<PosicaoEstoqueResponse> ConsultarPosicaoEstoqueAsync(PosicaoEstoqueRequest request, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<ProdutoEstoqueDto> StreamPosicaoEstoqueAsync(ListarPosEstoqueRequest request, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<MovimentoEstoqueDto> StreamMovimentoEstoqueAsync(ListarMovimentoEstoqueRequest request, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<MovimentoProdutoDto> StreamMovimentosAsync(ListarMovimentosRequest request, CancellationToken cancellationToken = default);
+        Task<ObterEstoqueProdutoResponse> ObterResumoEstoqueProdutoAsync(ObterEstoqueProdutoRequest request, CancellationToken cancellationToken = default);
     }
 }
