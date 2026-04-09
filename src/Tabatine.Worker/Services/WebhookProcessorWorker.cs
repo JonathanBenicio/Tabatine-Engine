@@ -48,58 +48,30 @@ public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logg
         using var scope = scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // Wrapping na ExecutionStrategy para compatibilidade com NpgsqlRetryingExecutionStrategy
+        // 1. Fase de De-queue (Atômica e Rápida)
+        // Buscamos a mensagem e marcamos como 'Processing' imediatamente para liberar o banco.
         var strategy = dbContext.Database.CreateExecutionStrategy();
-
-        return await strategy.ExecuteAsync(async () =>
+        var webhookEvent = await strategy.ExecuteAsync(async () =>
         {
-            // Usando transação explícita para o FOR UPDATE SKIP LOCKED
             await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-
             try
             {
-                // Busca a próxima mensagem pendente travando a linha (Skip Locked) para concorrência segura.
-                // Usamos o SQL diretamente para garantir o FOR UPDATE SKIP LOCKED, removendo OrderBy do LINQ
-                // para evitar que o EF Core envolva a query original em um sub-SELECT redundante.
                 var sql = $"SELECT * FROM webhook_events WHERE status = '{StatusPending}' ORDER BY created_at ASC LIMIT 1 FOR UPDATE SKIP LOCKED";
-                var webhookEvent = await dbContext.WebhookEvents
+                var ev = await dbContext.WebhookEvents
                     .FromSqlRaw(sql)
                     .FirstOrDefaultAsync(cancellationToken);
 
-                if (webhookEvent == null)
+                if (ev == null)
                 {
                     await transaction.RollbackAsync(cancellationToken);
-                    return false;
+                    return null;
                 }
 
-                LogProcessandoWebhook(logger, webhookEvent.Id, webhookEvent.Event);
-
-                try
-                {
-                    var handlerFactory = scope.ServiceProvider.GetRequiredService<WebhookHandlerFactory>();
-                    var handler = handlerFactory.GetHandler(webhookEvent.Event);
-                    await handler.HandleAsync(webhookEvent, cancellationToken);
-
-                    // Sucesso
-                    webhookEvent.Status = StatusProcessed;
-                    webhookEvent.ProcessedAt = DateTime.UtcNow;
-                    LogWebhookProcessado(logger, webhookEvent.Id, webhookEvent.Event);
-                }
-                catch (Exception ex)
-                {
-                    // Falha no processamento da regra de negócio (Dead Letter Queue marker)
-                    webhookEvent.Status = StatusFailed;
-                    webhookEvent.ErrorMessage = ex.Message;
-                    webhookEvent.ProcessedAt = DateTime.UtcNow;
-                    LogErroProcessandoWebhook(logger, webhookEvent.Id, ex);
-                }
-
-                // Atualizar e comitar transação
-                dbContext.Update(webhookEvent);
+                ev.Status = "Processing";
                 await dbContext.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
-
-                return true;
+                
+                return ev;
             }
             catch (Exception)
             {
@@ -107,6 +79,40 @@ public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logg
                 throw;
             }
         });
+
+        if (webhookEvent == null) return false;
+
+        // 2. Fase de Processamento (Fora da transação da fila)
+        LogProcessandoWebhook(logger, webhookEvent.Id, webhookEvent.Event);
+
+        try
+        {
+            var handlerFactory = scope.ServiceProvider.GetRequiredService<WebhookHandlerFactory>();
+            var handler = handlerFactory.GetHandler(webhookEvent.Event);
+            
+            // Aqui o handler pode rodar por muito tempo (Sync total) sem travar o banco
+            await handler.HandleAsync(webhookEvent, cancellationToken);
+
+            webhookEvent.Status = StatusProcessed;
+            webhookEvent.ProcessedAt = DateTime.UtcNow;
+            LogWebhookProcessado(logger, webhookEvent.Id, webhookEvent.Event);
+        }
+        catch (Exception ex)
+        {
+            webhookEvent.Status = StatusFailed;
+            webhookEvent.ErrorMessage = ex.Message;
+            webhookEvent.ProcessedAt = DateTime.UtcNow;
+            LogErroProcessandoWebhook(logger, webhookEvent.Id, ex);
+        }
+
+        // 3. Atualização Final
+        // Usamos a strategy novamente para garantir resiliência no update final
+        await strategy.ExecuteAsync(async () => {
+            dbContext.Update(webhookEvent);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        });
+
+        return true;
     }
 
     #region High-Performance Logging (LoggerMessage source generators)

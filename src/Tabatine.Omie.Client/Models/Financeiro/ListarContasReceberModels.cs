@@ -12,12 +12,6 @@ namespace Tabatine.Omie.Client.Models.Financeiro
         [JsonPropertyName("registros_por_pagina")]
         public int RegistrosPorPagina { get; set; } = 100;
 
-        [JsonPropertyName("filtrar_por_data_de")]
-        public string? FiltrarPorDataDe { get; set; }
-
-        [JsonPropertyName("filtrar_por_data_ate")]
-        public string? FiltrarPorDataAte { get; set; }
-
         [JsonPropertyName("filtrar_por_status")]
         public string? FiltrarPorStatus { get; set; }
 

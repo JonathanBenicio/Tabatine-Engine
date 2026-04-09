@@ -87,7 +87,7 @@ namespace Tabatine.Infrastructure.Services
 
                     clientes.TryGetValue(omieItem.CodigoClienteFornecedor, out var cliente);
                     contasCorrente.TryGetValue(omieItem.CodigoContaCorrente ?? 0, out var contaCorrente);
-                    
+
                     existingTitulos.TryGetValue(omieId, out var existing);
 
                     if (existing == null)
@@ -115,8 +115,10 @@ namespace Tabatine.Infrastructure.Services
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogInformation("SyncById solicitado para TituloPagar OmieId={OmieId}. Executando sync incremental.", omieId);
-            await SyncAllAsync(ct);
+            // A API de Contas a Pagar da Omie não possui endpoint de consulta por ID direta.
+            // O processo de webhooks deve acumular os IDs ou acionar um job assíncrono para evitar gargalos.
+            _logger.LogWarning("SyncById solicitado para TituloPagar OmieId={OmieId}. A Omie não possui endpoint de consulta individual para Contas a Pagar. Requisição ignorada via webhook para evitar rate limiting.", omieId);
+            await Task.CompletedTask;
         }
 
         private static TituloPagar MapToEntity(OmieContaPagar omie, Cliente? cliente, ContaCorrente? contaCorrente)

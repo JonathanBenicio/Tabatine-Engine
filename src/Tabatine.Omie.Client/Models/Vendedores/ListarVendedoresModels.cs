@@ -11,12 +11,6 @@ namespace Tabatine.Omie.Client.Models.Vendedores
         [JsonPropertyName("registros_por_pagina")]
         public int RegistrosPorPagina { get; set; } = 500;
 
-        [JsonPropertyName("filtrar_por_data_de")]
-        public string? FiltrarPorDataDe { get; set; }
-
-        [JsonPropertyName("filtrar_por_data_ate")]
-        public string? FiltrarPorDataAte { get; set; }
-
         [JsonPropertyName("apenas_importado_api")]
         public string ApenasImportadoApi { get; set; } = "N";
     }

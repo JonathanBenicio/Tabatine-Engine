@@ -43,24 +43,33 @@ namespace Tabatine.Infrastructure.Services
                 
                 if (response == null || response.Cadastros == null || response.Cadastros.Count == 0) break;
 
+                // Batch load ALL existing etapas for ALL operations in this page
+                var allCodOperacao = response.Cadastros.Select(c => c.CodigoOperacao).ToList();
+                var allCodEtapas = response.Cadastros.SelectMany(c => c.Etapas.Select(e => e.Codigo)).Distinct().ToList();
+
+                var existingEtapas = await _dbContext.EtapasFaturamento
+                    .Where(e => allCodOperacao.Contains(e.CodigoOperacao) && allCodEtapas.Contains(e.Codigo))
+                    .ToListAsync(ct);
+
+                // Dictionary keyed by [CodigoOperacao-CodigoEtapa] for unique matching
+                var existingDict = existingEtapas.ToDictionary(e => $"{e.CodigoOperacao}-{e.Codigo}");
+                var processedKeys = new HashSet<string>();
+
                 foreach (var operacao in response.Cadastros)
                 {
                     var codOperacao = operacao.CodigoOperacao;
                     var descOperacao = operacao.DescricaoOperacao;
 
-                    // Busca etapas existentes para esta operação
-                    var codigosEtapas = operacao.Etapas.Select(e => e.Codigo).ToList();
-                    var existingEtapas = await _dbContext.EtapasFaturamento
-                        .Where(e => e.CodigoOperacao == codOperacao && codigosEtapas.Contains(e.Codigo))
-                        .ToDictionaryAsync(e => e.Codigo, ct);
-
                     foreach (var omieEtapa in operacao.Etapas)
                     {
-                        existingEtapas.TryGetValue(omieEtapa.Codigo, out var existing);
+                        var key = $"{codOperacao}-{omieEtapa.Codigo}";
+                        if (!processedKeys.Add(key)) continue;
+
+                        existingDict.TryGetValue(key, out var existing);
 
                         if (existing == null)
                         {
-                            _dbContext.EtapasFaturamento.Add(new EtapaFaturamento
+                            var nova = new EtapaFaturamento
                             {
                                 Id = Guid.NewGuid(),
                                 Codigo = omieEtapa.Codigo,
@@ -72,7 +81,9 @@ namespace Tabatine.Infrastructure.Services
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow,
                                 OmieId = 0 // Não há ID numérico para etapas no endpoint Listar
-                            });
+                            };
+                            _dbContext.EtapasFaturamento.Add(nova);
+                            existingDict[key] = nova;
                         }
                         else
                         {

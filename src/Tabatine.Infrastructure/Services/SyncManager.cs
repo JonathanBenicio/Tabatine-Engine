@@ -47,22 +47,35 @@ namespace Tabatine.Infrastructure.Services
         {
           if (ct.IsCancellationRequested) break;
 
-          try
+          var retryCount = 0;
+          while (retryCount <= 1)
           {
-            // Cria um scope novo para cada serviço de sync,
-            // garantindo um DbContext isolado por serviço.
-            using var scope = serviceProvider.CreateScope();
-            var service = (ISyncService)scope.ServiceProvider.GetRequiredService(type);
-            await service.SyncAllAsync(ct);
-          }
-          catch (HttpRequestException ex) when (ex.Message.Contains("REDUNDANT"))
-          {
-            logger.LogWarning("Consumo redundante detectado pela Omie para {Service}. Aguardando 30s antes de continuar...", type.Name);
-            await Task.Delay(TimeSpan.FromSeconds(30), ct);
-          }
-          catch (Exception ex)
-          {
-            logger.LogError(ex, "Falha ao sincronizar serviço {Service}", type.Name);
+            try
+            {
+              // Cria um scope novo para cada serviço de sync,
+              // garantindo um DbContext isolado por serviço.
+              using var scope = serviceProvider.CreateScope();
+              var service = (ISyncService)scope.ServiceProvider.GetRequiredService(type);
+              await service.SyncAllAsync(ct);
+              break; // Sucesso, sai do loop de retry
+            }
+            catch (HttpRequestException ex) when (ex.Message.Contains("REDUNDANT") || ex.Message.Contains("redundante"))
+            {
+                if (retryCount >= 1)
+                {
+                    logger.LogWarning("Consumo redundante persistiu para {Service} após retry. Pulando para o próximo.", type.Name);
+                    break;
+                }
+                
+                logger.LogWarning("Consumo redundante detectado pela Omie para {Service}. Tentando novamente em 60s...", type.Name);
+                await Task.Delay(TimeSpan.FromSeconds(60), ct);
+                retryCount++;
+            }
+            catch (Exception ex)
+            {
+              logger.LogError(ex, "Falha ao sincronizar serviço {Service}", type.Name);
+              break; // Outros erros não retentam no manager
+            }
           }
 
           // Aguarda entre serviços para evitar "consumo redundante" na Omie

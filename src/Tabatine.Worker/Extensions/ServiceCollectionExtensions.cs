@@ -20,7 +20,7 @@ public static class ServiceCollectionExtensions
 
         // Register DbContext Factory (Fonte única de verdade)
         // Usamos Singleton para a factory e configuramos as opções uma única vez
-        services.AddPooledDbContextFactory<AppDbContext>(options =>
+        services.AddDbContextFactory<AppDbContext>(options =>
             options.UseNpgsql(
                 connectionString,
                 b => b.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)

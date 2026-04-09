@@ -32,7 +32,7 @@ namespace Tabatine.Infrastructure.Services
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
             _logger.LogInformation("Iniciando sincronização de Vendedores...");
-            
+
             var lastSyncDate = await _syncState.GetLastSyncDateAsync("Vendedores", ct);
             var syncStartTime = DateTime.UtcNow;
 
@@ -45,7 +45,7 @@ namespace Tabatine.Infrastructure.Services
             while (temMais && !ct.IsCancellationRequested)
             {
                 var response = await _omieClient.ListarVendedoresAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
-                
+
                 if (response == null || response.Vendedores == null || response.Vendedores.Count == 0) break;
 
                 var omieIds = response.Vendedores.Select(v => v.Codigo).ToList();
@@ -87,7 +87,7 @@ namespace Tabatine.Infrastructure.Services
                     else
                     {
                         // Se o timestamp da Omie for igual ao que já temos, pula o update
-                        if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue && 
+                        if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
                             existing.OmieUpdatedAt.Value == omieLastAlt.Value)
                         {
                             _logger.LogDebug("Vendedor OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
@@ -112,6 +112,56 @@ namespace Tabatine.Infrastructure.Services
             await _syncState.SetLastSyncDateAsync("Vendedores", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Vendedores finalizada.");
         }
-        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default) => await Task.CompletedTask;
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            _logger.LogInformation("Sincronizando Vendedor específico OmieId: {OmieId}", omieId);
+            var omieVendedor = await _omieClient.ConsultarVendedorAsync(omieId, ct);
+
+            if (omieVendedor != null)
+            {
+                var existing = await _dbContext.Vendedores.FirstOrDefaultAsync(v => v.OmieId == omieId, ct);
+                var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieVendedor.DAlt, omieVendedor.HAlt);
+
+                if (existing == null)
+                {
+                    var novoVendedor = new Vendedor
+                    {
+                        Id = Guid.NewGuid(),
+                        OmieId = omieId,
+                        Nome = omieVendedor.Nome,
+                        Email = omieVendedor.Email,
+                        Comissao = omieVendedor.Comissao,
+                        Inativo = omieVendedor.Inativo == "S",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        OmieUpdatedAt = omieLastAlt
+                    };
+                    _dbContext.Vendedores.Add(novoVendedor);
+                }
+                else
+                {
+                    if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
+                        existing.OmieUpdatedAt.Value == omieLastAlt.Value)
+                    {
+                        _logger.LogDebug("Vendedor OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
+                        return;
+                    }
+
+                    existing.Nome = omieVendedor.Nome;
+                    existing.Email = omieVendedor.Email;
+                    existing.Comissao = omieVendedor.Comissao;
+                    existing.Inativo = omieVendedor.Inativo == "S";
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    existing.OmieUpdatedAt = omieLastAlt;
+                }
+
+                await _dbContext.SaveChangesAsync(ct);
+                _logger.LogInformation("Vendedor OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
+            }
+            else
+            {
+                _logger.LogWarning("Vendedor OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
+            }
+        }
     }
 }

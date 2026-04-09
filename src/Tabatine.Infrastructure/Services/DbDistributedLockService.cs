@@ -13,34 +13,21 @@ public class DbDistributedLockService(IDbContextFactory<AppDbContext> dbFactory)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var now = DateTime.UtcNow;
+        var expiresAt = now.Add(expiry);
 
-        try
-        {
-            // Atômico: Limpa o lock apenas se ele já existir e estiver expirado.
-            // Isso evita que tentemos adicionar um lock que ainda é válido.
-            await db.SyncLocks
-                .Where(l => l.LockKey == key && l.ExpiresAt <= now)
-                .ExecuteDeleteAsync(ct);
+        // Atômico: Limpa o lock apenas se ele já existir e estiver expirado.
+        await db.SyncLocks
+            .Where(l => l.LockKey == key && l.ExpiresAt <= now)
+            .ExecuteDeleteAsync(ct);
 
-            // Tenta inserir o novo lock.
-            // Se o ExecuteDelete não removeu nada (porque o lock ainda é válido), 
-            // esta inserção falhará por violação de Chave Primária (PK).
-            var newLock = new SyncLock 
-            { 
-                LockKey = key, 
-                LockToken = token, 
-                ExpiresAt = now.Add(expiry)
-            };
+        // Tenta inserir o novo lock com ON CONFLICT.
+        // O Postgres retornará 1 se inserido, 0 se houve conflito (lock ainda válido).
+        // Isso evita o ruído de DbUpdateException nos logs.
+        var affectedRows = await db.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO sync_locks (lock_key, lock_token, expires_at) VALUES ({key}, {token}, {expiresAt}) ON CONFLICT (lock_key) DO NOTHING", 
+            ct);
 
-            db.SyncLocks.Add(newLock);
-            await db.SaveChangesAsync(ct);
-            return true;
-        }
-        catch (DbUpdateException)
-        {
-            // Outro worker já possui um lock válido ou ganhou a corrida de inserção.
-            return false;
-        }
+        return affectedRows > 0;
     }
 
     public async Task ReleaseLockAsync(string key, string token, CancellationToken ct = default)

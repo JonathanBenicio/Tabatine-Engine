@@ -30,7 +30,7 @@ namespace Tabatine.Infrastructure.Services
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
             _logger.LogInformation("Iniciando sincronização de Produtos...");
-            
+
             var lastSyncDate = await _syncState.GetLastSyncDateAsync("Produtos", ct);
             var syncStartTime = DateTime.UtcNow;
 
@@ -43,7 +43,7 @@ namespace Tabatine.Infrastructure.Services
             while (temMais && !ct.IsCancellationRequested)
             {
                 var response = await _omieClient.ListarProdutosAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
-                
+
                 // Resposta nula = sem registros (Client-5113)
                 if (response == null || response.ProdutosCadastro == null || response.ProdutosCadastro.Count == 0) break;
 
@@ -94,7 +94,7 @@ namespace Tabatine.Infrastructure.Services
                     else
                     {
                         // Se o timestamp da Omie for igual ao que já temos, pula o update
-                        if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue && 
+                        if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
                             existing.OmieUpdatedAt.Value == omieLastAlt.Value)
                         {
                             _logger.LogDebug("Produto OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
@@ -126,7 +126,64 @@ namespace Tabatine.Infrastructure.Services
         }
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            await Task.CompletedTask;
+            _logger.LogInformation("Sincronizando Produto específico OmieId: {OmieId}", omieId);
+            var omieProduto = await _omieClient.ConsultarProdutoAsync(omieId, ct);
+
+            if (omieProduto != null)
+            {
+                var existing = await _dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieId, ct);
+                var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieProduto.DAlt, omieProduto.HAlt);
+
+                if (existing == null)
+                {
+                    var novoProduto = new Produto
+                    {
+                        Id = Guid.NewGuid(),
+                        OmieId = omieId,
+                        CodigoProduto = omieProduto.Codigo,
+                        Descricao = omieProduto.Descricao,
+                        PrecoUnitario = omieProduto.ValorUnitario,
+                        Ncm = omieProduto.Ncm,
+                        UnidadeMedida = omieProduto.Unidade,
+                        PesoLiquido = omieProduto.PesoLiquido,
+                        PesoBruto = omieProduto.PesoBruto,
+                        FamiliaProduto = omieProduto.FamiliaProduto,
+                        Ativo = omieProduto.Inativo == "N",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        OmieUpdatedAt = omieLastAlt
+                    };
+                    _dbContext.Produtos.Add(novoProduto);
+                }
+                else
+                {
+                    if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
+                        existing.OmieUpdatedAt.Value == omieLastAlt.Value)
+                    {
+                        _logger.LogDebug("Produto OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
+                        return;
+                    }
+
+                    existing.CodigoProduto = omieProduto.Codigo;
+                    existing.Descricao = omieProduto.Descricao;
+                    existing.PrecoUnitario = omieProduto.ValorUnitario;
+                    existing.Ncm = omieProduto.Ncm;
+                    existing.UnidadeMedida = omieProduto.Unidade;
+                    existing.PesoLiquido = omieProduto.PesoLiquido;
+                    existing.PesoBruto = omieProduto.PesoBruto;
+                    existing.FamiliaProduto = omieProduto.FamiliaProduto;
+                    existing.Ativo = omieProduto.Inativo == "N";
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    existing.OmieUpdatedAt = omieLastAlt;
+                }
+
+                await _dbContext.SaveChangesAsync(ct);
+                _logger.LogInformation("Produto OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
+            }
+            else
+            {
+                _logger.LogWarning("Produto OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
+            }
         }
     }
 }

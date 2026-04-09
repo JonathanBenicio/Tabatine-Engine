@@ -15,12 +15,6 @@ namespace Tabatine.Omie.Client.Models.Produtos
 
         [JsonPropertyName("filtrar_apenas_omiepdv")]
         public string FiltrarApenasOmiepdv { get; set; } = "N";
-
-        [JsonPropertyName("filtrar_por_data_de")]
-        public string? FiltrarPorDataDe { get; set; }
-
-        [JsonPropertyName("filtrar_por_data_ate")]
-        public string? FiltrarPorDataAte { get; set; }
     }
 
     public class OmieProduto : IOmieMetadata

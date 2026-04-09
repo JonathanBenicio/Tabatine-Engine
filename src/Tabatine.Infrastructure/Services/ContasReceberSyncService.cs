@@ -124,9 +124,9 @@ namespace Tabatine.Infrastructure.Services
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
             // A API de Contas a Receber da Omie não possui endpoint de consulta por ID direta.
-            // Re-sincronizamos a página mais recente para capturar alterações individuais via webhook.
-            _logger.LogInformation("SyncById solicitado para TituloReceber OmieId={OmieId}. Executando sync incremental.", omieId);
-            await SyncAllAsync(ct);
+            // O processo de webhooks deve acumular os IDs ou acionar um job assíncrono para evitar gargalos.
+            _logger.LogWarning("SyncById solicitado para TituloReceber OmieId={OmieId}. A Omie não possui endpoint de consulta individual para Contas a Receber. Requisição ignorada via webhook para evitar rate limiting.", omieId);
+            await Task.CompletedTask;
         }
 
         private static TituloReceber MapToEntity(

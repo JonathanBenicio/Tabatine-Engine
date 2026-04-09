@@ -48,7 +48,7 @@ Todas as APIs do Omie usam **JSON via HTTP POST**. A `APP_KEY` e `APP_SECRET` s�
 ### Limites e Boas Práticas
 - **Rate Limit**: Respeitar o limite de 240 req/min e bloqueio de 60s por registro (Consulte as **Skills** de API).
 - **Paginação**: Usar `registros_por_pagina` (máximo 100) e iterar de forma assíncrona.
-- **Incremental**: Sempre que possível, usar o campo `filtrar_por_data_de` ou similar para trazer apenas alterações desde a última sincronização.
+
 
 ---
 

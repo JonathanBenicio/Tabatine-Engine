@@ -14,12 +14,6 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
         [JsonPropertyName("ordenar_por")]
         public string OrdenarPor { get; set; } = "CODIGO";
 
-        [JsonPropertyName("filtrar_por_data_de")]
-        public string? FiltrarPorDataDe { get; set; }
-
-        [JsonPropertyName("filtrar_por_data_ate")]
-        public string? FiltrarPorDataAte { get; set; }
-
         [JsonPropertyName("dEmiInicial")]
         public string? DataEmissaoDe { get; set; }
 

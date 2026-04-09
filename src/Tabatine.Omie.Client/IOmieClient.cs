@@ -31,7 +31,9 @@ namespace Tabatine.Omie.Client
         Task<ListarContasPagarResponse> ListarContasPagarAsync(int pagina = 1, long? codigoVendedor = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default);
         Task<ListarContasReceberResponse> ListarContasReceberAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default);
         Task<OmieCliente?> ConsultarClienteAsync(long codigoClienteOmie, CancellationToken cancellationToken = default);
+        Task<OmieProduto?> ConsultarProdutoAsync(long codigoProdutoOmie, CancellationToken cancellationToken = default);
         Task<OmiePedido?> ConsultarPedidoAsync(long codigoPedidoOmie, CancellationToken cancellationToken = default);
         Task<OmieNotaFiscal?> ConsultarNotaFiscalAsync(long codigoNfOmie, CancellationToken cancellationToken = default);
+        Task<OmieVendedor?> ConsultarVendedorAsync(long codigoVendedorOmie, CancellationToken cancellationToken = default);
     }
 }

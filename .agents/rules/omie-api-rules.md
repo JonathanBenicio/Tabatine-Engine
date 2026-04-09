@@ -22,7 +22,7 @@ Essas regras definem os limites e restrições de alto nível para a integraçã
 
 ## 4. Consultas Incrementais e Otimização
 - **Rule:** Nunca realize um "Full Sync" (download completo) em rotinas recorrentes.
-- **Constraint:** Utilize obrigatoriamente filtros da API como `filtrar_por_data_de` e `filtrar_por_hora_de`. Adote a política de Upsert (verifica existência pelo campo `OmieId`) no banco de dados local.
+- **Constraint:** Adote a política de Upsert (verifica existência pelo campo `OmieId`) no banco de dados local.
 
 ## 5. Circuit Breaker e Respeito aos Rate Limits
 - **Rate Limit**: Respeitar o limite de 240 req/min e o bloqueio de 60s entre chamadas para o mesmo `OmieId`.
