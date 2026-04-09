@@ -150,12 +150,9 @@ namespace Tabatine.Omie.Client
 
         public async Task<ListarContaCorrenteResponse> ListarContasCorrentesAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
+            // Nota: o endpoint geral/contacorrente/ da Omie não suporta filtros de data.
+            // Passar filtrar_por_data_de/ate retorna HTTP 500. Sempre sincronizamos todas as contas.
             var param = new ListarContaCorrenteParam { Pagina = pagina };
-            if (filtrarDe.HasValue || filtrarAte.HasValue)
-            {
-                param.FiltrarPorDataDe = filtrarDe?.ToString("dd/MM/yyyy");
-                param.FiltrarPorDataAte = filtrarAte?.ToString("dd/MM/yyyy");
-            }
 
             return await SendRequestAsync<ListarContaCorrenteParam, ListarContaCorrenteResponse>("geral/contacorrente/", "ListarContasCorrentes", param, cancellationToken);
         }
@@ -211,6 +208,27 @@ namespace Tabatine.Omie.Client
 
             return await SendRequestAsync<ListarContasPagarParam, ListarContasPagarResponse>("financas/contapagar/", "ListarContasPagar", param, cancellationToken);
         }
+
+        public async Task<ListarContasReceberResponse> ListarContasReceberAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default)
+        {
+            var param = new ListarContasReceberParam
+            {
+                Pagina = pagina,
+                RegistrosPorPagina = 100
+            };
+
+            if (filtrarDe.HasValue && filtrarDe.Value > DateTime.MinValue)
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+
+            if (filtrarAte.HasValue && filtrarAte.Value > DateTime.MinValue)
+                param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
+
+            if (!string.IsNullOrEmpty(status))
+                param.FiltrarPorStatus = status;
+
+            return await SendRequestAsync<ListarContasReceberParam, ListarContasReceberResponse>("financas/contareceber/", "ListarContasReceber", param, cancellationToken);
+        }
+
         public async Task<OmieCliente?> ConsultarClienteAsync(long codigoClienteOmie, CancellationToken cancellationToken = default)
         {
             var param = new { codigo_cliente_omie = codigoClienteOmie };

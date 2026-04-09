@@ -16,6 +16,8 @@ namespace Tabatine.Infrastructure.Data
         public DbSet<NotaFiscal> NotasFiscais => Set<NotaFiscal>();
         public DbSet<ItemNotaFiscal> ItensNotaFiscal => Set<ItemNotaFiscal>();
         public DbSet<NotaFiscalTitulo> NotaFiscalTitulos => Set<NotaFiscalTitulo>();
+        public DbSet<TituloReceber> TitulosReceber => Set<TituloReceber>();
+        public DbSet<TituloPagar> TitulosPagar => Set<TituloPagar>();
         public DbSet<Vendedor> Vendedores => Set<Vendedor>();
         public DbSet<ContaCorrente> ContasCorrente => Set<ContaCorrente>();
         public DbSet<PedidoParcela> PedidoParcelas => Set<PedidoParcela>();

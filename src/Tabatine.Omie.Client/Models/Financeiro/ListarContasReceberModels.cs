@@ -4,13 +4,13 @@ using Tabatine.Omie.Client.Models;
 
 namespace Tabatine.Omie.Client.Models.Financeiro
 {
-    public class ListarContasPagarParam
+    public class ListarContasReceberParam
     {
         [JsonPropertyName("pagina")]
         public int Pagina { get; set; } = 1;
 
         [JsonPropertyName("registros_por_pagina")]
-        public int RegistrosPorPagina { get; set; } = 500;
+        public int RegistrosPorPagina { get; set; } = 100;
 
         [JsonPropertyName("filtrar_por_data_de")]
         public string? FiltrarPorDataDe { get; set; }
@@ -21,17 +21,11 @@ namespace Tabatine.Omie.Client.Models.Financeiro
         [JsonPropertyName("filtrar_por_status")]
         public string? FiltrarPorStatus { get; set; }
 
-        [JsonPropertyName("filtrar_por_vendedor")]
-        public long? FiltrarPorVendedor { get; set; }
-
-        [JsonPropertyName("apenas_importado_api")]
-        public string ApenasImportadoApi { get; set; } = "N";
-        
         [JsonPropertyName("exibir_obs")]
         public string ExibirObs { get; set; } = "S";
     }
 
-    public class OmieContaPagar
+    public class OmieContaReceber
     {
         [JsonPropertyName("codigo_lancamento_omie")]
         public long CodigoLancamentoOmie { get; set; }
@@ -39,23 +33,35 @@ namespace Tabatine.Omie.Client.Models.Financeiro
         [JsonPropertyName("codigo_cliente_fornecedor")]
         public long CodigoClienteFornecedor { get; set; }
 
-        [JsonPropertyName("data_vencimento")]
-        public string DataVencimento { get; set; } = string.Empty;
-
-        [JsonPropertyName("valor_documento")]
-        public decimal ValorDocumento { get; set; }
-
-        [JsonPropertyName("codigo_categoria")]
-        public string? CodigoCategoria { get; set; }
-
         [JsonPropertyName("numero_pedido")]
         public string? NumeroPedido { get; set; }
+
+        [JsonPropertyName("numero_parcela")]
+        public string? NumeroParcela { get; set; }
 
         [JsonPropertyName("numero_documento")]
         public string? NumeroDocumento { get; set; }
 
-        [JsonPropertyName("observacao")]
-        public string? Observacao { get; set; }
+        [JsonPropertyName("data_emissao")]
+        public string DataEmissao { get; set; } = string.Empty;
+
+        [JsonPropertyName("data_vencimento")]
+        public string DataVencimento { get; set; } = string.Empty;
+
+        [JsonPropertyName("data_previsao")]
+        public string? DataPrevisao { get; set; }
+
+        [JsonPropertyName("valor_documento")]
+        public decimal ValorDocumento { get; set; }
+
+        [JsonPropertyName("valor_recebido")]
+        public decimal ValorRecebido { get; set; }
+
+        [JsonPropertyName("valor_saldo")]
+        public decimal ValorSaldo { get; set; }
+
+        [JsonPropertyName("status_titulo")]
+        public string? StatusTitulo { get; set; }
 
         [JsonPropertyName("codigo_vendedor")]
         public long? CodigoVendedor { get; set; }
@@ -63,14 +69,17 @@ namespace Tabatine.Omie.Client.Models.Financeiro
         [JsonPropertyName("codigo_conta_corrente")]
         public long? CodigoContaCorrente { get; set; }
 
-        [JsonPropertyName("status_titulo")]
-        public string? StatusTitulo { get; set; }
+        [JsonPropertyName("codigo_categoria")]
+        public string? CodigoCategoria { get; set; }
+
+        [JsonPropertyName("observacao")]
+        public string? Observacao { get; set; }
 
         [JsonPropertyName("info")]
-        public OmieContaPagarInfo? Info { get; set; }
+        public OmieContaReceberInfo? Info { get; set; }
     }
 
-    public class OmieContaPagarInfo
+    public class OmieContaReceberInfo
     {
         [JsonPropertyName("dInc")]
         public string? DInc { get; set; }
@@ -85,9 +94,9 @@ namespace Tabatine.Omie.Client.Models.Financeiro
         public string? HAlt { get; set; }
     }
 
-    public class ListarContasPagarResponse : OmieResponse<OmieContaPagar>
+    public class ListarContasReceberResponse : OmieResponse<OmieContaReceber>
     {
-        [JsonPropertyName("conta_pagar_cadastro")]
-        public List<OmieContaPagar> ContasPagar { get; set; } = new();
+        [JsonPropertyName("conta_receber_cadastro")]
+        public List<OmieContaReceber> ContasReceber { get; set; } = new();
     }
 }
