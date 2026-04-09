@@ -30,8 +30,8 @@ namespace Tabatine.Omie.Client.Models.Financeiro
         [JsonPropertyName("codigo_lancamento_omie")]
         public long CodigoLancamentoOmie { get; set; }
 
-        [JsonPropertyName("codigo_cliente_omie")]
-        public long CodigoClienteOmie { get; set; }
+        [JsonPropertyName("codigo_cliente_fornecedor")]
+        public long CodigoClienteFornecedor { get; set; }
 
         [JsonPropertyName("numero_pedido")]
         public string? NumeroPedido { get; set; }

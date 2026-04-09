@@ -54,8 +54,8 @@ namespace Tabatine.Infrastructure.Services
 
                 // Pré-carrega clientes e contas correntes referenciados nesta página
                 var omieClienteIds = response.ContasReceber
-                    .Where(t => t.CodigoClienteOmie > 0)
-                    .Select(t => t.CodigoClienteOmie).Distinct().ToList();
+                    .Where(t => t.CodigoClienteFornecedor > 0)
+                    .Select(t => t.CodigoClienteFornecedor).Distinct().ToList();
 
                 var omieVendedorIds = response.ContasReceber
                     .Where(t => t.CodigoVendedor.HasValue)
@@ -92,7 +92,7 @@ namespace Tabatine.Infrastructure.Services
                         continue;
                     }
 
-                    clientes.TryGetValue(omieItem.CodigoClienteOmie, out var cliente);
+                    clientes.TryGetValue(omieItem.CodigoClienteFornecedor, out var cliente);
                     vendedores.TryGetValue(omieItem.CodigoVendedor ?? 0, out var vendedor);
                     contasCorrente.TryGetValue(omieItem.CodigoContaCorrente ?? 0, out var contaCorrente);
 

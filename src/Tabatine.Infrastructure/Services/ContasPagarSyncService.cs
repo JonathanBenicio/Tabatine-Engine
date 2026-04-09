@@ -62,6 +62,14 @@ namespace Tabatine.Infrastructure.Services
                     .Where(c => omieClienteIds.Contains(c.OmieId))
                     .ToDictionaryAsync(c => c.OmieId, ct);
 
+                var omieContaIds = response.ContasPagar
+                    .Where(t => t.CodigoContaCorrente.HasValue)
+                    .Select(t => t.CodigoContaCorrente!.Value).Distinct().ToList();
+
+                var contasCorrente = await _dbContext.ContasCorrente
+                    .Where(cc => omieContaIds.Contains(cc.OmieId))
+                    .ToDictionaryAsync(cc => cc.OmieId, ct);
+
                 var omieIds = response.ContasPagar.Select(t => t.CodigoLancamentoOmie).ToList();
                 var existingTitulos = await _dbContext.TitulosPagar
                     .Where(t => omieIds.Contains(t.OmieId))
@@ -78,17 +86,19 @@ namespace Tabatine.Infrastructure.Services
                     }
 
                     clientes.TryGetValue(omieItem.CodigoClienteFornecedor, out var cliente);
+                    contasCorrente.TryGetValue(omieItem.CodigoContaCorrente ?? 0, out var contaCorrente);
+                    
                     existingTitulos.TryGetValue(omieId, out var existing);
 
                     if (existing == null)
                     {
-                        var novo = MapToEntity(omieItem, cliente);
+                        var novo = MapToEntity(omieItem, cliente, contaCorrente);
                         _dbContext.TitulosPagar.Add(novo);
                         existingTitulos[omieId] = novo;
                     }
                     else
                     {
-                        AtualizarEntidade(existing, omieItem, cliente);
+                        AtualizarEntidade(existing, omieItem, cliente, contaCorrente);
                     }
                 }
 
@@ -109,7 +119,7 @@ namespace Tabatine.Infrastructure.Services
             await SyncAllAsync(ct);
         }
 
-        private static TituloPagar MapToEntity(OmieContaPagar omie, Cliente? cliente)
+        private static TituloPagar MapToEntity(OmieContaPagar omie, Cliente? cliente, ContaCorrente? contaCorrente)
         {
             return new TituloPagar
             {
@@ -126,12 +136,13 @@ namespace Tabatine.Infrastructure.Services
                 CodigoCategoria = omie.CodigoCategoria,
                 Observacao = omie.Observacao,
                 ClienteId = cliente?.Id,
+                ContaCorrenteId = contaCorrente?.Id,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
         }
 
-        private static void AtualizarEntidade(TituloPagar existing, OmieContaPagar omie, Cliente? cliente)
+        private static void AtualizarEntidade(TituloPagar existing, OmieContaPagar omie, Cliente? cliente, ContaCorrente? contaCorrente)
         {
             existing.NumeroDocumento = omie.NumeroDocumento ?? string.Empty;
             existing.NumeroPedido = omie.NumeroPedido;
@@ -141,6 +152,7 @@ namespace Tabatine.Infrastructure.Services
             existing.CodigoCategoria = omie.CodigoCategoria;
             existing.Observacao = omie.Observacao;
             existing.ClienteId = cliente?.Id;
+            existing.ContaCorrenteId = contaCorrente?.Id;
             existing.UpdatedAt = DateTime.UtcNow;
         }
 

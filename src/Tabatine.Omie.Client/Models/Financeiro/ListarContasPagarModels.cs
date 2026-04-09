@@ -60,6 +60,9 @@ namespace Tabatine.Omie.Client.Models.Financeiro
         [JsonPropertyName("codigo_vendedor")]
         public long? CodigoVendedor { get; set; }
 
+        [JsonPropertyName("codigo_conta_corrente")]
+        public long? CodigoContaCorrente { get; set; }
+
         [JsonPropertyName("status_titulo")]
         public string? StatusTitulo { get; set; }
 
