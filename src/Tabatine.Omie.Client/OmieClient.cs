@@ -150,12 +150,9 @@ namespace Tabatine.Omie.Client
 
         public async Task<ListarContaCorrenteResponse> ListarContasCorrentesAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
+            // Nota: o endpoint geral/contacorrente/ da Omie não suporta filtros de data.
+            // Passar filtrar_por_data_de/ate retorna HTTP 500. Sempre sincronizamos todas as contas.
             var param = new ListarContaCorrenteParam { Pagina = pagina };
-            if (filtrarDe.HasValue || filtrarAte.HasValue)
-            {
-                param.FiltrarPorDataDe = filtrarDe?.ToString("dd/MM/yyyy");
-                param.FiltrarPorDataAte = filtrarAte?.ToString("dd/MM/yyyy");
-            }
 
             return await SendRequestAsync<ListarContaCorrenteParam, ListarContaCorrenteResponse>("geral/contacorrente/", "ListarContasCorrentes", param, cancellationToken);
         }
