@@ -147,4 +147,65 @@ public class EstoqueWebhookIntegrationTests(IntegrationTestWebAppFactory factory
         // IMPORTANTE: Aqui validamos que o Debouncing barrou a segunda chamada ao SyncByIdAsync
         await Factory.OmieClientMock.Received(1).ObterResumoEstoqueProdutoAsync(Arg.Any<ObterEstoqueProdutoRequest>(), Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Deve_Permitir_Tratar_Movimentacao_Estoque_Negativa()
+    {
+        // Arrange
+        var produtoOmieId = 888999L;
+        var localOmieId = 222333L;
+
+        Guid produtoId;
+        Guid localId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var local = new LocalEstoque { Id = Guid.NewGuid(), OmieId = localOmieId, Codigo = "LOC2", Descricao = "Local 2" };
+            var produto = new Produto { Id = Guid.NewGuid(), OmieId = produtoOmieId, CodigoProduto = "PROD2", Descricao = "Produto 2" };
+            dbContext.LocaisEstoque.Add(local);
+            dbContext.Produtos.Add(produto);
+            await dbContext.SaveChangesAsync();
+            produtoId = produto.Id;
+            localId = local.Id;
+        }
+
+        var resumo = new ObterEstoqueProdutoResponse
+        {
+            IdProduto = produtoOmieId,
+            ListaEstoque = new List<ResumoEstoqueLocalDto>
+            {
+                new() { IdLocal = localOmieId, Disponivel = -50, Fisico = -50 } // Saldo Negativo
+            }
+        };
+
+        Factory.OmieClientMock.ObterResumoEstoqueProdutoAsync(Arg.Any<ObterEstoqueProdutoRequest>(), Arg.Any<CancellationToken>())
+            .Returns(resumo);
+
+        var webhookEvent = new
+        {
+            topic = "Produto.MovimentacaoEstoque",
+            messageId = Guid.NewGuid().ToString(),
+            @event = new { nCodProd = produtoOmieId, codigo_produto = produtoOmieId }
+        };
+
+        var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
+        response.EnsureSuccessStatusCode();
+
+        ProdutoEstoque? saldoDB = null;
+        var timeout = TimeSpan.FromSeconds(10);
+        var start = DateTime.UtcNow;
+
+        while (DateTime.UtcNow - start < timeout)
+        {
+            using var scope = Factory.Services.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            saldoDB = await dbContext.ProdutosEstoque.FirstOrDefaultAsync(s => s.ProdutoId == produtoId && s.LocalEstoqueId == localId);
+            
+            if (saldoDB != null && saldoDB.Saldo == -50) break;
+            await Task.Delay(500);
+        }
+
+        saldoDB.Should().NotBeNull();
+        saldoDB!.Saldo.Should().Be(-50, "O banco deve persistir saldo negativo adequadamente.");
+    }
 }
