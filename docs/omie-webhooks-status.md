@@ -2,8 +2,8 @@
 
 Este documento detalha quais eventos de Webhook da Omie estão atualmente implementados e processados pelo **Tabatine Engine**, bem como os handlers responsáveis pela lógica de sincronização.
 
-> [!NOTE]
-> Eventos não mapeados são capturados pelo `DefaultWebhookHandler`, que registra o log do recebimento mas não executa nenhuma ação de sincronização, marcando o evento como processado para evitar loops na fila.
+> [!IMPORTANT]
+> Esta lista baseia-se nos tópicos reais suportados pela API Omie. Entidades de catálogo (como Bancos, Meios e Condições de Pagamento) não possuem webhooks e são sincronizadas apenas via carga total ou manual.
 
 ## 🟢 Eventos Implementados
 
@@ -23,39 +23,36 @@ Estes eventos possuem handlers específicos que disparam a sincronização atôm
 | **Estoque (Local)** | `LocalEstoque.Incluido`, `LocalEstoque.Alterado`, `LocalEstoque.Excluido` | [LocalEstoqueWebhookHandler](file:///src/Tabatine.Worker/Services/Handlers/LocalEstoqueWebhookHandler.cs) | Sincroniza depósitos/almoxarifados. |
 | **Vendedores** | `Vendedor.Incluido`, `Vendedor.Alterado`, `Vendedor.Excluido` | [VendedorWebhookHandler](file:///src/Tabatine.Worker/Services/Handlers/VendedorWebhookHandler.cs) | |
 
-## 🔴 Eventos Não Implementados (Backlog)
+## 🔴 Eventos Existentes mas Não Implementados (Backlog)
 
-Os eventos abaixo constam na lista de tópicos da Omie mas **não possuem** lógica de processamento no Tabatine Engine no momento.
+Esta lista contém tópicos reais da Omie que ainda não possuem um handler específico no Tabatine Engine.
 
 ### Cadastro e Configurações
-- `CaracteristicaProduto.*` (Alterada, Excluida, Incluida)
-- `Categoria.*` (Alterada, Incluida)
-- `Departamento.*` (Alterado, Excluido, Incluido)
-- `Projeto.*` (Alterado, Excluido, Incluido)
-- `Servico.*` (Alterado, Excluido, Incluido)
+- `CaracteristicaProduto.*` (Incluida, Alterada, Excluida)
+- `Categoria.*` (Incluida, Alterada)
+- `Departamento.*` (Incluido, Alterado, Excluido)
+- `Projeto.*` (Incluido, Alterado, Excluido)
+- `Servico.*` (Incluido, Alterado, Excluido)
 
-### Financeiro Avançado
-- `Financas.ContaCorrente.Lancamento.*` (Alterado, Excluido, Incluido)
-- `Financas.ContaCorrente.Transferencia.*` (Alterado, Excluido, Incluido)
-- `Financas.ContaPagar.Baixas`, `Financas.ContaPagar.Rateios`
-- `Financas.ContaReceber.Baixas`, `Financas.ContaReceber.Boletos`, `Financas.ContaReceber.Rateios`
+### Financeiro e CRM
+- `Financas.ContaCorrente.Lancamento.*` (Incluido, Alterado, Excluido)
+- `Financas.ContaCorrente.Transferencia.*` (Incluido, Alterado, Excluido)
+- `Financas.ContaPagar.BaixaRealizada`, `Financas.ContaPagar.BaixaCancelada`
+- `Financas.ContaPagar.Rateio.*` (Categoria, Departamento)
+- `Financas.ContaReceber.BaixaRealizada`, `Financas.ContaReceber.BaixaCancelada`, `Financas.ContaReceber.BoletoGerado`, `Financas.ContaReceber.BoletoCancelado`
+- `Financas.ContaReceber.Rateio.*` (Categoria, Departamento)
+- `CRM.Conta.*`, `CRM.Contato.*`, `CRM.Oportunidade.*`, `CRM.Tarefa.*`
 
 ### Suprimentos e Compras
 - `CompraProduto.*` (Incluida, Alterada, Cancelada, Encerrada, EtapaAlterada, Excluida)
-- `NotaEntrada.*` (Alterada, Cancelada, Concluida, Excluida, Incluida)
-- `OrdemProducao.*` (Alterada, Concluida, Excluida, Incluida, Revertida)
-- `RecebimentoProduto.*` (Alterado, Concluido, Devolvido, Excluido, Incluido, Revertido)
-- `RemessaProduto.*` (Alterada, Cancelada, Devolvida, Excluida, Faturada, Incluida)
-- `RequisicaoProduto.*` (Alterada, Excluida, Incluida)
+- `NotaEntrada.*` (Incluida, Alterada, Cancelada, Concluida, Excluida)
+- `OrdemProducao.*` (Incluida, Alterada, Concluida, Excluida, Revertida)
+- `RecebimentoProduto.*` (Incluido, Alterado, Concluido, Devolvido, Excluido, Revertido)
+- `RemessaProduto.*` (Incluida, Alterada, Cancelada, Devolvida, Excluida, Faturada)
+- `RequisicaoProduto.*` (Incluida, Alterada, Excluida)
 
 ### Outros
-- `CRM.*` (Contas, Contatos, Oportunidades, Tarefas)
 - `ContratoServico.*` (Incluido, Alterado, Ativado, Cancelado, Excluido, Faturado, Suspenso)
-- `Frete.*` (Status, Entregas)
+- `Frete.*` (PedidoEnviado, SaiuParaEntrega, PedidoEntregue, StatusAtualizado)
 - `OrdemServico.*` (Incluida, Alterada, Cancelada, EtapaAlterada, Excluida, Faturada)
 - `TabelaPreco.*` / `TabelaPrecoItem.*`
-
----
-
-> [!TIP]
-> Para adicionar suporte a um novo evento, adicione o tópico ao `SupportedEvents` de um handler existente e implemente a chamada ao `SyncService` correspondente. Se for um módulo novo, crie um novo `IWebhookEventHandler`.
