@@ -2,7 +2,7 @@
   "stryker-config": {
     "project": "Tabatine.Infrastructure.csproj",
     "test-projects": [
-      "../Tabatine.Worker.IntegrationTests/Tabatine.Worker.IntegrationTests.csproj"
+      "src/Tabatine.Worker.IntegrationTests/Tabatine.Worker.IntegrationTests.csproj"
     ],
     "reporters": [
       "progress",
