@@ -39,6 +39,7 @@ namespace Tabatine.Omie.Client
         Task<OmieVendedor?> ConsultarVendedorAsync(long codigoVendedorOmie, CancellationToken cancellationToken = default);
         Task<OmieContaPagar?> ConsultarContaPagarAsync(long codigoLancamentoOmie, CancellationToken cancellationToken = default);
         Task<OmieContaReceber?> ConsultarContaReceberAsync(long codigoLancamentoOmie, CancellationToken cancellationToken = default);
+        Task<Tabatine.Omie.Client.Models.Financeiro.ListarMovimentosResponse> ListarMovimentosFinanceirosAsync(int pagina = 1, long? nCodCC = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default);
 
         // Streaming de Listagem
         IAsyncEnumerable<OmieCliente> StreamClientesAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default);
@@ -53,13 +54,14 @@ namespace Tabatine.Omie.Client
         IAsyncEnumerable<ParcelaOmie> StreamParcelasAsync(CancellationToken cancellationToken = default);
         IAsyncEnumerable<OmieContaPagar> StreamContasPagarAsync(long? codigoVendedor = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default);
         IAsyncEnumerable<OmieContaReceber> StreamContasReceberAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<OmieMovimento> StreamMovimentosFinanceirosAsync(long? nCodCC = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default);
 
         // Estoque
         IAsyncEnumerable<LocalEstoqueDto> ListarLocaisEstoqueAsync(CancellationToken cancellationToken = default);
         Task<PosicaoEstoqueResponse> ConsultarPosicaoEstoqueAsync(PosicaoEstoqueRequest request, CancellationToken cancellationToken = default);
         IAsyncEnumerable<ProdutoEstoqueDto> StreamPosicaoEstoqueAsync(ListarPosEstoqueRequest request, CancellationToken cancellationToken = default);
         IAsyncEnumerable<MovimentoEstoqueDto> StreamMovimentoEstoqueAsync(ListarMovimentoEstoqueRequest request, CancellationToken cancellationToken = default);
-        IAsyncEnumerable<MovimentoProdutoDto> StreamMovimentosAsync(ListarMovimentosRequest request, CancellationToken cancellationToken = default);
+        IAsyncEnumerable<MovimentoProdutoDto> StreamMovimentosAsync(Tabatine.Omie.Client.Models.Estoque.ListarMovimentosRequest request, CancellationToken cancellationToken = default);
         Task<ObterEstoqueProdutoResponse> ObterResumoEstoqueProdutoAsync(ObterEstoqueProdutoRequest request, CancellationToken cancellationToken = default);
     }
 }

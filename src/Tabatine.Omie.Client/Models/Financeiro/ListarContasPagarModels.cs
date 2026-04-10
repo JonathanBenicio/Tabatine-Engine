@@ -60,6 +60,18 @@ namespace Tabatine.Omie.Client.Models.Financeiro
         [JsonPropertyName("status_titulo")]
         public string? StatusTitulo { get; set; }
 
+        [JsonPropertyName("data_emissao")]
+        public string? DataEmissao { get; set; }
+
+        [JsonPropertyName("data_baixa")]
+        public string? DataBaixa { get; set; }
+
+        [JsonPropertyName("valor_pago")]
+        public decimal ValorPago { get; set; }
+
+        [JsonPropertyName("valor_saldo")]
+        public decimal ValorSaldo { get; set; }
+
         [JsonPropertyName("info")]
         public OmieContaPagarInfo? Info { get; set; }
     }

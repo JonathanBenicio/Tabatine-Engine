@@ -187,6 +187,7 @@ namespace Tabatine.Infrastructure.Services
                 DataEmissao = ParseData(omie.DataEmissao),
                 DataVencimento = ParseData(omie.DataVencimento),
                 DataPrevisao = string.IsNullOrEmpty(omie.DataPrevisao) ? null : ParseData(omie.DataPrevisao),
+                DataBaixa = ParseDataOptional(omie.DataBaixa),
                 ValorDocumento = omie.ValorDocumento,
                 ValorRecebido = omie.ValorRecebido,
                 ValorSaldo = omie.ValorSaldo,
@@ -211,8 +212,10 @@ namespace Tabatine.Infrastructure.Services
             existing.NumeroDocumento = omie.NumeroDocumento ?? string.Empty;
             existing.NumeroParcela = omie.NumeroParcela;
             existing.NumeroPedido = omie.NumeroPedido;
+            existing.DataEmissao = ParseData(omie.DataEmissao);
             existing.DataVencimento = ParseData(omie.DataVencimento);
             existing.DataPrevisao = string.IsNullOrEmpty(omie.DataPrevisao) ? null : ParseData(omie.DataPrevisao);
+            existing.DataBaixa = ParseDataOptional(omie.DataBaixa);
             existing.ValorDocumento = omie.ValorDocumento;
             existing.ValorRecebido = omie.ValorRecebido;
             existing.ValorSaldo = omie.ValorSaldo;
@@ -228,5 +231,11 @@ namespace Tabatine.Infrastructure.Services
         // Omie retorna datas no formato dd/MM/yyyy
         private static DateTime ParseData(string data)
             => DateTime.ParseExact(data, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+
+        private static DateTime? ParseDataOptional(string? data)
+        {
+            if (string.IsNullOrWhiteSpace(data)) return null;
+            return ParseData(data);
+        }
     }
 }

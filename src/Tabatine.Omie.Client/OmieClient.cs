@@ -197,6 +197,22 @@ namespace Tabatine.Omie.Client
             return await SendRequestAsync<ListarContasReceberParam, ListarContasReceberResponse>("financas/contareceber/", "ListarContasReceber", param, cancellationToken);
         }
 
+        public async Task<Tabatine.Omie.Client.Models.Financeiro.ListarMovimentosResponse> ListarMovimentosFinanceirosAsync(int pagina = 1, long? nCodCC = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default)
+        {
+            var param = new Tabatine.Omie.Client.Models.Financeiro.ListarMovimentosParam
+            {
+                Pagina = pagina,
+                RegistrosPorPagina = 100,
+                CodigoContaCorrente = nCodCC,
+                Status = status
+            };
+
+            if (filtrarDe.HasValue) param.DataAlteracaoDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            if (filtrarAte.HasValue) param.DataAlteracaoAte = filtrarAte.Value.ToString("dd/MM/yyyy");
+
+            return await SendRequestAsync<Tabatine.Omie.Client.Models.Financeiro.ListarMovimentosParam, Tabatine.Omie.Client.Models.Financeiro.ListarMovimentosResponse>("financas/mf/", "ListarMovimentos", param, cancellationToken);
+        }
+
         public async Task<OmieCliente?> ConsultarClienteAsync(long codigoClienteOmie, CancellationToken cancellationToken = default)
         {
             var param = new { codigo_cliente_omie = codigoClienteOmie };
@@ -411,6 +427,20 @@ namespace Tabatine.Omie.Client
             }
         }
 
+        public async IAsyncEnumerable<OmieMovimento> StreamMovimentosFinanceirosAsync(long? nCodCC = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarMovimentosFinanceirosAsync(current, nCodCC, filtrarDe, filtrarAte, status, cancellationToken);
+                if (response == null || response.Movimentos.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.Movimentos) yield return item;
+                current++;
+            }
+        }
+
         // Estoque
 
         public async IAsyncEnumerable<LocalEstoqueDto> ListarLocaisEstoqueAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -460,14 +490,14 @@ namespace Tabatine.Omie.Client
             }
         }
 
-        public async IAsyncEnumerable<MovimentoProdutoDto> StreamMovimentosAsync(ListarMovimentosRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<MovimentoProdutoDto> StreamMovimentosAsync(Tabatine.Omie.Client.Models.Estoque.ListarMovimentosRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             int current = 1;
             int total = 1;
             while (current <= total)
             {
                 var req = request with { Pagina = current, RegistrosPorPagina = 100 };
-                var response = await SendRequestAsync<ListarMovimentosRequest, ListarMovimentosResponse>("estoque/movestoque/", "ListarMovimentos", req, cancellationToken);
+                var response = await SendRequestAsync<Tabatine.Omie.Client.Models.Estoque.ListarMovimentosRequest, Tabatine.Omie.Client.Models.Estoque.ListarMovimentosResponse>("estoque/movestoque/", "ListarMovimentos", req, cancellationToken);
                 total = response.TotalPaginas;
                 foreach (var item in response.Cadastros) yield return item;
                 current++;

@@ -168,11 +168,12 @@ namespace Tabatine.Infrastructure.Services
                 OmieId = omie.CodigoLancamentoOmie,
                 NumeroDocumento = omie.NumeroDocumento ?? string.Empty,
                 NumeroPedido = omie.NumeroPedido,
-                DataEmissao = DateTime.UtcNow, // A API de CP não retorna data de emissão diretamente
+                DataEmissao = ParseDataOptional(omie.DataEmissao) ?? DateTime.UtcNow,
                 DataVencimento = ParseData(omie.DataVencimento),
+                DataBaixa = ParseDataOptional(omie.DataBaixa),
                 ValorDocumento = omie.ValorDocumento,
-                ValorPago = 0,
-                ValorSaldo = omie.ValorDocumento,
+                ValorPago = omie.ValorPago,
+                ValorSaldo = omie.ValorSaldo,
                 StatusTitulo = omie.StatusTitulo,
                 CodigoCategoria = omie.CodigoCategoria,
                 Observacao = omie.Observacao,
@@ -187,8 +188,12 @@ namespace Tabatine.Infrastructure.Services
         {
             existing.NumeroDocumento = omie.NumeroDocumento ?? string.Empty;
             existing.NumeroPedido = omie.NumeroPedido;
+            existing.DataEmissao = ParseDataOptional(omie.DataEmissao) ?? existing.DataEmissao;
             existing.DataVencimento = ParseData(omie.DataVencimento);
+            existing.DataBaixa = ParseDataOptional(omie.DataBaixa);
             existing.ValorDocumento = omie.ValorDocumento;
+            existing.ValorPago = omie.ValorPago;
+            existing.ValorSaldo = omie.ValorSaldo;
             existing.StatusTitulo = omie.StatusTitulo;
             existing.CodigoCategoria = omie.CodigoCategoria;
             existing.Observacao = omie.Observacao;
@@ -200,5 +205,11 @@ namespace Tabatine.Infrastructure.Services
         // Omie retorna datas no formato dd/MM/yyyy
         private static DateTime ParseData(string data)
             => DateTime.ParseExact(data, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+
+        private static DateTime? ParseDataOptional(string? data)
+        {
+            if (string.IsNullOrWhiteSpace(data)) return null;
+            return ParseData(data);
+        }
     }
 }
