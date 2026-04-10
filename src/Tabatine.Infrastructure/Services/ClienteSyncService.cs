@@ -122,7 +122,7 @@ namespace Tabatine.Infrastructure.Services
                 }
 
                 await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} sincronizada.", pagina, response.TotalDePaginas);
+                _logger.LogInformation("Página {Pagina} de {Total} de clientes sincronizada.", pagina, response.TotalDePaginas);
 
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;

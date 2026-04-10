@@ -16,14 +16,12 @@ namespace Tabatine.Infrastructure.Services
     {
         private readonly IOmieClient _omieClient;
         private readonly AppDbContext _dbContext;
-        private readonly ISyncStateRepository _syncState;
         private readonly ILogger<EtapaFaturamentoSyncService> _logger;
 
-        public EtapaFaturamentoSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<EtapaFaturamentoSyncService> logger)
+        public EtapaFaturamentoSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<EtapaFaturamentoSyncService> logger)
         {
             _omieClient = omieClient;
             _dbContext = dbContext;
-            _syncState = syncState;
             _logger = logger;
         }
 
@@ -32,7 +30,6 @@ namespace Tabatine.Infrastructure.Services
             _logger.LogInformation("Iniciando sincronização de Etapas de Faturamento...");
             
             // Etapas geralmente não filtram por data, sincronizamos tudo
-            var syncStartTime = DateTime.UtcNow;
 
             int pagina = 1;
             bool temMais = true;
@@ -102,7 +99,6 @@ namespace Tabatine.Infrastructure.Services
                 pagina++;
             }
 
-            await _syncState.SetLastSyncDateAsync("EtapasFaturamento", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Etapas de Faturamento finalizada.");
         }
 

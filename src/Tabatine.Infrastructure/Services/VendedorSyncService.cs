@@ -18,23 +18,18 @@ namespace Tabatine.Infrastructure.Services
     {
         private readonly IOmieClient _omieClient;
         private readonly AppDbContext _dbContext;
-        private readonly ISyncStateRepository _syncState;
         private readonly ILogger<VendedorSyncService> _logger;
 
-        public VendedorSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<VendedorSyncService> logger)
+        public VendedorSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<VendedorSyncService> logger)
         {
             _omieClient = omieClient;
             _dbContext = dbContext;
-            _syncState = syncState;
             _logger = logger;
         }
 
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
             _logger.LogInformation("Iniciando sincronização de Vendedores...");
-
-            var lastSyncDate = await _syncState.GetLastSyncDateAsync("Vendedores", ct);
-            var syncStartTime = DateTime.UtcNow;
 
             // Rastreia OmieIds já processados neste ciclo para evitar duplicatas
             var processedOmieIds = new HashSet<long>();
@@ -44,7 +39,7 @@ namespace Tabatine.Infrastructure.Services
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarVendedoresAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                var response = await _omieClient.ListarVendedoresAsync(pagina, cancellationToken: ct);
 
                 if (response == null || response.Vendedores == null || response.Vendedores.Count == 0) break;
 
@@ -109,7 +104,6 @@ namespace Tabatine.Infrastructure.Services
                 pagina++;
             }
 
-            await _syncState.SetLastSyncDateAsync("Vendedores", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Vendedores finalizada.");
         }
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)

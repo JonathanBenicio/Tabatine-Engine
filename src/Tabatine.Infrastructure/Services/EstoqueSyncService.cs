@@ -17,18 +17,15 @@ namespace Tabatine.Infrastructure.Services
     {
         private readonly IOmieClient _omieClient;
         private readonly AppDbContext _dbContext;
-        private readonly ISyncStateRepository _syncState;
         private readonly ILogger<EstoqueSyncService> _logger;
 
         public EstoqueSyncService(
             IOmieClient omieClient, 
             AppDbContext dbContext, 
-            ISyncStateRepository syncState, 
             ILogger<EstoqueSyncService> logger)
         {
             _omieClient = omieClient;
             _dbContext = dbContext;
-            _syncState = syncState;
             _logger = logger;
         }
 
@@ -39,7 +36,6 @@ namespace Tabatine.Infrastructure.Services
             await SyncLocaisAsync(ct);
             await SyncSaldosAsync(ct);
 
-            await _syncState.SetLastSyncDateAsync("Estoque", DateTime.UtcNow, ct);
             _logger.LogInformation("Sincronização de Estoque finalizada.");
         }
 
@@ -140,6 +136,7 @@ namespace Tabatine.Infrastructure.Services
             }
 
             await _dbContext.SaveChangesAsync(ct);
+            _logger.LogInformation("Sincronização de Locais de Estoque finalizada.");
         }
 
         private async Task SyncSaldosAsync(CancellationToken ct)

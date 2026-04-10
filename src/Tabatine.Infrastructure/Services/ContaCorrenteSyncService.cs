@@ -16,23 +16,18 @@ namespace Tabatine.Infrastructure.Services
     {
         private readonly IOmieClient _omieClient;
         private readonly AppDbContext _dbContext;
-        private readonly ISyncStateRepository _syncState;
         private readonly ILogger<ContaCorrenteSyncService> _logger;
 
-        public ContaCorrenteSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<ContaCorrenteSyncService> logger)
+        public ContaCorrenteSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<ContaCorrenteSyncService> logger)
         {
             _omieClient = omieClient;
             _dbContext = dbContext;
-            _syncState = syncState;
             _logger = logger;
         }
 
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
             _logger.LogInformation("Iniciando sincronização de Contas Correntes...");
-            
-            var lastSyncDate = await _syncState.GetLastSyncDateAsync("ContasCorrente", ct);
-            var syncStartTime = DateTime.UtcNow;
 
             // Rastreia OmieIds já processados neste ciclo para evitar duplicatas
             var processedOmieIds = new HashSet<long>();
@@ -42,7 +37,7 @@ namespace Tabatine.Infrastructure.Services
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarContasCorrentesAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                var response = await _omieClient.ListarContasCorrentesAsync(pagina, cancellationToken: ct);
                 
                 if (response == null || response.ContasCorrentes == null || response.ContasCorrentes.Count == 0) break;
 
@@ -105,7 +100,6 @@ namespace Tabatine.Infrastructure.Services
                 pagina++;
             }
 
-            await _syncState.SetLastSyncDateAsync("ContasCorrente", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Contas Correntes finalizada.");
         }
 

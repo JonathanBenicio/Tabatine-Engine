@@ -16,14 +16,12 @@ namespace Tabatine.Infrastructure.Services
         private readonly IOmieClient _omieClient;
         private readonly AppDbContext _dbContext;
         private readonly ILogger<MeioPagamentoSyncService> _logger;
-        private readonly ISyncStateRepository _syncState;
 
-        public MeioPagamentoSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<MeioPagamentoSyncService> logger, ISyncStateRepository syncState)
+        public MeioPagamentoSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<MeioPagamentoSyncService> logger)
         {
             _omieClient = omieClient;
             _dbContext = dbContext;
             _logger = logger;
-            _syncState = syncState;
         }
 
         public async Task SyncAllAsync(CancellationToken ct = default)
@@ -77,7 +75,6 @@ namespace Tabatine.Infrastructure.Services
             }
 
             await _dbContext.SaveChangesAsync(ct);
-            await _syncState.SetLastSyncDateAsync("MeiosPagamento", DateTime.UtcNow, ct);
             _logger.LogInformation("Sincronização de Meios de Pagamento finalizada.");
         }
 

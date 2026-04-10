@@ -16,22 +16,18 @@ namespace Tabatine.Infrastructure.Services
     {
         private readonly IOmieClient _omieClient;
         private readonly AppDbContext _dbContext;
-        private readonly ISyncStateRepository _syncState;
         private readonly ILogger<BancoSyncService> _logger;
 
-        public BancoSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<BancoSyncService> logger)
+        public BancoSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<BancoSyncService> logger)
         {
             _omieClient = omieClient;
             _dbContext = dbContext;
-            _syncState = syncState;
             _logger = logger;
         }
 
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
             _logger.LogInformation("Iniciando sincronização de Bancos...");
-            
-            var syncStartTime = DateTime.UtcNow;
 
             var processedCodes = new HashSet<string>();
             int pagina = 1;
@@ -94,7 +90,6 @@ namespace Tabatine.Infrastructure.Services
                 pagina++;
             }
 
-            await _syncState.SetLastSyncDateAsync("Bancos", syncStartTime, ct);
             _logger.LogInformation("Sincronização de Bancos finalizada.");
         }
 
