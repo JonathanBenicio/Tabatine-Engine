@@ -70,7 +70,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
         await Task.WhenAll(tarefa1, tarefa2);
 
         // Assert — apenas UM dos workers deve ter adquirido o lock
-        locks.Count(adquiriu => adquiriu).Should().BeLessOrEqualTo(1,
+        locks.Count(adquiriu => adquiriu).Should().BeLessThanOrEqualTo(1,
             "Apenas um worker deve conseguir adquirir o lock distribuído simultaneamente");
     }
 
@@ -153,7 +153,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
 
         // Act — webhook vai para DLQ na 1ª tentativa
         var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
-        response.EnsureSuccessStatusCode("Webhook deve retornar 2xx mesmo em falha interna (não bloquear Omie)");
+        response.EnsureSuccessStatusCode();
 
         // Verifica que o registro NÃO foi criado na 1ª tentativa (falhou)
         await Task.Delay(1000); // Aguarda processamento assíncrono
@@ -170,7 +170,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var webhookPersistido = await dbContext.WebhookEvents
-                .AnyAsync(w => w.Topic == "Financas.ContaReceber.Incluido");
+                .AnyAsync(w => w.Event == "Financas.ContaReceber.Incluido");
 
             webhookPersistido.Should().BeTrue("O WebhookEvent deve ser persistido mesmo em caso de falha no processamento");
         }
@@ -220,8 +220,8 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
         }
 
         webhookDB.Should().NotBeNull("O WebhookEvent deve ser persistido com o MessageId correto");
-        webhookDB!.Topic.Should().Be("Financas.ContaReceber.Incluido");
-        webhookDB.IsProcessed.Should().BeTrue("O evento processado com sucesso deve ter IsProcessed = true");
+        webhookDB!.Event.Should().Be("Financas.ContaReceber.Incluido");
+        webhookDB.Status.Should().Be("Completed", "O evento processado com sucesso deve ter IsProcessed = true");
     }
 
     // ──────────────────────────────────────────────
@@ -257,7 +257,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
 
         // Mock retorna clientes alterados nos últimos 30 dias
         var dataInicio = DateTime.UtcNow.AddDays(-30);
-        Factory.OmieClientMock.ListarClientesAsync(1, Arg.Any<DateTime?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        Factory.OmieClientMock.ListarClientesAsync(1, Arg.Any<DateTime?>(), Arg.Any<DateTime?>(), Arg.Any<CancellationToken>())
             .Returns(new Tabatine.Omie.Client.Models.Clientes.ListarClientesResponse
             {
                 Pagina = 1,
@@ -271,7 +271,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
         // Act — Sync de Clientes (deve usar o cursor retroativo)
         using (var scope = Factory.Services.CreateScope())
         {
-            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.ClientesSyncService>();
+            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.ClienteSyncService>();
             await syncService.SyncAllAsync();
         }
 
@@ -300,7 +300,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
             cursorAntes = state?.LastSyncDate;
         }
 
-        Factory.OmieClientMock.ListarClientesAsync(1, Arg.Any<DateTime?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        Factory.OmieClientMock.ListarClientesAsync(1, Arg.Any<DateTime?>(), Arg.Any<DateTime?>(), Arg.Any<CancellationToken>())
             .Returns(new Tabatine.Omie.Client.Models.Clientes.ListarClientesResponse
             {
                 Pagina = 1,
@@ -313,7 +313,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
 
         using (var scope = Factory.Services.CreateScope())
         {
-            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.ClientesSyncService>();
+            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.ClienteSyncService>();
             await syncService.SyncAllAsync();
         }
 
@@ -344,6 +344,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
             dbContext.SyncLocks.Add(new SyncLock
             {
                 LockKey = chave,
+                LockToken = Guid.NewGuid().ToString(),
                 AcquiredAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(5),
                 Owner = Environment.MachineName
@@ -376,6 +377,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
             dbContext.SyncLocks.Add(new SyncLock
             {
                 LockKey = chave,
+                LockToken = Guid.NewGuid().ToString(),
                 AcquiredAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(5),
                 Owner = Environment.MachineName
