@@ -404,13 +404,29 @@ namespace Tabatine.Infrastructure.Services
                 }
             }
 
-            try
+            int retries = 0;
+            const int maxRetries = 3;
+            
+            while (retries < maxRetries)
             {
-                await _dbContext.SaveChangesAsync(ct);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                foreach (var entry in _dbContext.ChangeTracker.Entries().ToList()) entry.State = EntityState.Detached;
+                try
+                {
+                    await _dbContext.SaveChangesAsync(ct);
+                    break;
+                }
+                catch (DbUpdateConcurrencyException ex)
+                {
+                    retries++;
+                    _logger.LogWarning(ex, "Concorrência detectada no pedido {OmieId}. Tentativa {Retry} de {Max}.", omiePedidoIds, retries, maxRetries);
+                    
+                    if (retries >= maxRetries) throw;
+                    
+                    // Recarrega o estado do banco e detacha para evitar conflitos no próximo processamento
+                    foreach (var entry in _dbContext.ChangeTracker.Entries().ToList())
+                    {
+                        await entry.ReloadAsync(ct);
+                    }
+                }
             }
         }
 

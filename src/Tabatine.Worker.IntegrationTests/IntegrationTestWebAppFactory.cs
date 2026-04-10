@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Testcontainers.PostgreSql;
 
 namespace Tabatine.Worker.IntegrationTests;
@@ -14,6 +15,14 @@ public class IntegrationTestWebAppFactory : WebApplicationFactory<Program>, IAsy
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.ConfigureAppConfiguration((context, config) =>
+        {
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "WebhookProcessor:PollingIntervalMs", "100" }
+            });
+        });
+
         builder.ConfigureTestServices(services =>
         {
             // Remover registros relacionados ao banco de dados real

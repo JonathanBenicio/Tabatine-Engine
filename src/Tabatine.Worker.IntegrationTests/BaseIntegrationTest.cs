@@ -1,9 +1,11 @@
+using NSubstitute;
 using Respawn;
 using Respawn.Graph;
 
 namespace Tabatine.Worker.IntegrationTests;
 
-public abstract class BaseIntegrationTest : IClassFixture<IntegrationTestWebAppFactory>, IAsyncLifetime
+[Collection("DatabaseCollection")]
+public abstract class BaseIntegrationTest : IAsyncLifetime
 {
     private readonly IntegrationTestWebAppFactory _factory;
     private Respawner? _respawner;
@@ -35,6 +37,10 @@ public abstract class BaseIntegrationTest : IClassFixture<IntegrationTestWebAppF
 
         // Resetar o banco antes de cada teste
         await _respawner.ResetAsync(connection);
+
+        // Limpar mocks compartilhados pelo Factory
+        _factory.OmieClientMock.ClearReceivedCalls();
+        _factory.NotificationServiceMock.ClearReceivedCalls();
     }
 
     public Task DisposeAsync() => Task.CompletedTask;

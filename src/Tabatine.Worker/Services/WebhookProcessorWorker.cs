@@ -4,14 +4,18 @@ using Tabatine.Worker.Services.Handlers;
 
 namespace Tabatine.Worker.Services;
 
-public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logger, IServiceScopeFactory scopeFactory) : BackgroundService
+public partial class WebhookProcessorWorker(
+    ILogger<WebhookProcessorWorker> logger, 
+    IServiceScopeFactory scopeFactory,
+    IConfiguration configuration) : BackgroundService
 {
     private const string StatusPending = "Pending";
     private const string StatusProcessed = "Completed"; // De acordo com a spec
     private const string StatusFailed = "Failed";
     private const string StatusDeadLetter = "DeadLetter";
 
-    private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(5);
+    private readonly TimeSpan _pollingInterval = TimeSpan.FromMilliseconds(
+        configuration.GetValue<int>("WebhookProcessor:PollingIntervalMs", 5000));
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
