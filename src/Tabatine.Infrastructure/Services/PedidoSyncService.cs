@@ -421,10 +421,15 @@ namespace Tabatine.Infrastructure.Services
                     
                     if (retries >= maxRetries) throw;
                     
-                    // Recarrega o estado do banco e detacha para evitar conflitos no próximo processamento
+                    // Recarrega o estado do banco para todas as entidades afetadas e limpa o tracker se necessário
                     foreach (var entry in _dbContext.ChangeTracker.Entries().ToList())
                     {
                         await entry.ReloadAsync(ct);
+                        if (entry.Entity is Pedido pedido)
+                        {
+                            await _dbContext.Entry(pedido).Collection(p => p.Itens).LoadAsync(ct);
+                            await _dbContext.Entry(pedido).Collection(p => p.Parcelas).LoadAsync(ct);
+                        }
                     }
                 }
             }
