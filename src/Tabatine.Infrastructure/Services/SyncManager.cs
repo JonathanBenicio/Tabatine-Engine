@@ -96,5 +96,7 @@ namespace Tabatine.Infrastructure.Services
             // O SyncManager coordena o ciclo total. Sincronização por ID deve ser feita no serviço específico.
             await Task.CompletedTask;
         }
+
+        public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;
     }
 }

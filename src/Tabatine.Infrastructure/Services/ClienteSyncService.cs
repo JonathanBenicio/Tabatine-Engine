@@ -203,5 +203,7 @@ namespace Tabatine.Infrastructure.Services
                 _logger.LogWarning("Cliente/Fornecedor OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
             }
         }
+
+        public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;
     }
 }

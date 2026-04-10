@@ -414,5 +414,6 @@ namespace Tabatine.Infrastructure.Services
             }
         }
 
+        public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;
     }
 }

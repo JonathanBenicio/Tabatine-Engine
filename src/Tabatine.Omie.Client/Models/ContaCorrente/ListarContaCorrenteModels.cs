@@ -34,6 +34,9 @@ namespace Tabatine.Omie.Client.Models.ContaCorrente
 
         [JsonPropertyName("codigo_banco")]
         public string? CodigoBanco { get; set; }
+
+        [JsonPropertyName("valor_abertura")]
+        public decimal SaldoInicial { get; set; }
     }
 
     public class ListarContaCorrenteResponse : OmieResponse<OmieContaCorrente>

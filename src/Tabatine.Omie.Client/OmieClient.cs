@@ -229,6 +229,18 @@ namespace Tabatine.Omie.Client
             return await SendRequestAsync<object, OmieVendedor>("geral/vendedores/", "ConsultarVendedor", param, cancellationToken);
         }
 
+        public async Task<OmieContaPagar?> ConsultarContaPagarAsync(long codigoLancamentoOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new { codigo_lancamento_omie = codigoLancamentoOmie };
+            return await SendRequestAsync<object, OmieContaPagar>("financas/contapagar/", "ConsultarContaPagar", param, cancellationToken);
+        }
+
+        public async Task<OmieContaReceber?> ConsultarContaReceberAsync(long codigoLancamentoOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new { codigo_lancamento_omie = codigoLancamentoOmie };
+            return await SendRequestAsync<object, OmieContaReceber>("financas/contareceber/", "ConsultarContaReceber", param, cancellationToken);
+        }
+
         // Streaming de Listagem
 
         public async IAsyncEnumerable<OmieCliente> StreamClientesAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)

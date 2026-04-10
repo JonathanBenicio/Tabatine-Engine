@@ -1,0 +1,81 @@
+using Tabatine.Omie.Client.Models.NotasFiscais;
+
+namespace Tabatine.Worker.IntegrationTests;
+
+public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory factory) : BaseIntegrationTest(factory)
+{
+    [Fact]
+    public async Task Deve_Processar_Webhook_NotaFiscal_E_Persistir_No_Banco_Com_Sucesso()
+    {
+        // Arrange
+        var omieIdNf = 987654321L;
+        var omieIdCliente = 12345L;
+
+        // 1. Garantir que o cliente existe (necessário para o SyncService da NF)
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var cliente = new Cliente
+            {
+                Id = Guid.NewGuid(),
+                OmieId = omieIdCliente,
+                RazaoSocial = "Cliente Teste NF",
+                CnpjCpf = "00000000000100",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            dbContext.Clientes.Add(cliente);
+            await dbContext.SaveChangesAsync();
+        }
+
+        // 2. Mock da resposta da Omie para consulta individual
+        var omieNf = new OmieNotaFiscal
+        {
+            Compl = new OmieNfCompl { IdNf = omieIdNf, ChaveNfe = "35230400000000000000000000000000000000000000", XNatureza = "Venda de Mercadoria" },
+            Ide = new OmieNfIde { Numero = "1234", Serie = "1", DataEmissao = "10/04/2026", Situacao = "100" },
+            Destinatario = new OmieNfDestInt { CodigoCliente = omieIdCliente },
+            Total = new OmieNfTotal { IcmsTot = new OmieNfIcmstot { ValorNota = 1500.50m } }
+        };
+
+        Factory.OmieClientMock.ConsultarNotaFiscalAsync(omieIdNf, Arg.Any<CancellationToken>())
+            .Returns(omieNf);
+
+        // 3. Payload do Webhook (Simulando Connect 2.0)
+        var webhookEvent = new
+        {
+            topic = "NFe.NotaAutorizada",
+            messageId = Guid.NewGuid().ToString(),
+            @event = new
+            {
+                idNf = omieIdNf,
+                numeroNf = "1234"
+            }
+        };
+
+        // Act
+        var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+
+        // Polling para aguardar o processamento assíncrono (Worker)
+        NotaFiscal? nfDB = null;
+        var timeout = TimeSpan.FromSeconds(10);
+        var start = DateTime.UtcNow;
+
+        while (DateTime.UtcNow - start < timeout)
+        {
+            using var scope = Factory.Services.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            nfDB = await dbContext.NotasFiscais.FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
+            
+            if (nfDB != null) break;
+            await Task.Delay(500);
+        }
+
+        nfDB.Should().NotBeNull("A Nota Fiscal deve ser persistida no banco de dados");
+        nfDB!.NumeroNf.Should().Be("1234");
+        nfDB.ValorTotal.Should().Be(1500.50m);
+        nfDB.ChaveAcesso.Should().Be(omieNf.Compl.ChaveNfe);
+    }
+}

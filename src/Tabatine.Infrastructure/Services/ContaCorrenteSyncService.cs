@@ -111,8 +111,56 @@ namespace Tabatine.Infrastructure.Services
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogWarning("SyncById solicitado para ContaCorrente OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
-            await Task.CompletedTask;
+            _logger.LogInformation("Sincronizando Conta Corrente específica OmieId: {OmieId}", omieId);
+            
+            // Omie não tem consulta individual para Conta Corrente, buscamos na listagem
+            var response = await _omieClient.ListarContasCorrentesAsync(1, cancellationToken: ct);
+            if (response?.ContasCorrentes == null) return;
+
+            var omieItem = response.ContasCorrentes.FirstOrDefault(c => c.Codigo == omieId);
+            if (omieItem == null)
+            {
+                _logger.LogWarning("Conta Corrente OmieId {OmieId} não encontrada na listagem da Omie.", omieId);
+                return;
+            }
+
+            var existing = await _dbContext.ContasCorrente.FirstOrDefaultAsync(c => c.OmieId == omieId, ct);
+            
+            var omieBancoCodigos = new List<string> { omieItem.CodigoBanco ?? string.Empty };
+            var banco = await _dbContext.Bancos.FirstOrDefaultAsync(b => b.CodigoBanco == omieItem.CodigoBanco, ct);
+
+            if (existing == null)
+            {
+                var novaConta = new ContaCorrente
+                {
+                    Id = Guid.NewGuid(),
+                    OmieId = omieId,
+                    Descricao = omieItem.Descricao,
+                    CodigoIntegracao = omieItem.CodigoIntegracao,
+                    Tipo = omieItem.Tipo,
+                    Inativa = omieItem.Inativo == "S",
+                    SaldoInicial = omieItem.SaldoInicial,
+                    BancoId = banco?.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _dbContext.ContasCorrente.Add(novaConta);
+            }
+            else
+            {
+                existing.Descricao = omieItem.Descricao;
+                existing.CodigoIntegracao = omieItem.CodigoIntegracao;
+                existing.Tipo = omieItem.Tipo;
+                existing.Inativa = omieItem.Inativo == "S";
+                existing.SaldoInicial = omieItem.SaldoInicial;
+                existing.BancoId = banco?.Id;
+                existing.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _dbContext.SaveChangesAsync(ct);
+            _logger.LogInformation("Conta Corrente OmieId {OmieId} sincronizada com sucesso.", omieId);
         }
+
+        public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;
     }
 }

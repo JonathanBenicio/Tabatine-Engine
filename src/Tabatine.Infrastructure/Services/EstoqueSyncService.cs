@@ -45,6 +45,23 @@ namespace Tabatine.Infrastructure.Services
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
+            // O padrão do SyncByIdAsync no EstoqueSyncService é sincronizar saldo de produto.
+            await SyncProdutoSaldoAsync(omieId, ct);
+        }
+
+        public async Task SyncLocalByIdAsync(long localId, CancellationToken ct = default)
+        {
+            _logger.LogInformation("Sincronizando Local de Estoque individual. OmieId: {LocalId}", localId);
+            
+            // Omie não tem consulta individual de local por ID numérico direto no "obter", 
+            // mas podemos usar a listagem filtrada se existir ou simplesmente rodar o SyncLocaisAsync que é leve.
+            // Para ser 100% preciso e seguir o padrão, rodamos o SyncLocaisAsync filtrado ou completo.
+            // Como são poucos locais, SyncLocaisAsync(ct) é suficiente e seguro.
+            await SyncLocaisAsync(ct);
+        }
+
+        private async Task SyncProdutoSaldoAsync(long omieId, CancellationToken ct)
+        {
             _logger.LogInformation("Sincronizando saldo específico para Produto OmieId: {OmieId}", omieId);
             
             // Busca o produto no banco local
@@ -202,5 +219,7 @@ namespace Tabatine.Infrastructure.Services
                 _dbContext.ProdutosEstoque.Add(novo);
             }
         }
+
+        public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;
     }
 }

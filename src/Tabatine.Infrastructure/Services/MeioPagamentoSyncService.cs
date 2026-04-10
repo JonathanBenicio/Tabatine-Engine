@@ -86,5 +86,7 @@ namespace Tabatine.Infrastructure.Services
             _logger.LogWarning("SyncById solicitado para MeioPagamento OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
             await Task.CompletedTask;
         }
+
+        public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;
     }
 }
