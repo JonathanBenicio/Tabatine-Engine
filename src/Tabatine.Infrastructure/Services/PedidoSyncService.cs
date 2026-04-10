@@ -321,8 +321,15 @@ namespace Tabatine.Infrastructure.Services
                     existingPedido.UpdatedAt = DateTime.UtcNow;
                 }
 
-                foreach (var currentItem in existingPedido.Itens.ToList()) _dbContext.ItensPedido.Remove(currentItem);
-                existingPedido.Itens.Clear();
+                // Remove itens existentes de forma robusta via contexto para garantir que o EF rastreie a remoção
+                var itemsToDelete = await _dbContext.ItensPedido.Where(i => i.PedidoVendaId == existingPedido.Id).ToListAsync(ct);
+                if (itemsToDelete.Any())
+                {
+                    _logger.LogDebug("Removendo {Count} itens existentes do pedido {OmieId} (ID: {Id})", itemsToDelete.Count, existingPedido.OmieId, existingPedido.Id);
+                    _dbContext.ItensPedido.RemoveRange(itemsToDelete);
+                    await _dbContext.SaveChangesAsync(ct); // Flush deletion to avoid conflicts
+                    existingPedido.Itens.Clear();
+                }
 
                 foreach (var item in omiePedido.Det)
                 {
@@ -377,8 +384,15 @@ namespace Tabatine.Infrastructure.Services
                     }
                 }
 
-                foreach (var currentParcela in existingPedido.Parcelas.ToList()) _dbContext.PedidoParcelas.Remove(currentParcela);
-                existingPedido.Parcelas.Clear();
+                // Remove parcelas existentes de forma robusta
+                var parcelasToDelete = await _dbContext.PedidoParcelas.Where(p => p.PedidoVendaId == existingPedido.Id).ToListAsync(ct);
+                if (parcelasToDelete.Any())
+                {
+                    _logger.LogDebug("Removendo {Count} parcelas existentes do pedido {OmieId}", parcelasToDelete.Count, existingPedido.OmieId);
+                    _dbContext.PedidoParcelas.RemoveRange(parcelasToDelete);
+                    await _dbContext.SaveChangesAsync(ct);
+                    existingPedido.Parcelas.Clear();
+                }
 
                 if (omiePedido.ListaParcelas?.Parcelas != null)
                 {

@@ -56,6 +56,9 @@ public partial class WebhookProcessorWorker(
         // 1. Fase de De-queue (Atômica e Rápida)
         // Buscamos a mensagem e marcamos como 'Processing' imediatamente para liberar o banco.
         var strategy = dbContext.Database.CreateExecutionStrategy();
+        var skipLocked = configuration.GetValue<bool>("WebhookProcessor:UseSkipLocked", true);
+        var skipLockedSql = skipLocked ? "FOR UPDATE SKIP LOCKED" : "FOR UPDATE";
+
         var webhookEvent = await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
@@ -67,7 +70,7 @@ public partial class WebhookProcessorWorker(
                        OR (status = '{StatusFailed}' AND next_retry_at <= NOW())
                     ORDER BY created_at ASC 
                     LIMIT 1 
-                    FOR UPDATE SKIP LOCKED";
+                    {skipLockedSql}";
                 
                 var ev = await dbContext.WebhookEvents
                     .FromSqlRaw(sql)
@@ -76,6 +79,7 @@ public partial class WebhookProcessorWorker(
                 if (ev == null)
                 {
                     await transaction.RollbackAsync(cancellationToken);
+                    logger.LogTrace("Nenhuma mensagem disponível para processamento.");
                     return null;
                 }
 

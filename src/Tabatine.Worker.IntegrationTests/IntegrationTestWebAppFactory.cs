@@ -19,7 +19,8 @@ public class IntegrationTestWebAppFactory : WebApplicationFactory<Program>, IAsy
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { "WebhookProcessor:PollingIntervalMs", "100" }
+                { "WebhookProcessor:PollingIntervalMs", "100" },
+                { "WebhookProcessor:UseSkipLocked", "false" }
             });
         });
 
