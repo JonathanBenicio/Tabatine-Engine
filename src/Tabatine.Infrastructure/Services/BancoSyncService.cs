@@ -100,8 +100,48 @@ namespace Tabatine.Infrastructure.Services
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogWarning("SyncById solicitado para Banco OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
-            await Task.CompletedTask;
+            _logger.LogInformation("Sincronizando Banco específico OmieId: {OmieId}", omieId);
+            
+            // Omie não tem consulta individual para Bancos, listamos tudo
+            var response = await _omieClient.ListarBancosAsync(1, ct);
+            if (response?.Bancos == null) return;
+
+            var omieBanco = response.Bancos.FirstOrDefault(b => long.TryParse(b.Codigo, out var id) && id == omieId);
+            if (omieBanco == null)
+            {
+                _logger.LogWarning("Banco OmieId {OmieId} não encontrado na listagem da Omie.", omieId);
+                return;
+            }
+
+            var existing = await _dbContext.Bancos.FirstOrDefaultAsync(b => b.CodigoBanco == omieBanco.Codigo, ct);
+
+            if (existing == null)
+            {
+                var novoBanco = new Banco
+                {
+                    Id = Guid.NewGuid(),
+                    OmieId = omieId,
+                    CodigoBanco = omieBanco.Codigo,
+                    Nome = omieBanco.Nome,
+                    CodigoIspb = omieBanco.CodigoIspb,
+                    Tipo = omieBanco.Tipo,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _dbContext.Bancos.Add(novoBanco);
+            }
+            else
+            {
+                existing.Nome = omieBanco.Nome;
+                existing.CodigoIspb = omieBanco.CodigoIspb;
+                existing.Tipo = omieBanco.Tipo;
+                existing.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _dbContext.SaveChangesAsync(ct);
+            _logger.LogInformation("Banco OmieId {OmieId} sincronizado com sucesso.", omieId);
         }
+
+        public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;
     }
 }

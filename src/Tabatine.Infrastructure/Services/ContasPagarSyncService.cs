@@ -115,10 +115,49 @@ namespace Tabatine.Infrastructure.Services
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            // A API de Contas a Pagar da Omie não possui endpoint de consulta por ID direta.
-            // O processo de webhooks deve acumular os IDs ou acionar um job assíncrono para evitar gargalos.
-            _logger.LogWarning("SyncById solicitado para TituloPagar OmieId={OmieId}. A Omie não possui endpoint de consulta individual para Contas a Pagar. Requisição ignorada via webhook para evitar rate limiting.", omieId);
-            await Task.CompletedTask;
+            _logger.LogInformation("Sincronizando TituloPagar específico OmieId: {OmieId}", omieId);
+            var omieItem = await _omieClient.ConsultarContaPagarAsync(omieId, ct);
+
+            if (omieItem != null)
+            {
+                // Busca dependências necessárias (Cliente/Fornecedor e Conta Corrente)
+                var cliente = await _dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieItem.CodigoClienteFornecedor, ct);
+                var contaCorrente = omieItem.CodigoContaCorrente.HasValue 
+                    ? await _dbContext.ContasCorrente.FirstOrDefaultAsync(cc => cc.OmieId == omieItem.CodigoContaCorrente.Value, ct) 
+                    : null;
+
+                var existing = await _dbContext.TitulosPagar.FirstOrDefaultAsync(t => t.OmieId == omieId, ct);
+
+                if (existing == null)
+                {
+                    _dbContext.TitulosPagar.Add(MapToEntity(omieItem, cliente, contaCorrente));
+                }
+                else
+                {
+                    AtualizarEntidade(existing, omieItem, cliente, contaCorrente);
+                }
+
+                await _dbContext.SaveChangesAsync(ct);
+                _logger.LogInformation("TituloPagar OmieId {OmieId} sincronizado com sucesso.", omieId);
+            }
+            else
+            {
+                _logger.LogWarning("TituloPagar OmieId {OmieId} não encontrado na Omie.", omieId);
+            }
+        }
+
+        public async Task CancelByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            _logger.LogInformation("Cancelando TituloPagar OmieId: {OmieId} localmente via soft-delete.", omieId);
+            var existing = await _dbContext.TitulosPagar.FirstOrDefaultAsync(t => t.OmieId == omieId, ct);
+            
+            if (existing != null)
+            {
+                existing.StatusTitulo = "CANCELADO";
+                existing.UpdatedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync(ct);
+                _logger.LogInformation("TituloPagar OmieId {OmieId} marcado como CANCELADO.", omieId);
+            }
         }
 
         private static TituloPagar MapToEntity(OmieContaPagar omie, Cliente? cliente, ContaCorrente? contaCorrente)

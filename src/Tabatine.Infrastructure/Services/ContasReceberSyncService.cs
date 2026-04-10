@@ -123,10 +123,52 @@ namespace Tabatine.Infrastructure.Services
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            // A API de Contas a Receber da Omie não possui endpoint de consulta por ID direta.
-            // O processo de webhooks deve acumular os IDs ou acionar um job assíncrono para evitar gargalos.
-            _logger.LogWarning("SyncById solicitado para TituloReceber OmieId={OmieId}. A Omie não possui endpoint de consulta individual para Contas a Receber. Requisição ignorada via webhook para evitar rate limiting.", omieId);
-            await Task.CompletedTask;
+            _logger.LogInformation("Sincronizando TituloReceber específico OmieId: {OmieId}", omieId);
+            var omieItem = await _omieClient.ConsultarContaReceberAsync(omieId, ct);
+
+            if (omieItem != null)
+            {
+                // Busca dependências necessárias
+                var cliente = await _dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieItem.CodigoClienteFornecedor, ct);
+                var vendedor = omieItem.CodigoVendedor.HasValue 
+                    ? await _dbContext.Vendedores.FirstOrDefaultAsync(v => v.OmieId == omieItem.CodigoVendedor.Value, ct) 
+                    : null;
+                var contaCorrente = omieItem.CodigoContaCorrente.HasValue 
+                    ? await _dbContext.ContasCorrente.FirstOrDefaultAsync(cc => cc.OmieId == omieItem.CodigoContaCorrente.Value, ct) 
+                    : null;
+
+                var existing = await _dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieId, ct);
+
+                if (existing == null)
+                {
+                    _dbContext.TitulosReceber.Add(MapToEntity(omieItem, cliente, vendedor, contaCorrente));
+                }
+                else
+                {
+                    AtualizarEntidade(existing, omieItem, cliente, vendedor, contaCorrente);
+                }
+
+                await _dbContext.SaveChangesAsync(ct);
+                _logger.LogInformation("TituloReceber OmieId {OmieId} sincronizado com sucesso.", omieId);
+            }
+            else
+            {
+                _logger.LogWarning("TituloReceber OmieId {OmieId} não encontrado na Omie.", omieId);
+            }
+        }
+
+        public async Task CancelByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            _logger.LogInformation("Cancelando TituloReceber OmieId: {OmieId} localmente via soft-delete.", omieId);
+            var existing = await _dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieId, ct);
+            
+            if (existing != null)
+            {
+                existing.StatusTitulo = "CANCELADO";
+                existing.UpdatedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync(ct);
+                _logger.LogInformation("TituloReceber OmieId {OmieId} marcado como CANCELADO.", omieId);
+            }
         }
 
         private static TituloReceber MapToEntity(

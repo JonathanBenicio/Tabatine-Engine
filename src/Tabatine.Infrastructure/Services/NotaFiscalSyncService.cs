@@ -299,5 +299,7 @@ namespace Tabatine.Infrastructure.Services
                 foreach (var entry in _dbContext.ChangeTracker.Entries().ToList()) entry.State = EntityState.Detached;
             }
         }
+
+        public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;
     }
 }

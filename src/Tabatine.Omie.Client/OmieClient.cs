@@ -229,6 +229,188 @@ namespace Tabatine.Omie.Client
             return await SendRequestAsync<object, OmieVendedor>("geral/vendedores/", "ConsultarVendedor", param, cancellationToken);
         }
 
+        public async Task<OmieContaPagar?> ConsultarContaPagarAsync(long codigoLancamentoOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new { codigo_lancamento_omie = codigoLancamentoOmie };
+            return await SendRequestAsync<object, OmieContaPagar>("financas/contapagar/", "ConsultarContaPagar", param, cancellationToken);
+        }
+
+        public async Task<OmieContaReceber?> ConsultarContaReceberAsync(long codigoLancamentoOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new { codigo_lancamento_omie = codigoLancamentoOmie };
+            return await SendRequestAsync<object, OmieContaReceber>("financas/contareceber/", "ConsultarContaReceber", param, cancellationToken);
+        }
+
+        // Streaming de Listagem
+
+        public async IAsyncEnumerable<OmieCliente> StreamClientesAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarClientesAsync(current, filtrarDe, filtrarAte, cancellationToken);
+                if (response == null || response.ClientesCadastro.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.ClientesCadastro) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieProduto> StreamProdutosAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarProdutosAsync(current, filtrarDe, filtrarAte, cancellationToken);
+                if (response == null || response.ProdutosCadastro.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.ProdutosCadastro) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmiePedido> StreamPedidosAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarPedidosAsync(current, filtrarDe, filtrarAte, cancellationToken);
+                if (response == null || response.PedidosVenda.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.PedidosVenda) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieNotaFiscal> StreamNotasFiscaisAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarNotasFiscaisAsync(current, filtrarDe, filtrarAte, cancellationToken);
+                if (response == null || response.NotasFiscais.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.NotasFiscais) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieVendedor> StreamVendedoresAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarVendedoresAsync(current, filtrarDe, filtrarAte, cancellationToken);
+                if (response == null || response.Vendedores.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.Vendedores) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieContaCorrente> StreamContasCorrentesAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarContasCorrentesAsync(current, filtrarDe, filtrarAte, cancellationToken);
+                if (response == null || response.ContasCorrentes.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.ContasCorrentes) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieOperacaoEtapa> StreamEtapasFaturamentoAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarEtapasFaturamentoAsync(current, cancellationToken);
+                if (response == null || response.Cadastros.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.Cadastros) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieFormaPagamento> StreamFormasPagVendasAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarFormasPagVendasAsync(current, cancellationToken);
+                if (response == null || response.FormasPagamento.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.FormasPagamento) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieBanco> StreamBancosAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarBancosAsync(current, cancellationToken);
+                if (response == null || response.Bancos.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.Bancos) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<ParcelaOmie> StreamParcelasAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarParcelasAsync(current, cancellationToken);
+                if (response == null || response.Cadastros.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.Cadastros) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieContaPagar> StreamContasPagarAsync(long? codigoVendedor = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarContasPagarAsync(current, codigoVendedor, filtrarDe, filtrarAte, status, cancellationToken);
+                if (response == null || response.ContasPagar.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.ContasPagar) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieContaReceber> StreamContasReceberAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarContasReceberAsync(current, filtrarDe, filtrarAte, status, cancellationToken);
+                if (response == null || response.ContasReceber.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.ContasReceber) yield return item;
+                current++;
+            }
+        }
+
         // Estoque
 
         public async IAsyncEnumerable<LocalEstoqueDto> ListarLocaisEstoqueAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)

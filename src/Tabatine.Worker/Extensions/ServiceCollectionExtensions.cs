@@ -70,6 +70,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IWebhookEventHandler, VendedorWebhookHandler>();
         services.AddScoped<IWebhookEventHandler, ContaCorrenteWebhookHandler>();
         services.AddScoped<IWebhookEventHandler, SystemManualSyncWebhookHandler>();
+        services.AddScoped<IWebhookEventHandler, ContasReceberWebhookHandler>();
+        services.AddScoped<IWebhookEventHandler, ContasPagarWebhookHandler>();
+        services.AddScoped<IWebhookEventHandler, LocalEstoqueWebhookHandler>();
         services.AddScoped<WebhookHandlerFactory>();
 
         services.AddScoped<ISyncService, SyncManager>();
