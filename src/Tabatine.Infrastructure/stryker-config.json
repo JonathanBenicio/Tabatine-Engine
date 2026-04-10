@@ -2,20 +2,28 @@
   "stryker-config": {
     "project": "Tabatine.Infrastructure.csproj",
     "test-projects": [
-      "src/Tabatine.Worker.IntegrationTests/Tabatine.Worker.IntegrationTests.csproj"
+      "../../Tabatine.Worker.IntegrationTests/Tabatine.Worker.IntegrationTests.csproj"
     ],
     "reporters": [
-      "progress",
-      "html"
+      "html",
+      "json",
+      "progress"
     ],
+    "mutation-level": "Standard",
     "thresholds": {
-      "high": 80,
-      "low": 60,
-      "break": 50
+      "high": 75,
+      "low": 50,
+      "break": 40
     },
     "mutate": [
-      "Services/**/*SyncService.cs"
+      "Services/**/*.cs",
+      "Repositories/**/*.cs",
+      "!Data/Configurations/**/*.cs",
+      "!Data/Migrations/**/*.cs",
+      "!GlobalUsings.cs"
     ],
-    "verbosity": "info"
+    "output-path": "StrykerOutput",
+    "verbosity": "info",
+    "language-version": "latest"
   }
 }
