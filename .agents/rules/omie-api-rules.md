@@ -20,9 +20,11 @@ Essas regras definem os limites e restrições de alto nível para a integraçã
 - **Constraint Antigravity:** NUNCA utilize controle de fluxo de erros lançando exceções (`throw new Exception()`). Exceptions no .NET devem ser minimizadas para alta performance.
 - **Padrão:** Utilize o `Result Pattern` encapsulando falhas normais da Omie.
 
-## 4. Consultas Incrementais e Otimização
-- **Rule:** Nunca realize um "Full Sync" (download completo) em rotinas recorrentes.
-- **Constraint:** Adote a política de Upsert (verifica existência pelo campo `OmieId`) no banco de dados local.
+## 4. Estratégia Híbrida de Sincronização
+- **Rule:** O Tabatine Engine utiliza uma estratégia híbrida para otimizar o consumo da API e garantir integridade:
+  - **Incremental (Datalake):** Entidades de alto volume (**Clientes, Produtos, Pedidos, Financeiro, NFs**) DEVEM utilizar filtros temporais (`data_de`, `exibir_apenas_alterados`) para baixar apenas o que mudou desde o último ciclo.
+  - **Full Sync (Lookup):** Tabelas de apoio de baixo volume (**Bancos, Etapas, Meios/Formas de Pagamento, Vendedores**) DEVEM realizar sincronização total em cada ciclo para garantir consistência absoluta, ignorando cursores temporais.
+- **Constraint:** Adote sempre a política de **Upsert** (verificar existência pelo campo `OmieId`) para evitar duplicidade independente da estratégia.
 
 ## 5. Circuit Breaker e Respeito aos Rate Limits
 - **Rate Limit**: Respeitar o limite de 240 req/min e o bloqueio de 60s entre chamadas para o mesmo `OmieId`.
