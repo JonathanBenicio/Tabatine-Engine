@@ -8,10 +8,16 @@ namespace Tabatine.Omie.Client.Models.Clientes
         public int Pagina { get; set; } = 1;
 
         [JsonPropertyName("registros_por_pagina")]
-        public int RegistrosPorPagina { get; set; } = 500;
+        public int RegistrosPorPagina { get; set; } = 100;
 
         [JsonPropertyName("apenas_importado_api")]
         public string ApenasImportadoApi { get; set; } = "N";
+
+        [JsonPropertyName("exibir_apenas_alterados")]
+        public string ExibirApenasAlterados { get; set; } = "N";
+
+        [JsonPropertyName("data_alteracao_de")]
+        public string? DataAlteracaoDe { get; set; }
 
         [JsonPropertyName("clientesFiltro")]
         public ClientesFiltro ClientesFiltro { get; set; } = new();

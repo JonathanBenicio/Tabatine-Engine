@@ -9,7 +9,7 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
         public int Pagina { get; set; } = 1;
 
         [JsonPropertyName("registros_por_pagina")]
-        public int RegistrosPorPagina { get; set; } = 500;
+        public int RegistrosPorPagina { get; set; } = 100;
 
         [JsonPropertyName("ordenar_por")]
         public string OrdenarPor { get; set; } = "CODIGO";
@@ -19,6 +19,12 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
 
         [JsonPropertyName("dEmiFinal")]
         public string? DataEmissaoAte { get; set; }
+
+        [JsonPropertyName("dAltInicial")]
+        public string? DataAlteracaoDe { get; set; }
+
+        [JsonPropertyName("hAltInicial")]
+        public string? HoraAlteracaoDe { get; set; }
 
         [JsonPropertyName("apenas_importado_api")]
         public string ApenasImportadoApi { get; set; } = "N";
