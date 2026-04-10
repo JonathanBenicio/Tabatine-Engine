@@ -81,10 +81,19 @@ O projeto utiliza **Testcontainers** para garantir a integridade da sincronizaç
 
 - **Requisito**: O [Docker Desktop](https://www.docker.com/products/docker-desktop/) deve estar instalado e **em execução** para rodar a suíte de testes.
 - **Timeouts**: Devido à complexidade da rota de sincronização global (14 módulos), os testes de integração possuem um timeout estendido de **5 minutos**.
-- **Execução**:
   ```bash
   dotnet test src/TabatineEngine.sln --collect:"XPlat Code Coverage"
   ```
+
+### 🧬 Testes de Mutação (Stryker.NET)
+
+O projeto utiliza o **Stryker.NET** para avaliar a qualidade da suíte de testes através de mutações no código-fonte.
+- **Execução**:
+  ```bash
+  dotnet tool restore
+  dotnet stryker --project src/Tabatine.Infrastructure/Tabatine.Infrastructure.csproj
+  ```
+- **Threshold**: O pipeline de CI exige uma pontuação de mutação superior a **50%**.
 
 ## 📖 Documentação Interativa (Scalar)
 

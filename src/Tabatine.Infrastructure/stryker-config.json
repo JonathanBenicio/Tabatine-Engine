@@ -1,0 +1,22 @@
+{
+  "stryker-config": {
+    "project": "Tabatine.Infrastructure.csproj",
+    "test-projects": [
+      "../Tabatine.Worker.IntegrationTests/Tabatine.Worker.IntegrationTests.csproj"
+    ],
+    "reporters": [
+      "progress",
+      "html",
+      "dashboard"
+    ],
+    "thresholds": {
+      "high": 80,
+      "low": 60,
+      "break": 50
+    },
+    "mutate": [
+      "Services/**/*SyncService.cs"
+    ],
+    "verbosity": "info"
+  }
+}

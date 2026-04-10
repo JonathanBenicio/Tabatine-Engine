@@ -95,6 +95,34 @@ jobs:
           name: .net-app
           path: ${{env.DOTNET_ROOT}}/myapp
 
+  mutation-test:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore dependencies
+        run: dotnet restore src/TabatineEngine.sln
+
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Run Stryker (Infrastructure)
+        run: dotnet stryker -p src/Tabatine.Infrastructure/Tabatine.Infrastructure.csproj -c src/Tabatine.Infrastructure/stryker-config.json
+        # O Stryker falhará se a pontuação for menor que 50 (conforme configurado no json)
+
+      - name: Upload Stryker Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-report
+          path: src/Tabatine.Infrastructure/StrykerOutput
+
   deploy:
     runs-on: ubuntu-latest
     needs: build

@@ -26,6 +26,10 @@ dotnet ef migrations add <Name> --project src/Tabatine.Infrastructure --startup-
 
 # Run single test (when tests exist)
 dotnet test --filter "FullyQualifiedName~TestClassName.MethodName"
+
+# Run Mutation Tests (Stryker)
+dotnet tool restore
+dotnet stryker --project src/Tabatine.Infrastructure/Tabatine.Infrastructure.csproj
 ```
 
 > **Note**: This project currently has no test suite. Agents should create tests when implementing new features.
