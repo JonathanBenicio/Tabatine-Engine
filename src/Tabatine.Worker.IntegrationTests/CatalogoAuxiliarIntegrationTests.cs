@@ -29,7 +29,7 @@ public class CatalogoAuxiliarIntegrationTests(IntegrationTestWebAppFactory facto
         // Act — Sync direto via serviço
         using (var scope = Factory.Services.CreateScope())
         {
-            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.BancosSyncService>();
+            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.BancoSyncService>();
             await syncService.SyncAllAsync();
         }
 
@@ -65,7 +65,7 @@ public class CatalogoAuxiliarIntegrationTests(IntegrationTestWebAppFactory facto
         // Act
         using (var scope = Factory.Services.CreateScope())
         {
-            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.FormasPagamentoSyncService>();
+            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.FormaPagamentoSyncService>();
             await syncService.SyncAllAsync();
         }
 
@@ -104,7 +104,7 @@ public class CatalogoAuxiliarIntegrationTests(IntegrationTestWebAppFactory facto
         // Act
         using (var scope = Factory.Services.CreateScope())
         {
-            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.CondicoesPagamentoSyncService>();
+            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.CondicaoPagamentoSyncService>();
             await syncService.SyncAllAsync();
         }
 
@@ -141,7 +141,7 @@ public class CatalogoAuxiliarIntegrationTests(IntegrationTestWebAppFactory facto
         // Act
         using (var scope = Factory.Services.CreateScope())
         {
-            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.MeiosPagamentoSyncService>();
+            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.MeioPagamentoSyncService>();
             await syncService.SyncAllAsync();
         }
 
@@ -182,7 +182,7 @@ public class CatalogoAuxiliarIntegrationTests(IntegrationTestWebAppFactory facto
         for (var i = 0; i < 2; i++)
         {
             using var scope = Factory.Services.CreateScope();
-            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.BancosSyncService>();
+            var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.BancoSyncService>();
             await syncService.SyncAllAsync();
         }
 

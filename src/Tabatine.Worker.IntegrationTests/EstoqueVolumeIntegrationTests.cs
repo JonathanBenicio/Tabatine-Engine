@@ -14,8 +14,6 @@ public class EstoqueVolumeIntegrationTests(IntegrationTestWebAppFactory factory)
     {
         // Arrange — gerar 1000 produtos e respectivos saldos de estoque
         const int totalRegistros = 1000;
-        const int registrosPorPagina = 100;
-        var totalPaginas = totalRegistros / registrosPorPagina;
         var omieIdLocalEstoque = 7777L;
 
         // Pré-popula o local de estoque
@@ -28,38 +26,49 @@ public class EstoqueVolumeIntegrationTests(IntegrationTestWebAppFactory factory)
                 {
                     Id = Guid.NewGuid(),
                     OmieId = omieIdLocalEstoque,
-                    Nome = "Almoxarifado Volume Test",
+                    Codigo = "LOC-VOL",
+                    Descricao = "Almoxarifado Volume Test",
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 });
-                await dbContext.SaveChangesAsync();
             }
+
+            // Garante que os 1000 produtos existam no banco, senão o estoque é ignorado
+            var countInDB = await dbContext.Produtos.CountAsync(p => p.OmieId >= 900001 && p.OmieId <= 900000 + totalRegistros);
+            if (countInDB < totalRegistros)
+            {
+                var produtosParaAdd = Enumerable.Range(1, totalRegistros)
+                    .Select(i => new Produto
+                    {
+                        Id = Guid.NewGuid(),
+                        OmieId = 900_000L + i,
+                        CodigoProduto = $"VOL-{i:D5}",
+                        Descricao = $"Produto Volume {i}",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    });
+                
+                await dbContext.Produtos.AddRangeAsync(produtosParaAdd);
+            }
+
+            await dbContext.SaveChangesAsync();
         }
 
-        // Mock paginado: 10 páginas de 100 registros
-        for (var pagina = 1; pagina <= totalPaginas; pagina++)
-        {
-            var paginaLocal = pagina;
-            var saldosDaPagina = Enumerable.Range((paginaLocal - 1) * registrosPorPagina + 1, registrosPorPagina)
-                .Select(i => new EstoqueProduto
-                {
-                    CodigoProduto = 900_000L + i,        // IDs únicos por produto
-                    CodigoLocalEstoque = omieIdLocalEstoque,
-                    SaldoTotalEmpresa = i * 1.5m,
-                    Descricao = $"Produto Volume {i}",
-                    Codigo = $"VOL-{i:D5}"
-                })
-                .ToList();
+        // Mock de streaming: gera 1000 registros
+        var saldosMocados = Enumerable.Range(1, totalRegistros)
+            .Select(i => new ProdutoEstoqueDto
+            {
+                CodProd = 900_000L + i,
+                CodigoLocalEstoque = omieIdLocalEstoque,
+                Saldo = i * 1.5m,
+                Fisico = i * 1.5m,
+                Cmc = 10.0m
+            })
+            .ToList();
 
-            Factory.OmieClientMock
-                .ListarEstoqueProdutoAsync(paginaLocal, Arg.Any<CancellationToken>())
-                .Returns(new ListarEstoqueProdutoResponse
-                {
-                    Pagina = paginaLocal,
-                    TotalDePaginas = totalPaginas,
-                    Produtos = saldosDaPagina
-                });
-        }
+        Factory.OmieClientMock
+            .StreamPosicaoEstoqueAsync(Arg.Any<ListarPosEstoqueRequest>(), Arg.Any<CancellationToken>())
+            .Returns(saldosMocados.ToAsyncEnumerable());
 
         // Também precisamos mockar os produtos em si (sem produtos no catálogo, estoque é ignorado)
         Factory.OmieClientMock
@@ -111,8 +120,12 @@ public class EstoqueVolumeIntegrationTests(IntegrationTestWebAppFactory factory)
             {
                 dbContext.LocaisEstoque.Add(new LocalEstoque
                 {
-                    Id = Guid.NewGuid(), OmieId = omieIdLocal, Nome = "Local Idempotente",
-                    CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+                    Id = Guid.NewGuid(), 
+                    OmieId = omieIdLocal, 
+                    Codigo = "LOC-IDEM",
+                    Descricao = "Local Idempotente",
+                    CreatedAt = DateTime.UtcNow, 
+                    UpdatedAt = DateTime.UtcNow
                 });
             }
 
@@ -129,17 +142,13 @@ public class EstoqueVolumeIntegrationTests(IntegrationTestWebAppFactory factory)
             await dbContext.SaveChangesAsync();
         }
 
-        var mockEstoque = new ListarEstoqueProdutoResponse
+        var mockEstoque = new List<ProdutoEstoqueDto>
         {
-            Pagina = 1, TotalDePaginas = 1,
-            Produtos = new List<EstoqueProduto>
-            {
-                new() { CodigoProduto = codigoProdutoOmie, CodigoLocalEstoque = omieIdLocal, SaldoTotalEmpresa = 50m, Codigo = "IDEM-001", Descricao = "Produto Idempotência" }
-            }
+            new() { CodProd = codigoProdutoOmie, CodigoLocalEstoque = omieIdLocal, Saldo = 50m, Fisico = 50m }
         };
 
-        Factory.OmieClientMock.ListarEstoqueProdutoAsync(1, Arg.Any<CancellationToken>())
-            .Returns(mockEstoque);
+        Factory.OmieClientMock.StreamPosicaoEstoqueAsync(Arg.Any<ListarPosEstoqueRequest>(), Arg.Any<CancellationToken>())
+            .Returns(mockEstoque.ToAsyncEnumerable());
 
         // Sync 2x
         for (var i = 0; i < 2; i++)
