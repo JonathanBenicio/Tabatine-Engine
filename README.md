@@ -1,5 +1,8 @@
 # Tabatine Engine - Omie Sync Service
 
+![Build Status](https://github.com/JonathanBenicio/Tabatine-Engine/actions/workflows/main_tabatine-worker.yml/badge.svg)
+![Code Coverage](https://img.shields.io/badge/Coverage-80.5%25-green)
+
 O **Tabatine Engine** é o núcleo de processamento e sincronização de dados entre o **Omie ERP** e o banco de dados local (Supabase/PostgreSQL). Desenvolvido em **.NET 10**, ele garante que as informações de vendas, clientes, produtos, notas fiscais, vendedores, contas correntes e outros 10+ módulos vitais estejam sempre atualizadas para consumo rápido pelo frontend.
 
 ## 🏗️ Arquitetura da Solução
@@ -72,6 +75,17 @@ graph TD
    dotnet run --project src/Tabatine.Worker
    ```
 
+## 🧪 Testes de Integração (Pré-requisito: Docker)
+
+O projeto utiliza **Testcontainers** para garantir a integridade da sincronização com um banco de dados PostgreSQL real em um ambiente isolado.
+
+- **Requisito**: O [Docker Desktop](https://www.docker.com/products/docker-desktop/) deve estar instalado e **em execução** para rodar a suíte de testes.
+- **Timeouts**: Devido à complexidade da rota de sincronização global (14 módulos), os testes de integração possuem um timeout estendido de **5 minutos**.
+- **Execução**:
+  ```bash
+  dotnet test src/TabatineEngine.sln --collect:"XPlat Code Coverage"
+  ```
+
 ## 📖 Documentação Interativa (Scalar)
 
 O Engine expõe uma interface **Scalar** moderna para exploração da API em vez do Swagger tradicional.
@@ -83,7 +97,11 @@ O Engine expõe uma interface **Scalar** moderna para exploração da API em vez
 O Worker expõe o endpoint `/webhook/omie` para receber notificações em tempo real do Omie.
 Para respeitar o curto *timeout* da Omie de 7 segundos e evitar o bloqueio da fila original:
 1. **Ingestão (Fast Acknowledge)**: O endpoint apenas valida a estrutura, insere o payload bruto na tabela `WebhookEvents` do banco de dados e retorna `200 OK` instantaneamente.
-2. **Processamento (Background Worker)**: O serviço especializado `WebhookProcessorWorker` varre a fila no banco de dados com concorrência segura (`SELECT ... FOR UPDATE SKIP LOCKED`), processando os eventos de **Vendas**, **Notas Fiscais**, **Clientes**, **Produtos**, **Vendedores** e **Contas Correntes**, alterando o status para `Processed` ou `Failed` sem derrubar a aplicação.
+2. **Processamento (Background Worker)**: O serviço especializado `WebhookProcessorWorker` varre a fila no banco de dados com concorrência segura (`SELECT ... FOR UPDATE SKIP LOCKED`), processando os eventos de **Vendas**, **Notas Fiscais**, **Clientes**, **Produtos**, **Vendedores** e **Contas Correntes**.
+3. **Debouncing de Estoque**: Para prevenir sobrecarga em movimentações massivas, as notificações de `MovimentacaoEstoque` e `AjusteEstoque` possuem um **agrupamento (debouncing) de 10 segundos**. Múltiplas alterações no mesmo produto dentro desta janela são consolidadas em uma única sincronização.
+
+> [!NOTE]
+> Consulte a [Documentação de Status dos Webhooks](docs/omie-webhooks-status.md) para a lista completa de tópicos suportados.
 
 ## 🔄 Gatilho de Sincronização Manual (Force Sync)
 
