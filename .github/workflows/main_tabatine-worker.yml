@@ -114,7 +114,7 @@ jobs:
         run: dotnet tool restore
 
       - name: Run Stryker (Infrastructure)
-        run: dotnet stryker -p src/Tabatine.Infrastructure/Tabatine.Infrastructure.csproj -c src/Tabatine.Infrastructure/stryker-config.json
+        run: dotnet stryker -p src/Tabatine.Infrastructure/Tabatine.Infrastructure.csproj --config-file src/Tabatine.Infrastructure/stryker-config.json
         # O Stryker falhará se a pontuação for menor que 50 (conforme configurado no json)
 
       - name: Upload Stryker Report
