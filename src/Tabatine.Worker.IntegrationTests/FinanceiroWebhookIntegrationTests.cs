@@ -128,4 +128,54 @@ public class FinanceiroWebhookIntegrationTests(IntegrationTestWebAppFactory fact
         registroDB.Should().NotBeNull();
         registroDB!.StatusTitulo.Should().Be("CANCELADO", "O título deve ser marcado como CANCELADO ao receber o evento de exclusão");
     }
+
+    [Fact]
+    public async Task Teste_De_Resiliencia_Comportamento_API_Financas_Lenta_Indisponivel()
+    {
+        // Arrange
+        var omieId = 333444555L;
+
+        // Simulando que a API Omie cravou (ex: Rate limit 429 ou Timeout 500)
+        Factory.OmieClientMock.ConsultarContaReceberAsync(omieId, Arg.Any<CancellationToken>())
+            .Returns<OmieContaReceber>(x => throw new System.Net.Http.HttpRequestException("Rate Limit Exceeded - 429"));
+
+        var webhookEvent = new
+        {
+            topic = "Financas.ContaReceber.Incluido",
+            messageId = Guid.NewGuid().ToString(),
+            @event = new
+            {
+                nCodLanc = omieId,
+                codigo_lancamento_omie = omieId
+            }
+        };
+
+        // Act
+        var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
+        
+        // Assert
+        // O Webhook Receiver deve aceitar (200 OK ou 202 Accepted) para não bloquear o ERP emissor,
+        // mas colocar no channel de background (DLQ handler).
+        response.EnsureSuccessStatusCode();
+
+        TituloReceber? registroDB = null;
+        var timeout = TimeSpan.FromSeconds(5);
+        var start = DateTime.UtcNow;
+
+        while (DateTime.UtcNow - start < timeout)
+        {
+            using var scope = Factory.Services.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            registroDB = await dbContext.TitulosReceber.FirstOrDefaultAsync(c => c.OmieId == omieId);
+            
+            if (registroDB != null) break;
+            await Task.Delay(500);
+        }
+
+        // Não deve ter sido inserido devido ao erro da API Omie
+        registroDB.Should().BeNull("O registro não deveria ter sido integrado devido à queda da API Omie.");
+
+        // Opcional: Aqui poderíamos validar a tabela WebhookEvents onde DLQ = true caso esteja mapeado
+        // usando a DbContext local.
+    }
 }
