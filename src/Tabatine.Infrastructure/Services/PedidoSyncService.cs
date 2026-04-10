@@ -425,7 +425,7 @@ namespace Tabatine.Infrastructure.Services
                     foreach (var entry in _dbContext.ChangeTracker.Entries().ToList())
                     {
                         await entry.ReloadAsync(ct);
-                        if (entry.Entity is Pedido pedido)
+                        if (entry.Entity is PedidoVenda pedido)
                         {
                             await _dbContext.Entry(pedido).Collection(p => p.Itens).LoadAsync(ct);
                             await _dbContext.Entry(pedido).Collection(p => p.Parcelas).LoadAsync(ct);
