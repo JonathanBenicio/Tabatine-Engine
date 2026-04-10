@@ -140,6 +140,6 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
         // Isso depende da FK no EFCore para PedidoVenda. 
         // Comumente, sincronizações marcam o PedidoId local como NULO.
         nfDB.Should().NotBeNull("A NF com pedido inexistente deve ser salva com PedidoId nulo localmente");
-        nfDB!.PedidoId.Should().BeNull();
+        nfDB!.PedidoVendaId.Should().BeNull();
     }
 }
