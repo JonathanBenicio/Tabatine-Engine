@@ -148,4 +148,118 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
         pedidoDB.Parcelas.Should().HaveCount(1);
         pedidoDB.Parcelas.First().Valor.Should().Be(1500.00m);
     }
+
+    [Fact]
+    public async Task Deve_Processar_Upsert_Pedido_Com_Itens_DeletadosEAlterados()
+    {
+        // Arrange
+        var omieIdPedido = 88776655L;
+        var omieIdCliente = 12345L;
+        var omieIdProduto1 = 54321L;
+        var omieIdProduto2 = 12345L; // Produto que será deletado no update
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            // Pré-popula cenário: Um pedido com 2 itens
+            var cliente = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieIdCliente);
+            if (cliente == null)
+            {
+                cliente = new Cliente { Id = Guid.NewGuid(), OmieId = omieIdCliente, RazaoSocial = "Cliente Teste", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+                dbContext.Clientes.Add(cliente);
+            }
+            
+            var p1 = await dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieIdProduto1) ?? new Produto { Id = Guid.NewGuid(), OmieId = omieIdProduto1, CodigoProduto="P1", Descricao="1", CreatedAt=DateTime.UtcNow, UpdatedAt=DateTime.UtcNow };
+            var p2 = await dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieIdProduto2) ?? new Produto { Id = Guid.NewGuid(), OmieId = omieIdProduto2, CodigoProduto="P2", Descricao="2", CreatedAt=DateTime.UtcNow, UpdatedAt=DateTime.UtcNow };
+            
+            if (dbContext.Entry(p1).State == EntityState.Detached) dbContext.Produtos.Add(p1);
+            if (dbContext.Entry(p2).State == EntityState.Detached) dbContext.Produtos.Add(p2);
+
+            var pedidoOriginal = new PedidoVenda
+            {
+                Id = Guid.NewGuid(),
+                OmieId = omieIdPedido,
+                ClienteId = cliente.Id,
+                NumeroPedido = "PED-UPDATE-001",
+                ValorTotal = 2000.00m,
+                Itens = new List<ItemPedidoVenda>
+                {
+                    new() { Id = Guid.NewGuid(), ProdutoId = p1.Id, Quantidade = 1, ValorUnitario = 1000, ValorTotal = 1000, OmieItemIdx = 1 },
+                    new() { Id = Guid.NewGuid(), ProdutoId = p2.Id, Quantidade = 1, ValorUnitario = 1000, ValorTotal = 1000, OmieItemIdx = 2 }
+                },
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            dbContext.PedidosVenda.Add(pedidoOriginal);
+            await dbContext.SaveChangesAsync();
+        }
+
+        // Mock Omie return: Agora tem só 1 item, e o valor do Item 1 dobrou.
+        var omiePedido = new OmiePedido
+        {
+            Cabecalho = new OmiePedidoCabecalho
+            {
+                CodigoPedido = omieIdPedido,
+                NumeroPedido = "PED-UPDATE-001",
+                CodigoCliente = omieIdCliente,
+                Etapa = "20",
+                QuantidadeItens = 1,
+                DataPrevisao = "15/05/2026",
+                QuantidadeParcelas = 1
+            },
+            TotalPedido = new OmiePedidoTotal { ValorTotalPedido = 2500.00m, ValorMercadorias = 2500.00m },
+            Det = new List<OmiePedidoItem>
+            {
+                new() 
+                {
+                    Ide = new OmiePedidoItemIde { CodigoItem = 111222L },
+                    Produto = new OmiePedidoItemProduto 
+                    { 
+                        CodigoProduto = omieIdProduto1, 
+                        Quantidade = 2, 
+                        ValorUnitario = 1250.00m,
+                        ValorTotal = 2500.00m,
+                        Unidade = "UN"
+                    }
+                }
+            },
+            ListaParcelas = new OmiePedidoParcelas { Parcelas = new() }
+        };
+
+        Factory.OmieClientMock.ConsultarPedidoAsync(omieIdPedido, Arg.Any<CancellationToken>())
+            .Returns(omiePedido);
+
+        var webhookEvent = new
+        {
+            topic = "VendaProduto.Alterada",
+            messageId = Guid.NewGuid().ToString(),
+            @event = new { idPedido = omieIdPedido, numeroPedido = "PED-UPDATE-001", etapa = "20" }
+        };
+
+        var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
+        response.EnsureSuccessStatusCode();
+
+        PedidoVenda? pedidoDB = null;
+        var timeout = TimeSpan.FromSeconds(10);
+        var start = DateTime.UtcNow;
+
+        while (DateTime.UtcNow - start < timeout)
+        {
+            using var scope = Factory.Services.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            pedidoDB = await dbContext.PedidosVenda
+                .Include(p => p.Itens)
+                .ThenInclude(i => i.Produto)
+                .FirstOrDefaultAsync(p => p.OmieId == omieIdPedido);
+            
+            // Verifica se deletou 1 item e atualizou o total para 2500
+            if (pedidoDB != null && pedidoDB.ValorTotal == 2500.00m && pedidoDB.Itens.Count == 1) break;
+            await Task.Delay(500);
+        }
+
+        pedidoDB.Should().NotBeNull();
+        pedidoDB!.ValorTotal.Should().Be(2500.00m);
+        pedidoDB.Itens.Should().HaveCount(1, "O item do Produto 2 deveria ter sido excluído no Upsert complexo");
+        pedidoDB.Itens.First().ValorTotal.Should().Be(2500.00m);
+    }
 }
