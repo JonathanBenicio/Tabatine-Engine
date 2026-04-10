@@ -33,7 +33,7 @@ public class TituloReceberPagamentoParcialTests(IntegrationTestWebAppFactory fac
                     DataEmissao = "01/04/2026",
                     DataVencimento = "30/04/2026",
                     ValorDocumento = valorTotal,
-                    ValorPago = 300.00m,
+                    ValorRecebido = 300.00m,
                     ValorSaldo = 600.00m,
                     StatusTitulo = "PAGO_PARCIAL",
                     Info = new OmieContaReceberInfo { DAlt = "05/04/2026", HAlt = "10:00:00" }
@@ -42,7 +42,7 @@ public class TituloReceberPagamentoParcialTests(IntegrationTestWebAppFactory fac
         };
 
         Factory.OmieClientMock.ListarContasReceberAsync(
-            Arg.Any<int>(), Arg.Any<long?>(), Arg.Any<DateTime?>(), Arg.Any<DateTime?>(),
+            Arg.Any<int>(), Arg.Any<DateTime?>(), Arg.Any<DateTime?>(),
             Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(respostaPrimeiroParcial);
 
@@ -60,7 +60,7 @@ public class TituloReceberPagamentoParcialTests(IntegrationTestWebAppFactory fac
             var reg = await dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieId);
 
             reg.Should().NotBeNull("O título deve existir após 1ª sincronização");
-            reg!.ValorPago.Should().Be(300.00m, "Primeiro pagamento parcial de R$300");
+            reg!.ValorRecebido.Should().Be(300.00m, "Primeiro pagamento parcial de R$300");
             reg.ValorSaldo.Should().Be(600.00m);
             reg.StatusTitulo.Should().Be("PAGO_PARCIAL");
         }
@@ -83,7 +83,7 @@ public class TituloReceberPagamentoParcialTests(IntegrationTestWebAppFactory fac
                     DataVencimento = "30/04/2026",
                     DataBaixa = "10/04/2026",
                     ValorDocumento = valorTotal,
-                    ValorPago = 900.00m,
+                    ValorRecebido = 900.00m,
                     ValorSaldo = 0.00m,
                     StatusTitulo = "RECEBIDO",
                     Info = new OmieContaReceberInfo { DAlt = "10/04/2026", HAlt = "14:00:00" }
@@ -92,7 +92,7 @@ public class TituloReceberPagamentoParcialTests(IntegrationTestWebAppFactory fac
         };
 
         Factory.OmieClientMock.ListarContasReceberAsync(
-            Arg.Any<int>(), Arg.Any<long?>(), Arg.Any<DateTime?>(), Arg.Any<DateTime?>(),
+            Arg.Any<int>(), Arg.Any<DateTime?>(), Arg.Any<DateTime?>(),
             Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(respostaSegundoParcial);
 
@@ -110,7 +110,7 @@ public class TituloReceberPagamentoParcialTests(IntegrationTestWebAppFactory fac
             var reg = await dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieId);
 
             reg.Should().NotBeNull();
-            reg!.ValorPago.Should().Be(900.00m, "Valor total pago deve ser R$900");
+            reg!.ValorRecebido.Should().Be(900.00m, "Valor total pago deve ser R$900");
             reg.ValorSaldo.Should().Be(0.00m, "Saldo deve ser zero após liquidação total");
             reg.StatusTitulo.Should().Be("RECEBIDO", "Status deve ser RECEBIDO após quitação completa");
             reg.DataBaixa.Should().NotBeNull("Data de baixa deve ser registrada na quitação");

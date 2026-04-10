@@ -44,7 +44,6 @@ public class NotaFiscalTituloIntegrationTests(IntegrationTestWebAppFactory facto
                 {
                     Id = Guid.NewGuid(),
                     OmieId = omieIdTituloReceber,
-                    CodigoClienteOmie = omieIdCliente,
                     NumeroDocumento = "NF-444555666",
                     ValorDocumento = 850.00m,
                     ValorSaldo = 850.00m,
@@ -66,8 +65,11 @@ public class NotaFiscalTituloIntegrationTests(IntegrationTestWebAppFactory facto
             {
                 IdNf = omieIdNf,
                 ChaveNfe = "35260400000000000000550010000044450000000001",
-                XNatureza = "Venda de Produto",
-                IdTituloReceber = omieIdTituloReceber
+                XNatureza = "Venda de Produto"
+            },
+            Titulos = new List<OmieNfTitulo>
+            {
+                new() { OmieIdTitulo = omieIdTituloReceber, Numero = "NF-444555666", Valor = 850.00m }
             },
             Ide = new OmieNfIde { Numero = "4445", Serie = "1", DataEmissao = "10/04/2026", Situacao = "100" },
             Destinatario = new OmieNfDestInt { CodigoCliente = omieIdCliente },
