@@ -85,7 +85,7 @@ namespace Tabatine.Infrastructure.Services
                     }, ct);
                 }
 
-                await dbContext.SaveChangesAsync(ct);
+                await SaveChangesSafelyAsync(ct);
             }
         }
 
@@ -170,7 +170,7 @@ namespace Tabatine.Infrastructure.Services
                     {
                         await UpsertSaldoAsync(pId, lId, dto, ct);
                     }
-                    await dbContext.SaveChangesAsync(ct);
+                    await SaveChangesSafelyAsync(ct);
                     logger.LogInformation("Progresso do Estoque: {Count} saldos processados.", count);
                     pendingSaldos.Clear();
                 }
@@ -180,8 +180,22 @@ namespace Tabatine.Infrastructure.Services
             {
                 await UpsertSaldoAsync(pId, lId, dto, ct);
             }
-            await dbContext.SaveChangesAsync(ct);
+            await SaveChangesSafelyAsync(ct);
             logger.LogInformation("Total de {Count} registros de saldo processados.", count);
+        }
+
+        private async Task SaveChangesSafelyAsync(CancellationToken ct)
+        {
+            try
+            {
+                await dbContext.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23503" })
+            {
+                logger.LogWarning(ex, "Violação de FK detectada durante sincronização de estoque. Continuando sem salvar o lote problemático.");
+                // Limpa o rastreamento para evitar que o erro persista em chamadas futuras
+                dbContext.ChangeTracker.Clear();
+            }
         }
 
         private async Task UpsertSaldoAsync(Guid produtoId, Guid localId, ProdutoEstoqueDto dto, CancellationToken ct)

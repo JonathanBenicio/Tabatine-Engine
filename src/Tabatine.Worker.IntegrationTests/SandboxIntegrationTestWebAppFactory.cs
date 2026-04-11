@@ -18,9 +18,13 @@ public class SandboxIntegrationTestWebAppFactory : IntegrationTestWebAppFactory
 
         builder.ConfigureTestServices(services =>
         {
-            // Resolvemos o IConfiguration dentro do setup de serviços
-            var serviceProvider = services.BuildServiceProvider();
-            var config = serviceProvider.GetRequiredService<IConfiguration>();
+            var config = services
+                .Where(d => d.ServiceType == typeof(IConfiguration))
+                .Select(d => d.ImplementationInstance)
+                .OfType<IConfiguration>()
+                .FirstOrDefault();
+
+            if (config == null) return;
 
             var appKey = config["Omie:AppKey_Sandbox"];
             var appSecret = config["Omie:AppSecret_Sandbox"];
@@ -28,21 +32,16 @@ public class SandboxIntegrationTestWebAppFactory : IntegrationTestWebAppFactory
 
             if (string.IsNullOrEmpty(appKey) || string.IsNullOrEmpty(appSecret))
             {
-                // Se não houver chaves de sandbox, não sobrescrevemos para deixar o teste falhar ou ser skipado no nível do teste
                 return;
             }
 
-            // Remove o mock registrado pela base
             services.RemoveAll<IOmieClient>();
 
-            // Registra o OmieClient real com as chaves de Sandbox
             services.AddHttpClient<IOmieClient, OmieClient>(client =>
             {
                 client.BaseAddress = new Uri(baseUrl ?? "https://app.omie.com.br/api/v1/");
             });
 
-            // Sobrescrevemos as opções especificamente para este container
-            // Isso garante que o OmieClient (que usa IOptions<OmieOptions>) pegue as chaves certas
             services.Configure<OmieOptions>(options =>
             {
                 options.AppKey = appKey;
