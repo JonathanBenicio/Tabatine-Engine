@@ -50,7 +50,7 @@ O Stryker está registrado em `.config/dotnet-tools.json` como **ferramenta loca
 # Instala a ferramenta localmente (necessário na 1ª execução por máquina)
 dotnet tool restore
 
-# Versão instalada: 4.14.0
+# Versão instalada: 4.14.1
 ```
 
 ---

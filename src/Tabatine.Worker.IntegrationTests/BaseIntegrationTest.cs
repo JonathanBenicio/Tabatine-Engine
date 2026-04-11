@@ -5,6 +5,7 @@ using Respawn.Graph;
 namespace Tabatine.Worker.IntegrationTests;
 
 [Collection("DatabaseCollection")]
+[Trait("Category", "Integrated")]
 public abstract class BaseIntegrationTest : IAsyncLifetime
 {
     private readonly IntegrationTestWebAppFactory _factory;

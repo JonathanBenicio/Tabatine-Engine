@@ -15,7 +15,6 @@
       "low": 60,
       "break": 50
     },
-    "test-case-filter": "Category=Integrated",
     "mutate": [
       "Services/**/*.cs",
       "Repositories/**/*.cs",
