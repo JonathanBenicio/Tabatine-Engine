@@ -15,7 +15,7 @@
       "low": 60,
       "break": 50
     },
-    "dotnet-test-args": "--filter Category=Integrated",
+    "test-case-filter": "Category=Integrated",
     "mutate": [
       "Services/**/*.cs",
       "Repositories/**/*.cs",
@@ -23,7 +23,6 @@
       "!Data/Migrations/**/*.cs",
       "!GlobalUsings.cs"
     ],
-    "output-path": "StrykerOutput",
     "verbosity": "info",
     "language-version": "latest"
   }
