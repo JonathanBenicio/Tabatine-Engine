@@ -90,9 +90,14 @@ public partial class WebhookProcessorWorker(
                 
                 return ev;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                await transaction.RollbackAsync(cancellationToken);
+                try
+                {
+                    if (dbContext.Database.CurrentTransaction != null)
+                        await transaction.RollbackAsync(cancellationToken);
+                }
+                catch { /* Ignora erro de rollback se a conexão já estiver perdida */ }
                 throw;
             }
         });
