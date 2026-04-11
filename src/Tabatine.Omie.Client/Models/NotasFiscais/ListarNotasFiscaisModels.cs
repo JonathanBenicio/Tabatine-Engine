@@ -20,14 +20,27 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
         [JsonPropertyName("dEmiFinal")]
         public string? DataEmissaoAte { get; set; }
 
+        [JsonPropertyName("filtrar_por_data_de")]
+        public string? FiltrarPorDataDe { get; set; }
+
+        [JsonPropertyName("filtrar_por_data_ate")]
+        public string? FiltrarPorDataAte { get; set; }
+
+        [JsonPropertyName("filtrar_apenas_inclusao")]
+        public string? FiltrarApenasInclusao { get; set; }
+
+        [JsonPropertyName("filtrar_apenas_alteracao")]
+        public string? FiltrarApenasAlteracao { get; set; }
+
+        [JsonPropertyName("apenas_importado_api")]
+        public string ApenasImportadoApi { get; set; } = "N";
+
+        // Campos legados/não documentados no JsonClient oficial para ListarNF
         [JsonPropertyName("dAltInicial")]
         public string? DataAlteracaoDe { get; set; }
 
         [JsonPropertyName("hAltInicial")]
         public string? HoraAlteracaoDe { get; set; }
-
-        [JsonPropertyName("apenas_importado_api")]
-        public string ApenasImportadoApi { get; set; } = "N";
     }
 
     public class OmieNotaFiscal

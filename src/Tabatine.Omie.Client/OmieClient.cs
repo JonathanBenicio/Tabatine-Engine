@@ -133,15 +133,20 @@ namespace Tabatine.Omie.Client
 
         public async Task<ListarNotasFiscaisResponse> ListarNotasFiscaisAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
-            var param = new ListarNotasFiscaisParam { Pagina = pagina };
+            var param = new ListarNotasFiscaisParam
+            {
+                Pagina = pagina,
+                RegistrosPorPagina = 100
+            };
+
             if (filtrarDe.HasValue)
             {
-                param.DataAlteracaoDe = filtrarDe.Value.ToString("dd/MM/yyyy");
-                param.HoraAlteracaoDe = filtrarDe.Value.ToString("HH:mm:ss");
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
             }
             if (filtrarAte.HasValue)
             {
-                param.DataEmissaoAte = filtrarAte.Value.ToString("dd/MM/yyyy");
+                param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
             }
             return await SendRequestAsync<ListarNotasFiscaisParam, ListarNotasFiscaisResponse>("produtos/nfconsultar/", "ListarNF", param, cancellationToken);
         }
