@@ -12,22 +12,16 @@ using System.Threading.Tasks;
 
 namespace Tabatine.Infrastructure.Services
 {
-    public class BancoSyncService : ISyncService
+    public class BancoSyncService(
+        IOmieClient omieClient, 
+        AppDbContext dbContext, 
+        ISyncStateRepository syncState,
+        ILogger<BancoSyncService> logger) : ISyncService
     {
-        private readonly IOmieClient _omieClient;
-        private readonly AppDbContext _dbContext;
-        private readonly ILogger<BancoSyncService> _logger;
-
-        public BancoSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<BancoSyncService> logger)
-        {
-            _omieClient = omieClient;
-            _dbContext = dbContext;
-            _logger = logger;
-        }
 
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            _logger.LogInformation("Iniciando sincronização de Bancos...");
+            logger.LogInformation("Iniciando sincronização de Bancos...");
 
             var processedCodes = new HashSet<string>();
             int pagina = 1;
@@ -35,12 +29,12 @@ namespace Tabatine.Infrastructure.Services
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarBancosAsync(pagina, ct);
+                var response = await omieClient.ListarBancosAsync(pagina, ct);
                 
                 if (response == null || response.Bancos == null || response.Bancos.Count == 0) break;
 
                 var codigos = response.Bancos.Select(b => b.Codigo).ToList();
-                var existingBancos = await _dbContext.Bancos
+                var existingBancos = await dbContext.Bancos
                     .Where(b => codigos.Contains(b.CodigoBanco))
                     .ToDictionaryAsync(b => b.CodigoBanco, ct);
 
@@ -48,7 +42,7 @@ namespace Tabatine.Infrastructure.Services
                 {
                     if (!processedCodes.Add(omieBanco.Codigo))
                     {
-                        _logger.LogWarning("Banco Código {Cod} duplicado na resposta da Omie. Pulando.", omieBanco.Codigo);
+                        logger.LogWarning("Banco Código {Cod} duplicado na resposta da Omie. Pulando.", omieBanco.Codigo);
                         continue;
                     }
 
@@ -72,7 +66,7 @@ namespace Tabatine.Infrastructure.Services
                             novoBanco.OmieId = omieId;
                         }
 
-                        _dbContext.Bancos.Add(novoBanco);
+                        dbContext.Bancos.Add(novoBanco);
                         existingBancos[omieBanco.Codigo] = novoBanco;
                     }
                     else
@@ -84,31 +78,32 @@ namespace Tabatine.Infrastructure.Services
                     }
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de bancos sincronizada.", pagina, response.TotalDePaginas);
+                await dbContext.SaveChangesAsync(ct);
+                logger.LogInformation("Página {Pagina} de {Total} de bancos sincronizada.", pagina, response.TotalDePaginas);
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;
             }
 
-            _logger.LogInformation("Sincronização de Bancos finalizada.");
+            await syncState.SetLastSyncDateAsync("Bancos", DateTime.UtcNow, ct);
+            logger.LogInformation("Sincronização de Bancos finalizada.");
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogInformation("Sincronizando Banco específico OmieId: {OmieId}", omieId);
+            logger.LogInformation("Sincronizando Banco específico OmieId: {OmieId}", omieId);
             
             // Omie não tem consulta individual para Bancos, listamos tudo
-            var response = await _omieClient.ListarBancosAsync(1, ct);
+            var response = await omieClient.ListarBancosAsync(1, ct);
             if (response?.Bancos == null) return;
 
             var omieBanco = response.Bancos.FirstOrDefault(b => long.TryParse(b.Codigo, out var id) && id == omieId);
             if (omieBanco == null)
             {
-                _logger.LogWarning("Banco OmieId {OmieId} não encontrado na listagem da Omie.", omieId);
+                logger.LogWarning("Banco OmieId {OmieId} não encontrado na listagem da Omie.", omieId);
                 return;
             }
 
-            var existing = await _dbContext.Bancos.FirstOrDefaultAsync(b => b.CodigoBanco == omieBanco.Codigo, ct);
+            var existing = await dbContext.Bancos.FirstOrDefaultAsync(b => b.CodigoBanco == omieBanco.Codigo, ct);
 
             if (existing == null)
             {
@@ -123,7 +118,7 @@ namespace Tabatine.Infrastructure.Services
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
-                _dbContext.Bancos.Add(novoBanco);
+                dbContext.Bancos.Add(novoBanco);
             }
             else
             {
@@ -133,8 +128,8 @@ namespace Tabatine.Infrastructure.Services
                 existing.UpdatedAt = DateTime.UtcNow;
             }
 
-            await _dbContext.SaveChangesAsync(ct);
-            _logger.LogInformation("Banco OmieId {OmieId} sincronizado com sucesso.", omieId);
+            await dbContext.SaveChangesAsync(ct);
+            logger.LogInformation("Banco OmieId {OmieId} sincronizado com sucesso.", omieId);
         }
 
         public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;

@@ -11,33 +11,27 @@ using System.Threading.Tasks;
 
 namespace Tabatine.Infrastructure.Services
 {
-    public class MeioPagamentoSyncService : ISyncService
+    public class MeioPagamentoSyncService(
+        IOmieClient omieClient, 
+        AppDbContext dbContext, 
+        ISyncStateRepository syncState,
+        ILogger<MeioPagamentoSyncService> logger) : ISyncService
     {
-        private readonly IOmieClient _omieClient;
-        private readonly AppDbContext _dbContext;
-        private readonly ILogger<MeioPagamentoSyncService> _logger;
-
-        public MeioPagamentoSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<MeioPagamentoSyncService> logger)
-        {
-            _omieClient = omieClient;
-            _dbContext = dbContext;
-            _logger = logger;
-        }
 
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            _logger.LogInformation("Sincronizando Meios de Pagamento...");
+            logger.LogInformation("Sincronizando Meios de Pagamento...");
 
-            var response = await _omieClient.ListarMeiosPagamentoAsync(ct);
+            var response = await omieClient.ListarMeiosPagamentoAsync(ct);
 
             if (response?.MeiosPagamentoLista == null || !response.MeiosPagamentoLista.Any())
             {
-                _logger.LogInformation("Nenhum meio de pagamento encontrado na Omie.");
+                logger.LogInformation("Nenhum meio de pagamento encontrado na Omie.");
                 return;
             }
 
             var processedCodes = new HashSet<string>();
-            var existingMeios = await _dbContext.MeiosPagamento.ToDictionaryAsync(m => m.Codigo, ct);
+            var existingMeios = await dbContext.MeiosPagamento.ToDictionaryAsync(m => m.Codigo, ct);
 
             foreach (var omieMeio in response.MeiosPagamentoLista)
             {
@@ -45,7 +39,7 @@ namespace Tabatine.Infrastructure.Services
 
                 if (!processedCodes.Add(omieMeio.Codigo))
                 {
-                    _logger.LogWarning("Meio de Pagamento Código {Cod} duplicado na resposta da Omie. Pulando.", omieMeio.Codigo);
+                    logger.LogWarning("Meio de Pagamento Código {Cod} duplicado na resposta da Omie. Pulando.", omieMeio.Codigo);
                     continue;
                 }
 
@@ -69,18 +63,19 @@ namespace Tabatine.Infrastructure.Services
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
-                    _dbContext.MeiosPagamento.Add(novo);
+                    dbContext.MeiosPagamento.Add(novo);
                     existingMeios[omieMeio.Codigo] = novo;
                 }
             }
 
-            await _dbContext.SaveChangesAsync(ct);
-            _logger.LogInformation("Sincronização de Meios de Pagamento finalizada.");
+            await dbContext.SaveChangesAsync(ct);
+            await syncState.SetLastSyncDateAsync("MeiosPagamento", DateTime.UtcNow, ct);
+            logger.LogInformation("Sincronização de Meios de Pagamento finalizada.");
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogWarning("SyncById solicitado para MeioPagamento OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
+            logger.LogWarning("SyncById solicitado para MeioPagamento OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
             await Task.CompletedTask;
         }
 

@@ -14,25 +14,16 @@ using Tabatine.Omie.Client.Models;
 
 namespace Tabatine.Infrastructure.Services
 {
-    public class VendedorSyncService : ISyncService
+    public class VendedorSyncService(
+        IOmieClient omieClient, 
+        AppDbContext dbContext, 
+        ISyncStateRepository syncState,
+        ILogger<VendedorSyncService> logger) : ISyncService
     {
-        private readonly IOmieClient _omieClient;
-        private readonly AppDbContext _dbContext;
-        private readonly ISyncStateRepository _syncState;
-        private readonly ILogger<VendedorSyncService> _logger;
-
-        public VendedorSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<VendedorSyncService> logger)
-        {
-            _omieClient = omieClient;
-            _dbContext = dbContext;
-            _syncState = syncState;
-            _logger = logger;
-        }
-
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            var lastSyncDate = await _syncState.GetLastSyncDateAsync("Vendedores", ct);
-            _logger.LogInformation("Iniciando sincronização de Vendedores a partir de {LastSyncDate}...", lastSyncDate?.ToString("yyyy-MM-dd") ?? "o início");
+            var lastSyncDate = await syncState.GetLastSyncDateAsync("Vendedores", ct);
+            logger.LogInformation("Iniciando sincronização de Vendedores a partir de {LastSyncDate}...", lastSyncDate?.ToString("yyyy-MM-dd") ?? "o início");
 
             // Rastreia OmieIds já processados neste ciclo para evitar duplicatas
             var processedOmieIds = new HashSet<long>();
@@ -42,12 +33,12 @@ namespace Tabatine.Infrastructure.Services
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarVendedoresAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                var response = await omieClient.ListarVendedoresAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
 
                 if (response == null || response.Vendedores == null || response.Vendedores.Count == 0) break;
 
                 var omieIds = response.Vendedores.Select(v => v.Codigo).ToList();
-                var existingVendedores = await _dbContext.Vendedores
+                var existingVendedores = await dbContext.Vendedores
                     .Where(v => omieIds.Contains(v.OmieId))
                     .ToDictionaryAsync(v => v.OmieId, ct);
 
@@ -58,7 +49,7 @@ namespace Tabatine.Infrastructure.Services
                     // Pula se já processamos este OmieId neste ciclo
                     if (!processedOmieIds.Add(omieId))
                     {
-                        _logger.LogDebug("Vendedor OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
+                        logger.LogDebug("Vendedor OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
                         continue;
                     }
 
@@ -79,7 +70,7 @@ namespace Tabatine.Infrastructure.Services
                             UpdatedAt = DateTime.UtcNow,
                             OmieUpdatedAt = omieLastAlt
                         };
-                        _dbContext.Vendedores.Add(novoVendedor);
+                        dbContext.Vendedores.Add(novoVendedor);
                         existingVendedores[omieId] = novoVendedor;
                     }
                     else
@@ -88,7 +79,7 @@ namespace Tabatine.Infrastructure.Services
                         if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
                             existing.OmieUpdatedAt.Value == omieLastAlt.Value)
                         {
-                            _logger.LogDebug("Vendedor OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
+                            logger.LogDebug("Vendedor OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
                             continue;
                         }
 
@@ -101,27 +92,27 @@ namespace Tabatine.Infrastructure.Services
                     }
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de vendedores sincronizada.", pagina, response.TotalDePaginas);
+                await dbContext.SaveChangesAsync(ct);
+                logger.LogInformation("Página {Pagina} de {Total} de vendedores sincronizada.", pagina, response.TotalDePaginas);
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;
             }
 
             if (!ct.IsCancellationRequested)
             {
-                await _syncState.SetLastSyncDateAsync("Vendedores", DateTime.UtcNow, ct);
+                await syncState.SetLastSyncDateAsync("Vendedores", DateTime.UtcNow, ct);
             }
 
-            _logger.LogInformation("Sincronização de Vendedores finalizada.");
+            logger.LogInformation("Sincronização de Vendedores finalizada.");
         }
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogInformation("Sincronizando Vendedor específico OmieId: {OmieId}", omieId);
-            var omieVendedor = await _omieClient.ConsultarVendedorAsync(omieId, ct);
+            logger.LogInformation("Sincronizando Vendedor específico OmieId: {OmieId}", omieId);
+            var omieVendedor = await omieClient.ConsultarVendedorAsync(omieId, ct);
 
             if (omieVendedor != null)
             {
-                var existing = await _dbContext.Vendedores.FirstOrDefaultAsync(v => v.OmieId == omieId, ct);
+                var existing = await dbContext.Vendedores.FirstOrDefaultAsync(v => v.OmieId == omieId, ct);
                 var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieVendedor.DAlt, omieVendedor.HAlt);
 
                 if (existing == null)
@@ -138,14 +129,14 @@ namespace Tabatine.Infrastructure.Services
                         UpdatedAt = DateTime.UtcNow,
                         OmieUpdatedAt = omieLastAlt
                     };
-                    _dbContext.Vendedores.Add(novoVendedor);
+                    dbContext.Vendedores.Add(novoVendedor);
                 }
                 else
                 {
                     if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
                         existing.OmieUpdatedAt.Value == omieLastAlt.Value)
                     {
-                        _logger.LogDebug("Vendedor OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
+                        logger.LogDebug("Vendedor OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
                         return;
                     }
 
@@ -157,12 +148,12 @@ namespace Tabatine.Infrastructure.Services
                     existing.OmieUpdatedAt = omieLastAlt;
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Vendedor OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
+                await dbContext.SaveChangesAsync(ct);
+                logger.LogInformation("Vendedor OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
             }
             else
             {
-                _logger.LogWarning("Vendedor OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
+                logger.LogWarning("Vendedor OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
             }
         }
 

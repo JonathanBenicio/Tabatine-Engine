@@ -12,26 +12,17 @@ using System.Threading.Tasks;
 
 namespace Tabatine.Infrastructure.Services
 {
-    public class ProdutoSyncService : ISyncService
+    public class ProdutoSyncService(
+        IOmieClient omieClient, 
+        AppDbContext dbContext, 
+        ISyncStateRepository syncState, 
+        ILogger<ProdutoSyncService> logger) : ISyncService
     {
-        private readonly IOmieClient _omieClient;
-        private readonly AppDbContext _dbContext;
-        private readonly ISyncStateRepository _syncState;
-        private readonly ILogger<ProdutoSyncService> _logger;
-
-        public ProdutoSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<ProdutoSyncService> logger)
-        {
-            _omieClient = omieClient;
-            _dbContext = dbContext;
-            _syncState = syncState;
-            _logger = logger;
-        }
-
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            _logger.LogInformation("Iniciando sincronização de Produtos...");
+            logger.LogInformation("Iniciando sincronização de Produtos...");
 
-            var lastSyncDate = await _syncState.GetLastSyncDateAsync("Produtos", ct);
+            var lastSyncDate = await syncState.GetLastSyncDateAsync("Produtos", ct);
             var syncStartTime = DateTime.UtcNow;
 
             // Rastreia OmieIds já processados neste ciclo para evitar duplicatas
@@ -42,16 +33,14 @@ namespace Tabatine.Infrastructure.Services
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarProdutosAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                var response = await omieClient.ListarProdutosAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
 
                 // Resposta nula = sem registros (Client-5113)
                 if (response == null || response.ProdutosCadastro == null || response.ProdutosCadastro.Count == 0) break;
 
                 var omieIds = response.ProdutosCadastro.Select(p => p.CodigoProduto).ToList();
-                var caracNames = response.ProdutosCadastro.SelectMany(p => p.Caracteristicas?.Select(c => c.NomeCaracteristica) ?? Enumerable.Empty<string>()).Distinct().ToList();
-                var caracValues = response.ProdutosCadastro.SelectMany(p => p.Caracteristicas?.Select(c => c.ValorCaracteristica) ?? Enumerable.Empty<string>()).Distinct().ToList();
 
-                var existingProdutos = await _dbContext.Produtos
+                var existingProdutos = await dbContext.Produtos
                     .Where(p => omieIds.Contains(p.OmieId))
                     .ToDictionaryAsync(p => p.OmieId, ct);
 
@@ -62,7 +51,7 @@ namespace Tabatine.Infrastructure.Services
                     // Pula se já processamos este OmieId neste ciclo
                     if (!processedOmieIds.Add(omieId))
                     {
-                        _logger.LogDebug("Produto OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
+                        logger.LogDebug("Produto OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
                         continue;
                     }
 
@@ -88,7 +77,7 @@ namespace Tabatine.Infrastructure.Services
                             UpdatedAt = DateTime.UtcNow,
                             OmieUpdatedAt = omieLastAlt
                         };
-                        _dbContext.Produtos.Add(novoProduto);
+                        dbContext.Produtos.Add(novoProduto);
                         existingProdutos[omieId] = novoProduto;
                     }
                     else
@@ -97,7 +86,7 @@ namespace Tabatine.Infrastructure.Services
                         if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
                             existing.OmieUpdatedAt.Value == omieLastAlt.Value)
                         {
-                            _logger.LogDebug("Produto OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
+                            logger.LogDebug("Produto OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
                             continue;
                         }
 
@@ -115,23 +104,27 @@ namespace Tabatine.Infrastructure.Services
                     }
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de produtos sincronizada.", pagina, response.TotalDePaginas);
+                await dbContext.SaveChangesAsync(ct);
+                logger.LogInformation("Página {Pagina} de {Total} de produtos sincronizada.", pagina, response.TotalDePaginas);
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;
             }
 
-            await _syncState.SetLastSyncDateAsync("Produtos", syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Produtos finalizada.");
+            if (!ct.IsCancellationRequested)
+            {
+                await syncState.SetLastSyncDateAsync("Produtos", syncStartTime, ct);
+            }
+
+            logger.LogInformation("Sincronização de Produtos finalizada.");
         }
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogInformation("Sincronizando Produto específico OmieId: {OmieId}", omieId);
-            var omieProduto = await _omieClient.ConsultarProdutoAsync(omieId, ct);
+            logger.LogInformation("Sincronizando Produto específico OmieId: {OmieId}", omieId);
+            var omieProduto = await omieClient.ConsultarProdutoAsync(omieId, ct);
 
             if (omieProduto != null)
             {
-                var existing = await _dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieId, ct);
+                var existing = await dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieId, ct);
                 var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieProduto.DAlt, omieProduto.HAlt);
 
                 if (existing == null)
@@ -153,14 +146,14 @@ namespace Tabatine.Infrastructure.Services
                         UpdatedAt = DateTime.UtcNow,
                         OmieUpdatedAt = omieLastAlt
                     };
-                    _dbContext.Produtos.Add(novoProduto);
+                    dbContext.Produtos.Add(novoProduto);
                 }
                 else
                 {
                     if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
                         existing.OmieUpdatedAt.Value == omieLastAlt.Value)
                     {
-                        _logger.LogDebug("Produto OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
+                        logger.LogDebug("Produto OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
                         return;
                     }
 
@@ -177,12 +170,12 @@ namespace Tabatine.Infrastructure.Services
                     existing.OmieUpdatedAt = omieLastAlt;
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Produto OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
+                await dbContext.SaveChangesAsync(ct);
+                logger.LogInformation("Produto OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
             }
             else
             {
-                _logger.LogWarning("Produto OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
+                logger.LogWarning("Produto OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
             }
         }
 

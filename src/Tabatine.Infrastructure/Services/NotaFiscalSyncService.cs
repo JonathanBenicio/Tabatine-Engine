@@ -12,16 +12,12 @@ namespace Tabatine.Infrastructure.Services
 {
     public class NotaFiscalSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<NotaFiscalSyncService> logger) : ISyncService
     {
-        private readonly IOmieClient _omieClient = omieClient;
-        private readonly AppDbContext _dbContext = dbContext;
-        private readonly ISyncStateRepository _syncState = syncState;
-        private readonly ILogger<NotaFiscalSyncService> _logger = logger;
 
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            _logger.LogInformation("Iniciando sincronização de Notas Fiscais...");
+            logger.LogInformation("Iniciando sincronização de Notas Fiscais...");
 
-            DateTime? lastSyncDate = await _syncState.GetLastSyncDateAsync("NotasFiscais", ct);
+            DateTime? lastSyncDate = await syncState.GetLastSyncDateAsync("NotasFiscais", ct);
             DateTime syncStartTime = DateTime.UtcNow;
 
             int pagina = 1;
@@ -29,25 +25,25 @@ namespace Tabatine.Infrastructure.Services
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                ListarNotasFiscaisResponse response = await _omieClient.ListarNotasFiscaisAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                ListarNotasFiscaisResponse response = await omieClient.ListarNotasFiscaisAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
 
                 if (response == null || response.NotasFiscais == null || response.NotasFiscais.Count == 0) break;
 
                 await ProcessNotaFiscalBatchAsync(response.NotasFiscais, ct);
 
-                _logger.LogInformation("Página {Pagina} de {Total} de notas fiscais sincronizada.", pagina, response.TotalDePaginas);
+                logger.LogInformation("Página {Pagina} de {Total} de Notas Fiscais sincronizada.", pagina, response.TotalDePaginas);
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;
             }
 
-            await _syncState.SetLastSyncDateAsync("NotasFiscais", syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Notas Fiscais finalizada.");
+            await syncState.SetLastSyncDateAsync("NotasFiscais", syncStartTime, ct);
+            logger.LogInformation("Sincronização de Notas Fiscais finalizada.");
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogInformation("Sincronizando Nota Fiscal específica OmieId: {OmieId}", omieId);
-            var omieNf = await _omieClient.ConsultarNotaFiscalAsync(omieId, ct);
+            logger.LogInformation("Sincronizando Nota Fiscal específica OmieId: {OmieId}", omieId);
+            var omieNf = await omieClient.ConsultarNotaFiscalAsync(omieId, ct);
 
             if (omieNf != null)
             {
@@ -55,7 +51,7 @@ namespace Tabatine.Infrastructure.Services
             }
             else
             {
-                _logger.LogWarning("Nota Fiscal OmieId {OmieId} não encontrada na Omie para consulta individual.", omieId);
+                logger.LogWarning("Nota Fiscal OmieId {OmieId} não encontrada na Omie para consulta individual.", omieId);
             }
         }
 
@@ -72,26 +68,26 @@ namespace Tabatine.Infrastructure.Services
                 .Where(id => id > 0)
                 .Distinct().ToList();
 
-            Dictionary<long, NotaFiscal> existingNfs = await _dbContext.NotasFiscais
+            Dictionary<long, NotaFiscal> existingNfs = await dbContext.NotasFiscais
                         .Include(n => n.Itens)
                         .Include(n => n.Titulos)
                         .Where(n => omieNfIds.Contains(n.OmieId))
                         .ToDictionaryAsync(n => n.OmieId, ct);
 
-            Dictionary<long, Cliente> clientes = await _dbContext.Clientes
+            Dictionary<long, Cliente> clientes = await dbContext.Clientes
                         .Where(c => omieClienteIds.Contains(c.OmieId))
                         .ToDictionaryAsync(c => c.OmieId, ct);
 
             var allOmieProdIds = notasFiscaisOmie.SelectMany(n => n.Det.Select(d => d.Prod.Codigo.ToString())).Distinct().ToList();
-            var produtos = await _dbContext.Produtos
+            var produtos = await dbContext.Produtos
                         .Where(p => allOmieProdIds.Contains(p.CodigoProduto))
                         .ToDictionaryAsync(p => p.CodigoProduto, ct);
 
-            Dictionary<long, PedidoVenda> pedidos = await _dbContext.PedidosVenda
+            Dictionary<long, PedidoVenda> pedidos = await dbContext.PedidosVenda
                         .Where(p => omiePedidoIds.Contains(p.OmieId))
                         .ToDictionaryAsync(p => p.OmieId, ct);
 
-            Dictionary<long, Vendedor> vendedores = await _dbContext.Vendedores
+            Dictionary<long, Vendedor> vendedores = await dbContext.Vendedores
                         .Where(v => omieVendedorIds.Contains(v.OmieId))
                         .ToDictionaryAsync(v => v.OmieId, ct);
 
@@ -180,7 +176,7 @@ namespace Tabatine.Infrastructure.Services
                     if (DateTime.TryParseExact(omieNf.Ide.DataSaida, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dSai)) existing.DataSaida = DateTime.SpecifyKind(dSai, DateTimeKind.Utc);
                     if (TimeSpan.TryParse(omieNf.Ide.HoraSaida, out var hSai)) existing.HoraSaida = hSai;
 
-                    _dbContext.NotasFiscais.Add(existing);
+                    dbContext.NotasFiscais.Add(existing);
                 }
                 else
                 {
@@ -229,9 +225,9 @@ namespace Tabatine.Infrastructure.Services
                     if (TimeSpan.TryParse(omieNf.Ide.HoraSaida, out var hSaiU)) existing.HoraSaida = hSaiU;
                     else existing.HoraSaida = null;
 
-                    foreach (var item in existing.Itens.ToList()) _dbContext.ItensNotaFiscal.Remove(item);
+                    foreach (var item in existing.Itens.ToList()) dbContext.ItensNotaFiscal.Remove(item);
                     existing.Itens.Clear();
-                    foreach (var titulo in existing.Titulos.ToList()) _dbContext.NotaFiscalTitulos.Remove(titulo);
+                    foreach (var titulo in existing.Titulos.ToList()) dbContext.NotaFiscalTitulos.Remove(titulo);
                     existing.Titulos.Clear();
                 }
 
@@ -292,11 +288,11 @@ namespace Tabatine.Infrastructure.Services
 
             try
             {
-                await _dbContext.SaveChangesAsync(ct);
+                await dbContext.SaveChangesAsync(ct);
             }
             catch (DbUpdateConcurrencyException)
             {
-                foreach (var entry in _dbContext.ChangeTracker.Entries().ToList()) entry.State = EntityState.Detached;
+                foreach (var entry in dbContext.ChangeTracker.Entries().ToList()) entry.State = EntityState.Detached;
             }
         }
 

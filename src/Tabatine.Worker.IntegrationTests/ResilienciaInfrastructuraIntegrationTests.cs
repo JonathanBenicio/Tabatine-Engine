@@ -93,6 +93,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
             dbContext.SyncLocks.Add(new SyncLock
             {
                 LockKey = chaveLock,
+                LockToken = Guid.NewGuid().ToString(), // Obrigatório
                 AcquiredAt = DateTime.UtcNow.AddHours(-2), // Expirado há 2h
                 ExpiresAt = DateTime.UtcNow.AddHours(-1),  // Deveria ter expirado há 1h
                 Owner = "worker-morto"
@@ -221,7 +222,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
 
         webhookDB.Should().NotBeNull("O WebhookEvent deve ser persistido com o MessageId correto");
         webhookDB!.Event.Should().Be("Financas.ContaReceber.Incluido");
-        webhookDB.Status.Should().Be("Completed", "O evento processado com sucesso deve ter IsProcessed = true");
+        webhookDB.Status.Should().Be(WebhookEvent.StatusCompleted, "O evento processado com sucesso deve ter status Completed");
     }
 
     // ──────────────────────────────────────────────

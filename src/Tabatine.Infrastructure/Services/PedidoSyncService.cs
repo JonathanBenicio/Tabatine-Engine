@@ -16,26 +16,14 @@ using Tabatine.Omie.Client.Models;
 
 namespace Tabatine.Infrastructure.Services
 {
-    public class PedidoSyncService : ISyncService
+    public class PedidoSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<PedidoSyncService> logger) : ISyncService
     {
-        private readonly IOmieClient _omieClient;
-        private readonly AppDbContext _dbContext;
-        private readonly ISyncStateRepository _syncState;
-        private readonly ILogger<PedidoSyncService> _logger;
-
-        public PedidoSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<PedidoSyncService> logger)
-        {
-            _omieClient = omieClient;
-            _dbContext = dbContext;
-            _syncState = syncState;
-            _logger = logger;
-        }
 
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            _logger.LogInformation("Iniciando sincronização de Pedidos de Venda...");
+            logger.LogInformation("Iniciando sincronização de Pedidos de Venda...");
             
-            var lastSyncDate = await _syncState.GetLastSyncDateAsync("Pedidos", ct);
+            var lastSyncDate = await syncState.GetLastSyncDateAsync("Pedidos", ct);
             var syncStartTime = DateTime.UtcNow;
 
             int pagina = 1;
@@ -43,26 +31,26 @@ namespace Tabatine.Infrastructure.Services
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarPedidosAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                var response = await omieClient.ListarPedidosAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
                 
                 if (response == null || response.PedidosVenda == null || response.PedidosVenda.Count == 0) break;
 
                 await ProcessPedidosBatchAsync(response.PedidosVenda, ct);
                 
-                _logger.LogInformation("Página {Pagina} de {Total} de pedidos sincronizada.", pagina, response.TotalDePaginas);
+                logger.LogInformation("Página {Pagina} de {Total} de Pedidos sincronizada.", pagina, response.TotalDePaginas);
 
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;
             }
 
-            await _syncState.SetLastSyncDateAsync("Pedidos", syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Pedidos finalizada.");
+            await syncState.SetLastSyncDateAsync("Pedidos", syncStartTime, ct);
+            logger.LogInformation("Sincronização de Pedidos finalizada.");
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogInformation("Sincronizando Pedido específico OmieId: {OmieId}", omieId);
-            var omiePedido = await _omieClient.ConsultarPedidoAsync(omieId, ct);
+            logger.LogInformation("Sincronizando Pedido específico OmieId: {OmieId}", omieId);
+            var omiePedido = await omieClient.ConsultarPedidoAsync(omieId, ct);
             
             if (omiePedido != null)
             {
@@ -70,7 +58,7 @@ namespace Tabatine.Infrastructure.Services
             }
             else
             {
-                _logger.LogWarning("Pedido OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
+                logger.LogWarning("Pedido OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
             }
         }
 
@@ -96,47 +84,47 @@ namespace Tabatine.Infrastructure.Services
 
             var omieMeioPagamentoCodigos = pedidosOmie.SelectMany(p => p.ListaParcelas?.Parcelas.Where(par => !string.IsNullOrEmpty(par.MeioPagamento)).Select(par => par.MeioPagamento!) ?? Enumerable.Empty<string>()).Distinct().ToList();
 
-            var existingPedidos = await _dbContext.PedidosVenda
+            var existingPedidos = await dbContext.PedidosVenda
                 .Include(p => p.Itens)
                 .Include(p => p.Parcelas)
                 .Where(p => omiePedidoIds.Contains(p.OmieId))
                 .ToDictionaryAsync(p => p.OmieId, ct);
 
-            var clientes = await _dbContext.Clientes
+            var clientes = await dbContext.Clientes
                 .Where(c => omieClienteIds.Contains(c.OmieId))
                 .ToDictionaryAsync(c => c.OmieId, ct);
 
-            var produtos = await _dbContext.Produtos
+            var produtos = await dbContext.Produtos
                 .Where(p => omieProdutoIds.Contains(p.OmieId))
                 .ToDictionaryAsync(p => p.OmieId, ct);
 
-            var vendedores = await _dbContext.Vendedores
+            var vendedores = await dbContext.Vendedores
                 .Where(v => omieVendedorIds.Contains(v.OmieId))
                 .ToDictionaryAsync(v => v.OmieId, ct);
 
-            var contasCorrente = await _dbContext.ContasCorrente
+            var contasCorrente = await dbContext.ContasCorrente
                 .Where(c => omieContaCorrenteIds.Contains(c.OmieId))
                 .ToDictionaryAsync(c => c.OmieId, ct);
 
-            var etapas = await _dbContext.EtapasFaturamento
+            var etapas = await dbContext.EtapasFaturamento
                 .Where(e => omieEtapas.Contains(e.Codigo))
                 .Select(e => new { e.Codigo, e.Id })
                 .ToListAsync(ct);
             var etapasDict = etapas.GroupBy(e => e.Codigo).ToDictionary(g => g.Key, g => g.First().Id);
 
-            var formas = await _dbContext.FormasPagamento
+            var formas = await dbContext.FormasPagamento
                 .Where(f => omieFormas.Contains(f.Codigo))
                 .Select(f => new { f.Codigo, f.Id })
                 .ToListAsync(ct);
             var formasDict = formas.GroupBy(f => f.Codigo).ToDictionary(g => g.Key, g => g.First().Id);
 
-            var condicoes = await _dbContext.CondicoesPagamento
+            var condicoes = await dbContext.CondicoesPagamento
                 .Where(c => omieCondicoesPagamentoIds.Contains(c.OmieId))
                 .Select(c => new { c.OmieId, c.Id })
                 .ToListAsync(ct);
             var condicoesDict = condicoes.GroupBy(c => c.OmieId).ToDictionary(g => g.Key, g => g.First().Id);
 
-            var meios = await _dbContext.MeiosPagamento
+            var meios = await dbContext.MeiosPagamento
                 .Where(m => omieMeioPagamentoCodigos.Contains(m.Codigo))
                 .Select(m => new { m.Codigo, m.Id })
                 .ToListAsync(ct);
@@ -153,7 +141,7 @@ namespace Tabatine.Infrastructure.Services
 
                 if (!clientes.TryGetValue(omiePedido.Cabecalho.CodigoCliente, out var cliente))
                 {
-                    _logger.LogWarning("Cliente {Id} não encontrado. Pulando pedido {Ped}.", omiePedido.Cabecalho.CodigoCliente, omiePedido.Cabecalho.NumeroPedido);
+                    logger.LogWarning("Cliente {Id} não encontrado. Pulando pedido {Ped}.", omiePedido.Cabecalho.CodigoCliente, omiePedido.Cabecalho.NumeroPedido);
                     continue;
                 }
 
@@ -241,7 +229,7 @@ namespace Tabatine.Infrastructure.Services
                         novoPedido.PrevisaoEntrega = DateTime.SpecifyKind(dtPrevEnt, DateTimeKind.Utc);
                     }
 
-                    _dbContext.PedidosVenda.Add(novoPedido);
+                    dbContext.PedidosVenda.Add(novoPedido);
                     existingPedido = novoPedido;
                 }
                 else
@@ -322,12 +310,12 @@ namespace Tabatine.Infrastructure.Services
                 }
 
                 // Remove itens existentes de forma robusta via contexto para garantir que o EF rastreie a remoção
-                var itemsToDelete = await _dbContext.ItensPedido.Where(i => i.PedidoVendaId == existingPedido.Id).ToListAsync(ct);
+                var itemsToDelete = await dbContext.ItensPedido.Where(i => i.PedidoVendaId == existingPedido.Id).ToListAsync(ct);
                 if (itemsToDelete.Any())
                 {
-                    _logger.LogDebug("Removendo {Count} itens existentes do pedido {OmieId} (ID: {Id})", itemsToDelete.Count, existingPedido.OmieId, existingPedido.Id);
-                    _dbContext.ItensPedido.RemoveRange(itemsToDelete);
-                    await _dbContext.SaveChangesAsync(ct); // Flush deletion to avoid conflicts
+                    logger.LogDebug("Removendo {Count} itens existentes do pedido {OmieId} (ID: {Id})", itemsToDelete.Count, existingPedido.OmieId, existingPedido.Id);
+                    dbContext.ItensPedido.RemoveRange(itemsToDelete);
+                    await dbContext.SaveChangesAsync(ct); // Flush deletion to avoid conflicts
                     existingPedido.Itens.Clear();
                 }
 
@@ -385,12 +373,12 @@ namespace Tabatine.Infrastructure.Services
                 }
 
                 // Remove parcelas existentes de forma robusta
-                var parcelasToDelete = await _dbContext.PedidoParcelas.Where(p => p.PedidoVendaId == existingPedido.Id).ToListAsync(ct);
+                var parcelasToDelete = await dbContext.PedidoParcelas.Where(p => p.PedidoVendaId == existingPedido.Id).ToListAsync(ct);
                 if (parcelasToDelete.Any())
                 {
-                    _logger.LogDebug("Removendo {Count} parcelas existentes do pedido {OmieId}", parcelasToDelete.Count, existingPedido.OmieId);
-                    _dbContext.PedidoParcelas.RemoveRange(parcelasToDelete);
-                    await _dbContext.SaveChangesAsync(ct);
+                    logger.LogDebug("Removendo {Count} parcelas existentes do pedido {OmieId}", parcelasToDelete.Count, existingPedido.OmieId);
+                    dbContext.PedidoParcelas.RemoveRange(parcelasToDelete);
+                    await dbContext.SaveChangesAsync(ct);
                     existingPedido.Parcelas.Clear();
                 }
 
@@ -425,24 +413,24 @@ namespace Tabatine.Infrastructure.Services
             {
                 try
                 {
-                    await _dbContext.SaveChangesAsync(ct);
+                    await dbContext.SaveChangesAsync(ct);
                     break;
                 }
                 catch (DbUpdateConcurrencyException ex)
                 {
                     retries++;
-                    _logger.LogWarning(ex, "Concorrência detectada no pedido {OmieId}. Tentativa {Retry} de {Max}.", omiePedidoIds, retries, maxRetries);
+                    logger.LogWarning(ex, "Concorrência detectada no pedido {OmieId}. Tentativa {Retry} de {Max}.", omiePedidoIds, retries, maxRetries);
                     
                     if (retries >= maxRetries) throw;
                     
                     // Recarrega o estado do banco para todas as entidades afetadas e limpa o tracker se necessário
-                    foreach (var entry in _dbContext.ChangeTracker.Entries().ToList())
+                    foreach (var entry in dbContext.ChangeTracker.Entries().ToList())
                     {
                         await entry.ReloadAsync(ct);
                         if (entry.Entity is PedidoVenda pedido)
                         {
-                            await _dbContext.Entry(pedido).Collection(p => p.Itens).LoadAsync(ct);
-                            await _dbContext.Entry(pedido).Collection(p => p.Parcelas).LoadAsync(ct);
+                            await dbContext.Entry(pedido).Collection(p => p.Itens).LoadAsync(ct);
+                            await dbContext.Entry(pedido).Collection(p => p.Parcelas).LoadAsync(ct);
                         }
                     }
                 }

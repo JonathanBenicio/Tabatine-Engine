@@ -13,30 +13,22 @@ using System.Threading.Tasks;
 
 namespace Tabatine.Infrastructure.Services
 {
-    public class EstoqueSyncService : ISyncService
+    public class EstoqueSyncService(
+        IOmieClient omieClient,
+        AppDbContext dbContext,
+        ISyncStateRepository syncState,
+        ILogger<EstoqueSyncService> logger) : ISyncService
     {
-        private readonly IOmieClient _omieClient;
-        private readonly AppDbContext _dbContext;
-        private readonly ILogger<EstoqueSyncService> _logger;
-
-        public EstoqueSyncService(
-            IOmieClient omieClient, 
-            AppDbContext dbContext, 
-            ILogger<EstoqueSyncService> logger)
-        {
-            _omieClient = omieClient;
-            _dbContext = dbContext;
-            _logger = logger;
-        }
-
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            _logger.LogInformation("Iniciando sincronização completa de Estoque...");
+            logger.LogInformation("Iniciando sincronização completa de Estoque...");
+            var syncStartTime = DateTime.UtcNow;
 
             await SyncLocaisAsync(ct);
             await SyncSaldosAsync(ct);
 
-            _logger.LogInformation("Sincronização de Estoque finalizada.");
+            await syncState.SetLastSyncDateAsync("Estoque", syncStartTime, ct);
+            logger.LogInformation("Sincronização de Estoque finalizada.");
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
@@ -47,41 +39,39 @@ namespace Tabatine.Infrastructure.Services
 
         public async Task SyncLocalByIdAsync(long localId, CancellationToken ct = default)
         {
-            _logger.LogInformation("Sincronizando Local de Estoque individual. OmieId: {LocalId}", localId);
-            
-            // Omie não tem consulta individual de local por ID numérico direto no "obter", 
-            // mas podemos usar a listagem filtrada se existir ou simplesmente rodar o SyncLocaisAsync que é leve.
-            // Para ser 100% preciso e seguir o padrão, rodamos o SyncLocaisAsync filtrado ou completo.
-            // Como são poucos locais, SyncLocaisAsync(ct) é suficiente e seguro.
+            logger.LogInformation("Sincronizando Local de Estoque individual. OmieId: {LocalId}", localId);
             await SyncLocaisAsync(ct);
         }
 
         private async Task SyncProdutoSaldoAsync(long omieId, CancellationToken ct)
         {
-            _logger.LogInformation("Sincronizando saldo específico para Produto OmieId: {OmieId}", omieId);
+            logger.LogInformation("Sincronizando saldo específico para Produto OmieId: {OmieId}", omieId);
             
-            // Busca o produto no banco local
-            var produto = await _dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieId, ct);
+            var produto = await dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieId, ct);
             if (produto == null)
             {
-                _logger.LogWarning("Produto OmieId {OmieId} não encontrado no banco local. Sincronize o produto primeiro.", omieId);
+                logger.LogWarning("Produto OmieId {OmieId} não encontrado no banco local. Sincronize o produto primeiro.", omieId);
                 return;
             }
 
-            // Consulta resumo na Omie
             var request = new ObterEstoqueProdutoRequest { IdProduto = omieId };
-            var response = await _omieClient.ObterResumoEstoqueProdutoAsync(request, ct);
+            var response = await omieClient.ObterResumoEstoqueProdutoAsync(request, ct);
 
             if (response != null && response.ListaEstoque != null)
             {
-                var locaisCache = await _dbContext.LocaisEstoque.ToDictionaryAsync(l => l.OmieId, ct);
+                var locaisCache = await dbContext.LocaisEstoque.ToDictionaryAsync(l => l.OmieId, ct);
 
                 foreach (var item in response.ListaEstoque)
                 {
                     if (!locaisCache.TryGetValue(item.IdLocal, out var local))
                     {
-                        _logger.LogWarning("Local de Estoque OmieId {LocalId} não encontrado localmente. Ignorando saldo.", item.IdLocal);
-                        continue;
+                        var localDB = await dbContext.LocaisEstoque.FirstOrDefaultAsync(l => l.OmieId == item.IdLocal, ct);
+                        if (localDB == null)
+                        {
+                            logger.LogWarning("Local de Estoque OmieId {LocalId} não encontrado localmente. Sincronize locais primeiro.", item.IdLocal);
+                            continue;
+                        }
+                        local = localDB;
                     }
 
                     await UpsertSaldoAsync(produto.Id, local.Id, new ProdutoEstoqueDto
@@ -95,17 +85,17 @@ namespace Tabatine.Infrastructure.Services
                     }, ct);
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
+                await dbContext.SaveChangesAsync(ct);
             }
         }
 
         private async Task SyncLocaisAsync(CancellationToken ct)
         {
-            _logger.LogInformation("Sincronizando Locais de Estoque...");
+            logger.LogInformation("Sincronizando Locais de Estoque...");
             
-            var existingLocais = await _dbContext.LocaisEstoque.ToDictionaryAsync(l => l.OmieId, ct);
+            var existingLocais = await dbContext.LocaisEstoque.ToDictionaryAsync(l => l.OmieId, ct);
 
-            await foreach (var item in _omieClient.ListarLocaisEstoqueAsync(ct))
+            await foreach (var item in omieClient.ListarLocaisEstoqueAsync(ct))
             {
                 if (existingLocais.TryGetValue(item.CodigoLocalEstoque, out var existing))
                 {
@@ -130,22 +120,21 @@ namespace Tabatine.Infrastructure.Services
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
-                    _dbContext.LocaisEstoque.Add(novo);
+                    dbContext.LocaisEstoque.Add(novo);
                     existingLocais[novo.OmieId] = novo;
                 }
             }
 
-            await _dbContext.SaveChangesAsync(ct);
-            _logger.LogInformation("Sincronização de Locais de Estoque finalizada.");
+            await dbContext.SaveChangesAsync(ct);
+            logger.LogInformation("Sincronização de Locais de Estoque finalizada.");
         }
 
         private async Task SyncSaldosAsync(CancellationToken ct)
         {
-            _logger.LogInformation("Sincronizando Saldos de Estoque (Streaming)...");
+            logger.LogInformation("Sincronizando Saldos de Estoque (Streaming)...");
 
-            // Cache de IDs para evitar múltiplas consultas ao banco dentro do loop
-            var produtosCache = await _dbContext.Produtos.Select(p => new { p.Id, p.OmieId }).ToDictionaryAsync(p => p.OmieId, p => p.Id, ct);
-            var locaisCache = await _dbContext.LocaisEstoque.Select(l => new { l.Id, l.OmieId }).ToDictionaryAsync(l => l.OmieId, l => l.Id, ct);
+            var produtosCache = await dbContext.Produtos.Select(p => new { p.Id, p.OmieId }).ToDictionaryAsync(p => p.OmieId, p => p.Id, ct);
+            var locaisCache = await dbContext.LocaisEstoque.Select(l => new { l.Id, l.OmieId }).ToDictionaryAsync(l => l.OmieId, l => l.Id, ct);
 
             var request = new ListarPosEstoqueRequest 
             { 
@@ -155,18 +144,29 @@ namespace Tabatine.Infrastructure.Services
             };
 
             int count = 0;
-            await foreach (var item in _omieClient.StreamPosicaoEstoqueAsync(request, ct))
+            await foreach (var item in omieClient.StreamPosicaoEstoqueAsync(request, ct))
             {
                 if (!produtosCache.TryGetValue(item.CodProd, out var produtoId))
                 {
-                    _logger.LogDebug("Produto OmieId {OmieId} não encontrado no banco local. Pulando saldo.", item.CodProd);
+                    logger.LogDebug("Produto OmieId {OmieId} não encontrado no banco local. Pulando saldo.", item.CodProd);
                     continue;
                 }
 
                 if (!locaisCache.TryGetValue(item.CodigoLocalEstoque, out var localId))
                 {
-                    _logger.LogDebug("Local OmieId {LocalId} não encontrado no banco local. Pulando saldo.", item.CodigoLocalEstoque);
-                    continue;
+                    var localDB = await dbContext.LocaisEstoque
+                        .Select(l => new { l.Id, l.OmieId })
+                        .FirstOrDefaultAsync(l => l.OmieId == item.CodigoLocalEstoque, ct);
+
+                    if (localDB == null)
+                    {
+                        logger.LogWarning("Local OmieId {LocalId} não encontrado no banco local. Pulando saldo para Produto {CodProd}.", 
+                            item.CodigoLocalEstoque, item.CodProd);
+                        continue;
+                    }
+                    
+                    localId = localDB.Id;
+                    locaisCache[item.CodigoLocalEstoque] = localId;
                 }
 
                 await UpsertSaldoAsync(produtoId, localId, item, ct);
@@ -174,18 +174,18 @@ namespace Tabatine.Infrastructure.Services
                 count++;
                 if (count % 500 == 0)
                 {
-                    await _dbContext.SaveChangesAsync(ct);
-                    _logger.LogInformation("{Count} saldos processados...", count);
+                    await dbContext.SaveChangesAsync(ct);
+                    logger.LogInformation("Progresso do Estoque: {Count} saldos processados.", count);
                 }
             }
 
-            await _dbContext.SaveChangesAsync(ct);
-            _logger.LogInformation("Total de {Count} registros de saldo processados.", count);
+            await dbContext.SaveChangesAsync(ct);
+            logger.LogInformation("Total de {Count} registros de saldo processados.", count);
         }
 
         private async Task UpsertSaldoAsync(Guid produtoId, Guid localId, ProdutoEstoqueDto dto, CancellationToken ct)
         {
-            var existing = await _dbContext.ProdutosEstoque
+            var existing = await dbContext.ProdutosEstoque
                 .FirstOrDefaultAsync(se => se.ProdutoId == produtoId && se.LocalEstoqueId == localId, ct);
 
             if (existing != null)
@@ -213,7 +213,7 @@ namespace Tabatine.Infrastructure.Services
                     EstoqueMinimo = dto.EstoqueMinimo,
                     UpdatedAt = DateTime.UtcNow
                 };
-                _dbContext.ProdutosEstoque.Add(novo);
+                dbContext.ProdutosEstoque.Add(novo);
             }
         }
 

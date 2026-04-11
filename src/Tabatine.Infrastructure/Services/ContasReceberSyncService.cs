@@ -14,32 +14,19 @@ using System.Threading.Tasks;
 
 namespace Tabatine.Infrastructure.Services
 {
-    public class ContasReceberSyncService : ISyncService
+    public class ContasReceberSyncService(
+        IOmieClient omieClient,
+        AppDbContext dbContext,
+        ISyncStateRepository syncState,
+        ILogger<ContasReceberSyncService> logger) : ISyncService
     {
-        private readonly IOmieClient _omieClient;
-        private readonly AppDbContext _dbContext;
-        private readonly ISyncStateRepository _syncState;
-        private readonly ILogger<ContasReceberSyncService> _logger;
-
-        private const string SyncKey = "ContasReceber";
-
-        public ContasReceberSyncService(
-            IOmieClient omieClient,
-            AppDbContext dbContext,
-            ISyncStateRepository syncState,
-            ILogger<ContasReceberSyncService> logger)
-        {
-            _omieClient = omieClient;
-            _dbContext = dbContext;
-            _syncState = syncState;
-            _logger = logger;
-        }
+        private const string SyncKey = "LancamentosReceber";
 
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            _logger.LogInformation("Iniciando sincronização de Contas a Receber...");
+            logger.LogInformation("Iniciando sincronização de Contas a Receber...");
 
-            var lastSyncDate = await _syncState.GetLastSyncDateAsync(SyncKey, ct);
+            var lastSyncDate = await syncState.GetLastSyncDateAsync(SyncKey, ct);
             var syncStartTime = DateTime.UtcNow;
 
             var processedOmieIds = new HashSet<long>();
@@ -48,7 +35,7 @@ namespace Tabatine.Infrastructure.Services
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarContasReceberAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                var response = await omieClient.ListarContasReceberAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
 
                 if (response?.ContasReceber == null || response.ContasReceber.Count == 0) break;
 
@@ -65,20 +52,20 @@ namespace Tabatine.Infrastructure.Services
                     .Where(t => t.CodigoContaCorrente.HasValue)
                     .Select(t => t.CodigoContaCorrente!.Value).Distinct().ToList();
 
-                var clientes = await _dbContext.Clientes
+                var clientes = await dbContext.Clientes
                     .Where(c => omieClienteIds.Contains(c.OmieId))
                     .ToDictionaryAsync(c => c.OmieId, ct);
 
-                var vendedores = await _dbContext.Vendedores
+                var vendedores = await dbContext.Vendedores
                     .Where(v => omieVendedorIds.Contains(v.OmieId))
                     .ToDictionaryAsync(v => v.OmieId, ct);
 
-                var contasCorrente = await _dbContext.ContasCorrente
+                var contasCorrente = await dbContext.ContasCorrente
                     .Where(cc => omieContaIds.Contains(cc.OmieId))
                     .ToDictionaryAsync(cc => cc.OmieId, ct);
 
                 var omieIds = response.ContasReceber.Select(t => t.CodigoLancamentoOmie).ToList();
-                var existingTitulos = await _dbContext.TitulosReceber
+                var existingTitulos = await dbContext.TitulosReceber
                     .Where(t => omieIds.Contains(t.OmieId))
                     .ToDictionaryAsync(t => t.OmieId, ct);
 
@@ -88,7 +75,7 @@ namespace Tabatine.Infrastructure.Services
 
                     if (!processedOmieIds.Add(omieId))
                     {
-                        _logger.LogDebug("TituloReceber OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
+                        logger.LogDebug("TituloReceber OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
                         continue;
                     }
 
@@ -101,7 +88,7 @@ namespace Tabatine.Infrastructure.Services
                     if (existing == null)
                     {
                         var novo = MapToEntity(omieItem, cliente, vendedor, contaCorrente);
-                        _dbContext.TitulosReceber.Add(novo);
+                        dbContext.TitulosReceber.Add(novo);
                         existingTitulos[omieId] = novo;
                     }
                     else
@@ -110,64 +97,64 @@ namespace Tabatine.Infrastructure.Services
                     }
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de títulos a receber sincronizada.", pagina, response.TotalDePaginas);
+                await dbContext.SaveChangesAsync(ct);
+                logger.LogInformation("Página {Pagina} de {Total} de Contas a Receber sincronizada.", pagina, response.TotalDePaginas);
 
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;
             }
 
-            await _syncState.SetLastSyncDateAsync(SyncKey, syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Contas a Receber finalizada. Total processado: {Count}", processedOmieIds.Count);
+            await syncState.SetLastSyncDateAsync(SyncKey, syncStartTime, ct);
+            logger.LogInformation("Sincronização de Contas a Receber finalizada. Total processado: {Count}", processedOmieIds.Count);
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogInformation("Sincronizando TituloReceber específico OmieId: {OmieId}", omieId);
-            var omieItem = await _omieClient.ConsultarContaReceberAsync(omieId, ct);
+            logger.LogInformation("Sincronizando TituloReceber específico OmieId: {OmieId}", omieId);
+            var omieItem = await omieClient.ConsultarContaReceberAsync(omieId, ct);
 
             if (omieItem != null)
             {
                 // Busca dependências necessárias
-                var cliente = await _dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieItem.CodigoClienteFornecedor, ct);
+                var cliente = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieItem.CodigoClienteFornecedor, ct);
                 var vendedor = omieItem.CodigoVendedor.HasValue 
-                    ? await _dbContext.Vendedores.FirstOrDefaultAsync(v => v.OmieId == omieItem.CodigoVendedor.Value, ct) 
+                    ? await dbContext.Vendedores.FirstOrDefaultAsync(v => v.OmieId == omieItem.CodigoVendedor.Value, ct) 
                     : null;
                 var contaCorrente = omieItem.CodigoContaCorrente.HasValue 
-                    ? await _dbContext.ContasCorrente.FirstOrDefaultAsync(cc => cc.OmieId == omieItem.CodigoContaCorrente.Value, ct) 
+                    ? await dbContext.ContasCorrente.FirstOrDefaultAsync(cc => cc.OmieId == omieItem.CodigoContaCorrente.Value, ct) 
                     : null;
 
-                var existing = await _dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieId, ct);
+                var existing = await dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieId, ct);
 
                 if (existing == null)
                 {
-                    _dbContext.TitulosReceber.Add(MapToEntity(omieItem, cliente, vendedor, contaCorrente));
+                    dbContext.TitulosReceber.Add(MapToEntity(omieItem, cliente, vendedor, contaCorrente));
                 }
                 else
                 {
                     AtualizarEntidade(existing, omieItem, cliente, vendedor, contaCorrente);
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("TituloReceber OmieId {OmieId} sincronizado com sucesso.", omieId);
+                await dbContext.SaveChangesAsync(ct);
+                logger.LogInformation("TituloReceber OmieId {OmieId} sincronizado com sucesso.", omieId);
             }
             else
             {
-                _logger.LogWarning("TituloReceber OmieId {OmieId} não encontrado na Omie.", omieId);
+                logger.LogWarning("TituloReceber OmieId {OmieId} não encontrado na Omie.", omieId);
             }
         }
 
         public async Task CancelByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogInformation("Cancelando TituloReceber OmieId: {OmieId} localmente via soft-delete.", omieId);
-            var existing = await _dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieId, ct);
+            logger.LogInformation("Cancelando TituloReceber OmieId: {OmieId} localmente via soft-delete.", omieId);
+            var existing = await dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieId, ct);
             
             if (existing != null)
             {
                 existing.StatusTitulo = "CANCELADO";
                 existing.UpdatedAt = DateTime.UtcNow;
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("TituloReceber OmieId {OmieId} marcado como CANCELADO.", omieId);
+                await dbContext.SaveChangesAsync(ct);
+                logger.LogInformation("TituloReceber OmieId {OmieId} marcado como CANCELADO.", omieId);
             }
         }
 
