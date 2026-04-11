@@ -65,6 +65,7 @@ public class IntegrationTestWebAppFactory : WebApplicationFactory<Program>, IAsy
 
     public new async Task DisposeAsync()
     {
+        await base.DisposeAsync();
         await _dbContainer.StopAsync();
     }
 
