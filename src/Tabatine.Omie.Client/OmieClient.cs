@@ -95,8 +95,14 @@ namespace Tabatine.Omie.Client
             var param = new ListarClientesParam { Pagina = pagina };
             if (filtrarDe.HasValue)
             {
-                param.ExibirApenasAlterados = "S";
-                param.DataAlteracaoDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+                param.FiltrarPorHoraDe = filtrarDe.Value.ToString("HH:mm:ss");
+            }
+            if (filtrarAte.HasValue)
+            {
+                param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
+                param.FiltrarPorHoraAte = filtrarAte.Value.ToString("HH:mm:ss");
             }
             return await SendRequestAsync<ListarClientesParam, ListarClientesResponse>("geral/clientes/", "ListarClientes", param, cancellationToken);
         }
@@ -104,7 +110,11 @@ namespace Tabatine.Omie.Client
         public async Task<ListarProdutosResponse> ListarProdutosAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
             var param = new ListarProdutosParam { Pagina = pagina };
-            if (filtrarDe.HasValue) param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            if (filtrarDe.HasValue)
+            {
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            }
             if (filtrarAte.HasValue) param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
             return await SendRequestAsync<ListarProdutosParam, ListarProdutosResponse>("geral/produtos/", "ListarProdutos", param, cancellationToken);
         }
@@ -112,7 +122,11 @@ namespace Tabatine.Omie.Client
         public async Task<ListarPedidosResponse> ListarPedidosAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
             var param = new ListarPedidosParam { Pagina = pagina };
-            if (filtrarDe.HasValue) param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            if (filtrarDe.HasValue)
+            {
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            }
             if (filtrarAte.HasValue) param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
             return await SendRequestAsync<ListarPedidosParam, ListarPedidosResponse>("produtos/pedido/", "ListarPedidos", param, cancellationToken);
         }
@@ -135,11 +149,12 @@ namespace Tabatine.Omie.Client
         public async Task<ListarVendedoresResponse> ListarVendedoresAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
             var param = new ListarVendedoresParam { Pagina = pagina };
-            // if (filtrarDe.HasValue || filtrarAte.HasValue)
-            // {
-            //     param.FiltrarPorDataDe = filtrarDe?.ToString("dd/MM/yyyy");
-            //     param.FiltrarPorDataAte = filtrarAte?.ToString("dd/MM/yyyy");
-            // }
+            if (filtrarDe.HasValue)
+            {
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            }
+            if (filtrarAte.HasValue) param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
 
             return await SendRequestAsync<ListarVendedoresParam, ListarVendedoresResponse>("geral/vendedores/", "ListarVendedores", param, cancellationToken);
         }

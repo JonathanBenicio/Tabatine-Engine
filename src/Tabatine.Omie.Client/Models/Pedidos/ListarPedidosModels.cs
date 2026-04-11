@@ -14,6 +14,12 @@ namespace Tabatine.Omie.Client.Models.Pedidos
         [JsonPropertyName("apenas_importado_api")]
         public string ApenasImportadoApi { get; set; } = "N";
 
+        [JsonPropertyName("filtrar_apenas_alteracao")]
+        public string FiltrarApenasAlteracao { get; set; } = "N";
+
+        [JsonPropertyName("filtrar_apenas_inclusao")]
+        public string FiltrarApenasInclusao { get; set; } = "N";
+
         [JsonPropertyName("filtrar_por_data_de")]
         public string? FiltrarPorDataDe { get; set; }
 

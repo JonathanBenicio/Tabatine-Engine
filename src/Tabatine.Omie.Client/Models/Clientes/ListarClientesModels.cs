@@ -13,14 +13,20 @@ namespace Tabatine.Omie.Client.Models.Clientes
         [JsonPropertyName("apenas_importado_api")]
         public string ApenasImportadoApi { get; set; } = "N";
 
-        [JsonPropertyName("exibir_apenas_alterados")]
-        public string ExibirApenasAlterados { get; set; } = "N";
+        [JsonPropertyName("filtrar_apenas_alteracao")]
+        public string FiltrarApenasAlteracao { get; set; } = "N";
 
-        [JsonPropertyName("data_alteracao_de")]
-        public string? DataAlteracaoDe { get; set; }
+        [JsonPropertyName("filtrar_por_data_de")]
+        public string? FiltrarPorDataDe { get; set; }
 
-        [JsonPropertyName("clientesFiltro")]
-        public ClientesFiltro ClientesFiltro { get; set; } = new();
+        [JsonPropertyName("filtrar_por_data_ate")]
+        public string? FiltrarPorDataAte { get; set; }
+
+        [JsonPropertyName("filtrar_por_hora_de")]
+        public string? FiltrarPorHoraDe { get; set; }
+
+        [JsonPropertyName("filtrar_por_hora_ate")]
+        public string? FiltrarPorHoraAte { get; set; }
     }
 
     public class ClientesFiltro
