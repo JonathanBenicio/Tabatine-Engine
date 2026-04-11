@@ -18,18 +18,21 @@ namespace Tabatine.Infrastructure.Services
     {
         private readonly IOmieClient _omieClient;
         private readonly AppDbContext _dbContext;
+        private readonly ISyncStateRepository _syncState;
         private readonly ILogger<VendedorSyncService> _logger;
 
-        public VendedorSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<VendedorSyncService> logger)
+        public VendedorSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<VendedorSyncService> logger)
         {
             _omieClient = omieClient;
             _dbContext = dbContext;
+            _syncState = syncState;
             _logger = logger;
         }
 
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            _logger.LogInformation("Iniciando sincronização de Vendedores...");
+            var lastSyncDate = await _syncState.GetLastSyncDateAsync("Vendedores", ct);
+            _logger.LogInformation("Iniciando sincronização de Vendedores a partir de {LastSyncDate}...", lastSyncDate?.ToString("yyyy-MM-dd") ?? "o início");
 
             // Rastreia OmieIds já processados neste ciclo para evitar duplicatas
             var processedOmieIds = new HashSet<long>();
@@ -39,7 +42,7 @@ namespace Tabatine.Infrastructure.Services
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarVendedoresAsync(pagina, cancellationToken: ct);
+                var response = await _omieClient.ListarVendedoresAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
 
                 if (response == null || response.Vendedores == null || response.Vendedores.Count == 0) break;
 
@@ -102,6 +105,11 @@ namespace Tabatine.Infrastructure.Services
                 _logger.LogInformation("Página {Pagina} de {Total} de vendedores sincronizada.", pagina, response.TotalDePaginas);
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;
+            }
+
+            if (!ct.IsCancellationRequested)
+            {
+                await _syncState.SetLastSyncDateAsync("Vendedores", DateTime.UtcNow, ct);
             }
 
             _logger.LogInformation("Sincronização de Vendedores finalizada.");
