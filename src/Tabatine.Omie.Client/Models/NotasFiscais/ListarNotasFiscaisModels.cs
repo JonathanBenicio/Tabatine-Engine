@@ -35,12 +35,7 @@ namespace Tabatine.Omie.Client.Models.NotasFiscais
         [JsonPropertyName("apenas_importado_api")]
         public string ApenasImportadoApi { get; set; } = "N";
 
-        // Campos legados/não documentados no JsonClient oficial para ListarNF
-        [JsonPropertyName("dAltInicial")]
-        public string? DataAlteracaoDe { get; set; }
 
-        [JsonPropertyName("hAltInicial")]
-        public string? HoraAlteracaoDe { get; set; }
     }
 
     public class OmieNotaFiscal
