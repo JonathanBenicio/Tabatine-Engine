@@ -144,6 +144,8 @@ namespace Tabatine.Infrastructure.Services
             };
 
             int count = 0;
+            List<(Guid produtoId, Guid localId, ProdutoEstoqueDto dto)> pendingSaldos = [];
+
             await foreach (var item in omieClient.StreamPosicaoEstoqueAsync(request, ct))
             {
                 if (!produtosCache.TryGetValue(item.CodProd, out var produtoId))
@@ -154,31 +156,30 @@ namespace Tabatine.Infrastructure.Services
 
                 if (!locaisCache.TryGetValue(item.CodigoLocalEstoque, out var localId))
                 {
-                    var localDB = await dbContext.LocaisEstoque
-                        .Select(l => new { l.Id, l.OmieId })
-                        .FirstOrDefaultAsync(l => l.OmieId == item.CodigoLocalEstoque, ct);
-
-                    if (localDB == null)
-                    {
-                        logger.LogWarning("Local OmieId {LocalId} não encontrado no banco local. Pulando saldo para Produto {CodProd}.", 
-                            item.CodigoLocalEstoque, item.CodProd);
-                        continue;
-                    }
-                    
-                    localId = localDB.Id;
-                    locaisCache[item.CodigoLocalEstoque] = localId;
+                    logger.LogWarning("Local OmieId {LocalId} não encontrado no banco local. Pulando saldo para Produto {CodProd}.", 
+                        item.CodigoLocalEstoque, item.CodProd);
+                    continue; // Skip instead of trying to query/add
                 }
 
-                await UpsertSaldoAsync(produtoId, localId, item, ct);
+                pendingSaldos.Add((produtoId, localId, item));
                 
                 count++;
                 if (count % 500 == 0)
                 {
+                    foreach (var (pId, lId, dto) in pendingSaldos)
+                    {
+                        await UpsertSaldoAsync(pId, lId, dto, ct);
+                    }
                     await dbContext.SaveChangesAsync(ct);
                     logger.LogInformation("Progresso do Estoque: {Count} saldos processados.", count);
+                    pendingSaldos.Clear();
                 }
             }
 
+            foreach (var (pId, lId, dto) in pendingSaldos)
+            {
+                await UpsertSaldoAsync(pId, lId, dto, ct);
+            }
             await dbContext.SaveChangesAsync(ct);
             logger.LogInformation("Total de {Count} registros de saldo processados.", count);
         }
