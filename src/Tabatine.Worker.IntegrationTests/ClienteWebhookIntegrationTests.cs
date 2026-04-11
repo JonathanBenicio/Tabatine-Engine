@@ -48,6 +48,9 @@ public class ClienteWebhookIntegrationTests(IntegrationTestWebAppFactory factory
         // Assert
         response.EnsureSuccessStatusCode();
 
+        // Polling
+        await Task.Delay(1000);
+
         // Polling para aguardar o processamento assíncrono (Worker)
         Cliente? clienteDB = null;
         var timeout = TimeSpan.FromSeconds(10);
@@ -60,7 +63,7 @@ public class ClienteWebhookIntegrationTests(IntegrationTestWebAppFactory factory
             clienteDB = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieId);
             
             if (clienteDB != null) break;
-            await Task.Delay(500);
+            await Task.Delay(1000); 
         }
 
         clienteDB.Should().NotBeNull("O cliente deve ser persistido no banco de dados");
