@@ -10,7 +10,7 @@ namespace Tabatine.Omie.Client.Models.Financeiro
         public int Pagina { get; set; } = 1;
 
         [JsonPropertyName("nRegPorPagina")]
-        public int RegistrosPorPagina { get; set; } = 500;
+        public int RegistrosPorPagina { get; set; } = 100;
 
         [JsonPropertyName("dDtAltDe")]
         public string? DataAlteracaoDe { get; set; }
