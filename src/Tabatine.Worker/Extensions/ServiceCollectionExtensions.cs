@@ -99,7 +99,7 @@ public static class ServiceCollectionExtensions
                 Delay = TimeSpan.FromSeconds(3),
                 ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
                     .Handle<HttpRequestException>()
-                    .HandleResult(r => (int)r.StatusCode >= 500)
+                    .HandleResult(r => (int)r.StatusCode >= 500 || (int)r.StatusCode == 425 || (int)r.StatusCode == 429)
             });
 
             pipelineBuilder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
