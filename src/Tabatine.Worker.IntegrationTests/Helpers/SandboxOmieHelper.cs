@@ -20,7 +20,7 @@ public class SandboxOmieHelper(string appKey, string appSecret, string baseUrl)
                 new
                 {
                     codigo_cliente_integracao = Guid.NewGuid().ToString(),
-                    razaao_social = razaoSocial,
+                    razao_social = razaoSocial,
                     cnpj_cpf = documento,
                     nome_fantasia = "TEST-E2E"
                 }
