@@ -22,6 +22,28 @@
 			"type": "string"
 		}
 	],
+	"event": [
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"pm.test(\"Status code is 200\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});",
+					"",
+					"pm.test(\"Validar estrutura base da Omie\", function () {",
+					"    const jsonData = pm.response.json();",
+					"    // Algumas APIs da Omie retornam erro dentro de um 200 (infelizmente)",
+					"    // Verificamos se não há campo de erro crítico",
+					"    if (jsonData.faultstring) {",
+					"        pm.expect.fail(\"Erro na API Omie: \" + jsonData.faultstring);",
+					"    }",
+					"});"
+				]
+			}
+		}
+	],
 	"item": [
 		{
 			"name": "1. Pedidos de Venda (Vendas)",
@@ -1297,6 +1319,117 @@
 							]
 						},
 						"description": "Lista contas a pagar com filtros de data e status.\n\nUsado para sincronizar comissões de vendedores."
+					}
+				}
+			]
+		},
+		{
+			"name": "14. Financeiro — Contas a Receber",
+			"description": "Endpoint: /financeiro/contareceber/\nDocumentação: https://app.omie.com.br/api/v1/financeiro/contareceber/",
+			"item": [
+				{
+					"name": "ListarContasReceber",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarContasReceber\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 100,\n      \"filtrar_por_data_de\": \"01/01/2026\",\n      \"filtrar_por_data_ate\": \"31/12/2026\",\n      \"filtrar_por_status\": \"\",\n      \"apenas_importado_api\": \"N\",\n      \"exibir_obs\": \"S\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/financeiro/contareceber/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"financeiro",
+								"contareceber",
+								""
+							]
+						},
+						"description": "Lista contas a receber com filtros de data e status.\n\nUsado pelo ContasReceberSyncService para sincronização incremental via filtrar_por_data_de/ate.\n\nFiltros relevantes:\n- filtrar_por_status: (vazio = todos, \"Recebido\", \"Atrasado\", \"Cancelado\")\n- filtrar_apenas_omiepdv: \"N\""
+					}
+				},
+				{
+					"name": "ConsultarContaReceber",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ConsultarContaReceber\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"nCodLanc\": 123456789\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/financeiro/contareceber/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"financeiro",
+								"contareceber",
+								""
+							]
+						},
+						"description": "Consulta os detalhes completos de um único título a receber pelo seu ID Omie (nCodLanc).\n\nUsado pelo ContasReceberSyncService.SyncByIdAsync acionado via webhook."
+					}
+				}
+			]
+		},
+		{
+			"name": "15. Financeiro — Movimentos de Caixa/Banco",
+			"description": "Endpoint: /financeiro/pesquisar/\nDocumentação: https://app.omie.com.br/api/v1/financeiro/pesquisar/",
+			"item": [
+				{
+					"name": "ListarMovimentos",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"call\": \"ListarMovimentos\",\n  \"app_key\": \"{{APP_KEY}}\",\n  \"app_secret\": \"{{APP_SECRET}}\",\n  \"param\": [\n    {\n      \"pagina\": 1,\n      \"registros_por_pagina\": 100,\n      \"filtrar_por_data_de\": \"01/01/2026\",\n      \"filtrar_por_data_ate\": \"31/12/2026\",\n      \"filtrar_apenas_conciliados\": \"N\"\n    }\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{OMIE_BASE_URL}}/financeiro/pesquisar/",
+							"host": [
+								"{{OMIE_BASE_URL}}"
+							],
+							"path": [
+								"financeiro",
+								"pesquisar",
+								""
+							]
+						},
+						"description": "Lista movimentos financeiros (baixas/pagamentos) de caixa e banco.\n\nUsado para auditar pagamentos parciais e reconciliar Contas a Receber/Pagar com as movimentações reais de caixa.\n\nFiltros relevantes:\n- filtrar_apenas_conciliados: \"S\" para ver apenas conciliados\n- nCodCC: código da conta corrente para filtrar por banco específico"
 					}
 				}
 			]
