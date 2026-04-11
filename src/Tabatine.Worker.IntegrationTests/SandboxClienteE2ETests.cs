@@ -7,6 +7,7 @@ using Xunit;
 
 namespace Tabatine.Worker.IntegrationTests.Services;
 
+[Trait("Category", "Sandbox")]
 public class SandboxClienteE2ETests(SandboxIntegrationTestWebAppFactory factory) : BaseSandboxIntegrationTest(factory)
 {
     [Fact]

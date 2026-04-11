@@ -2,7 +2,7 @@
   "stryker-config": {
     "project": "Tabatine.Infrastructure.csproj",
     "test-projects": [
-      "../../Tabatine.Worker.IntegrationTests/Tabatine.Worker.IntegrationTests.csproj"
+      "../Tabatine.Worker.IntegrationTests/Tabatine.Worker.IntegrationTests.csproj"
     ],
     "reporters": [
       "html",
@@ -12,9 +12,10 @@
     "mutation-level": "Standard",
     "thresholds": {
       "high": 75,
-      "low": 50,
-      "break": 40
+      "low": 60,
+      "break": 50
     },
+    "dotnet-test-args": "--filter Category=Integrated",
     "mutate": [
       "Services/**/*.cs",
       "Repositories/**/*.cs",

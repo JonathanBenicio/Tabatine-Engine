@@ -9,6 +9,7 @@ using System.Net;
 
 namespace Tabatine.Worker.IntegrationTests.Services;
 
+[Trait("Category", "Integrated")]
 public class OmieResilienciaIntegrationTests(HttpMockIntegrationTestWebAppFactory factory) : BaseHttpMockIntegrationTest(factory)
 {
     [Fact]
