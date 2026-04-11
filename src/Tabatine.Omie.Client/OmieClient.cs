@@ -212,7 +212,11 @@ namespace Tabatine.Omie.Client
             if (!string.IsNullOrEmpty(status))
                 param.FiltrarPorStatus = status;
 
-            if (filtrarDe.HasValue) param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            if (filtrarDe.HasValue)
+            {
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            }
             if (filtrarAte.HasValue) param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
 
             return await SendRequestAsync<ListarContasPagarParam, ListarContasPagarResponse>("financas/contapagar/", "ListarContasPagar", param, cancellationToken);
@@ -230,7 +234,11 @@ namespace Tabatine.Omie.Client
             if (!string.IsNullOrEmpty(status))
                 param.FiltrarPorStatus = status;
 
-            if (filtrarDe.HasValue) param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            if (filtrarDe.HasValue)
+            {
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            }
             if (filtrarAte.HasValue) param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
 
             return await SendRequestAsync<ListarContasReceberParam, ListarContasReceberResponse>("financas/contareceber/", "ListarContasReceber", param, cancellationToken);

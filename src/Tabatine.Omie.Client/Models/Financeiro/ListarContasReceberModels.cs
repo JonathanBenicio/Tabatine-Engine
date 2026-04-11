@@ -23,6 +23,18 @@ namespace Tabatine.Omie.Client.Models.Financeiro
 
         [JsonPropertyName("filtrar_por_data_ate")]
         public string? FiltrarPorDataAte { get; set; }
+
+        [JsonPropertyName("filtrar_apenas_alteracao")]
+        public string? FiltrarApenasAlteracao { get; set; }
+
+        [JsonPropertyName("filtrar_apenas_inclusao")]
+        public string? FiltrarApenasInclusao { get; set; }
+
+        [JsonPropertyName("filtrar_por_registro_de")]
+        public string? FiltrarPorRegistroDe { get; set; }
+
+        [JsonPropertyName("filtrar_por_registro_ate")]
+        public string? FiltrarPorRegistroAte { get; set; }
     }
 
     public class OmieContaReceber
