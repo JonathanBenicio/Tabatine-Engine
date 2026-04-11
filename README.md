@@ -38,6 +38,27 @@ graph TD
     Processor -->|Trigger| ISyncService
 ```
 
+## ⛓️ Esteira de CI/CD (Pipeline)
+
+O projeto utiliza uma esteira modularizada no GitHub Actions para garantir a qualidade e resiliência de cada release. O fluxo é dividido em jobs independentes:
+
+```mermaid
+graph LR
+    Build[🛡️ Build] --> Test[🧪 Tests]
+    Build --> Stryker[🧬 Stryker]
+    Test --> Publish[📦 Publish]
+    Publish --> Deploy[🚀 Deploy]
+    Stryker --> Deploy
+```
+
+1.  **🛡️ Build**: Validação de compilação de todos os projetos da solução.
+2.  **🧪 Tests**: Execução de testes integrados e unitários com relatórios de cobertura (Code Coverage).
+3.  **🧬 Stryker**: Testes de mutação para assegurar a eficácia da suíte de testes.
+4.  **📦 Publish**: Preparação do artefato final para o ambiente de runtime.
+5.  **🚀 Deploy**: Implantação automatizada no Azure Web App (somente via branch `main`).
+
+Para mais detalhes sobre a evolução deste fluxo, consulte a [Issue #46](https://github.com/JonathanBenicio/Tabatine-Engine/issues/46).
+
 ## 🛠️ Como Iniciar
 
 ### Pré-requisitos
