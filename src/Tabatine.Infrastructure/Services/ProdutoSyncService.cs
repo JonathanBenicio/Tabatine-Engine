@@ -16,8 +16,10 @@ namespace Tabatine.Infrastructure.Services
         IOmieClient omieClient, 
         AppDbContext dbContext, 
         ISyncStateRepository syncState, 
-        ILogger<ProdutoSyncService> logger) : ISyncService
+        ILogger<ProdutoSyncService> logger,
+        IDistributedLockService lockService) : ISyncService
     {
+        private const string EntityName = "produto";
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
             logger.LogInformation("Iniciando sincronização de Produtos...");
@@ -44,67 +46,106 @@ namespace Tabatine.Infrastructure.Services
                     .Where(p => omieIds.Contains(p.OmieId))
                     .ToDictionaryAsync(p => p.OmieId, ct);
 
-                foreach (var omieItem in response.ProdutosCadastro)
+                var activeLocks = new Dictionary<long, string>();
+
+                try 
                 {
-                    var omieId = omieItem.CodigoProduto;
-
-                    // Pula se já processamos este OmieId neste ciclo
-                    if (!processedOmieIds.Add(omieId))
+                    foreach (var omieItem in response.ProdutosCadastro)
                     {
-                        logger.LogDebug("Produto OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
-                        continue;
-                    }
+                        var omieId = omieItem.CodigoProduto;
 
-                    existingProdutos.TryGetValue(omieId, out var existing);
-                    var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieItem.DAlt, omieItem.HAlt);
-
-                    if (existing == null)
-                    {
-                        var novoProduto = new Produto
+                        // Adquire trava individual
+                        var lockToken = await AcquireResourceLockAsync(omieId, ct);
+                        if (lockToken == null)
                         {
-                            Id = Guid.NewGuid(),
-                            OmieId = omieId,
-                            CodigoProduto = omieItem.Codigo,
-                            Descricao = omieItem.Descricao,
-                            PrecoUnitario = omieItem.ValorUnitario,
-                            Ncm = omieItem.Ncm,
-                            UnidadeMedida = omieItem.Unidade,
-                            PesoLiquido = omieItem.PesoLiquido,
-                            PesoBruto = omieItem.PesoBruto,
-                            FamiliaProduto = omieItem.FamiliaProduto,
-                            Ativo = omieItem.Inativo == "N",
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow,
-                            OmieUpdatedAt = omieLastAlt
-                        };
-                        dbContext.Produtos.Add(novoProduto);
-                        existingProdutos[omieId] = novoProduto;
-                    }
-                    else
-                    {
-                        // Se o timestamp da Omie for igual ao que já temos, pula o update
-                        if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
-                            existing.OmieUpdatedAt.Value == omieLastAlt.Value)
+                            logger.LogWarning("Não foi possível adquirir trava para o Produto {OmieId} em lote. Pulando.", omieId);
+                            continue;
+                        }
+                        activeLocks[omieId] = lockToken;
+
+                        // Pula se já processamos este OmieId neste ciclo (e já temos a trava)
+                        if (!processedOmieIds.Add(omieId))
                         {
-                            logger.LogDebug("Produto OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
+                            logger.LogDebug("Produto OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
                             continue;
                         }
 
-                        existing.CodigoProduto = omieItem.Codigo;
-                        existing.Descricao = omieItem.Descricao;
-                        existing.PrecoUnitario = omieItem.ValorUnitario;
-                        existing.Ncm = omieItem.Ncm;
-                        existing.UnidadeMedida = omieItem.Unidade;
-                        existing.PesoLiquido = omieItem.PesoLiquido;
-                        existing.PesoBruto = omieItem.PesoBruto;
-                        existing.FamiliaProduto = omieItem.FamiliaProduto;
-                        existing.Ativo = omieItem.Inativo == "N";
-                        existing.UpdatedAt = DateTime.UtcNow;
-                        existing.OmieUpdatedAt = omieLastAlt;
+                        existingProdutos.TryGetValue(omieId, out var existing);
+                        var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieItem.DAlt, omieItem.HAlt);
+
+                        if (existing == null)
+                        {
+                            var novoProduto = new Produto
+                            {
+                                Id = Guid.NewGuid(),
+                                OmieId = omieId,
+                                CodigoProduto = omieItem.Codigo,
+                                Descricao = omieItem.Descricao,
+                                PrecoUnitario = omieItem.ValorUnitario,
+                                Ncm = omieItem.Ncm,
+                                UnidadeMedida = omieItem.Unidade,
+                                PesoLiquido = omieItem.PesoLiquido,
+                                PesoBruto = omieItem.PesoBruto,
+                                FamiliaProduto = omieItem.FamiliaProduto,
+                                Ativo = omieItem.Inativo == "N",
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow,
+                                OmieUpdatedAt = omieLastAlt
+                            };
+                            dbContext.Produtos.Add(novoProduto);
+                            existingProdutos[omieId] = novoProduto;
+                        }
+                        else
+                        {
+                            if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
+                                existing.OmieUpdatedAt.Value == omieLastAlt.Value)
+                            {
+                                continue;
+                            }
+
+                            existing.CodigoProduto = omieItem.Codigo;
+                            existing.Descricao = omieItem.Descricao;
+                            existing.PrecoUnitario = omieItem.ValorUnitario;
+                            existing.Ncm = omieItem.Ncm;
+                            existing.UnidadeMedida = omieItem.Unidade;
+                            existing.PesoLiquido = omieItem.PesoLiquido;
+                            existing.PesoBruto = omieItem.PesoBruto;
+                            existing.FamiliaProduto = omieItem.FamiliaProduto;
+                            existing.Ativo = omieItem.Inativo == "N";
+                            existing.UpdatedAt = DateTime.UtcNow;
+                            existing.OmieUpdatedAt = omieLastAlt;
+                        }
+                    }
+
+                    int retries = 0;
+                    const int maxRetries = 2;
+                    while (retries < maxRetries)
+                    {
+                        try
+                        {
+                            await dbContext.SaveChangesAsync(ct);
+                            break;
+                        }
+                        catch (DbUpdateConcurrencyException ex)
+                        {
+                            retries++;
+                            logger.LogWarning(ex, "Concorrência residual em Produtos lote. Tentativa {Retry}.", retries);
+                            if (retries >= maxRetries) throw;
+                            foreach (var entry in ex.Entries)
+                            {
+                                var dbVals = await entry.GetDatabaseValuesAsync(ct);
+                                if (dbVals == null) entry.State = EntityState.Detached;
+                                else entry.OriginalValues.SetValues(dbVals);
+                            }
+                        }
                     }
                 }
+                finally 
+                {
+                    foreach (var kvp in activeLocks)
+                        await lockService.ReleaseLockAsync(GetLockKey(kvp.Key), kvp.Value, ct);
+                }
 
-                await dbContext.SaveChangesAsync(ct);
                 logger.LogInformation("Página {Pagina} de {Total} de produtos sincronizada.", pagina, response.TotalDePaginas);
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;
@@ -119,65 +160,116 @@ namespace Tabatine.Infrastructure.Services
         }
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            logger.LogInformation("Sincronizando Produto específico OmieId: {OmieId}", omieId);
-            var omieProduto = await omieClient.ConsultarProdutoAsync(omieId, ct);
-
-            if (omieProduto != null)
+            var lockToken = await AcquireResourceLockAsync(omieId, ct);
+            if (lockToken == null)
             {
-                var existing = await dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieId, ct);
-                var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieProduto.DAlt, omieProduto.HAlt);
+                logger.LogWarning("Não foi possível adquirir trava para o Produto {OmieId} após espera. Abortando sync individual.", omieId);
+                return;
+            }
 
-                if (existing == null)
+            try 
+            {
+                logger.LogInformation("Sincronizando Produto específico OmieId: {OmieId}", omieId);
+                var omieProduto = await omieClient.ConsultarProdutoAsync(omieId, ct);
+
+                if (omieProduto != null)
                 {
-                    var novoProduto = new Produto
+                    var existing = await dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieId, ct);
+                    var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieProduto.DAlt, omieProduto.HAlt);
+
+                    if (existing == null)
                     {
-                        Id = Guid.NewGuid(),
-                        OmieId = omieId,
-                        CodigoProduto = omieProduto.Codigo,
-                        Descricao = omieProduto.Descricao,
-                        PrecoUnitario = omieProduto.ValorUnitario,
-                        Ncm = omieProduto.Ncm,
-                        UnidadeMedida = omieProduto.Unidade,
-                        PesoLiquido = omieProduto.PesoLiquido,
-                        PesoBruto = omieProduto.PesoBruto,
-                        FamiliaProduto = omieProduto.FamiliaProduto,
-                        Ativo = omieProduto.Inativo == "N",
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
-                        OmieUpdatedAt = omieLastAlt
-                    };
-                    dbContext.Produtos.Add(novoProduto);
+                        var novoProduto = new Produto
+                        {
+                            Id = Guid.NewGuid(),
+                            OmieId = omieId,
+                            CodigoProduto = omieProduto.Codigo,
+                            Descricao = omieProduto.Descricao,
+                            PrecoUnitario = omieProduto.ValorUnitario,
+                            Ncm = omieProduto.Ncm,
+                            UnidadeMedida = omieProduto.Unidade,
+                            PesoLiquido = omieProduto.PesoLiquido,
+                            PesoBruto = omieProduto.PesoBruto,
+                            FamiliaProduto = omieProduto.FamiliaProduto,
+                            Ativo = omieProduto.Inativo == "N",
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow,
+                            OmieUpdatedAt = omieLastAlt
+                        };
+                        dbContext.Produtos.Add(novoProduto);
+                    }
+                    else
+                    {
+                        if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
+                            existing.OmieUpdatedAt.Value == omieLastAlt.Value)
+                        {
+                            return;
+                        }
+
+                        existing.CodigoProduto = omieProduto.Codigo;
+                        existing.Descricao = omieProduto.Descricao;
+                        existing.PrecoUnitario = omieProduto.ValorUnitario;
+                        existing.Ncm = omieProduto.Ncm;
+                        existing.UnidadeMedida = omieProduto.Unidade;
+                        existing.PesoLiquido = omieProduto.PesoLiquido;
+                        existing.PesoBruto = omieProduto.PesoBruto;
+                        existing.FamiliaProduto = omieProduto.FamiliaProduto;
+                        existing.Ativo = omieProduto.Inativo == "N";
+                        existing.UpdatedAt = DateTime.UtcNow;
+                        existing.OmieUpdatedAt = omieLastAlt;
+                    }
+
+                    int retries = 0;
+                    const int maxRetries = 2;
+                    while (retries < maxRetries)
+                    {
+                        try
+                        {
+                            await dbContext.SaveChangesAsync(ct);
+                            break;
+                        }
+                        catch (DbUpdateConcurrencyException ex)
+                        {
+                            retries++;
+                            logger.LogWarning(ex, "Concorrência individual em Produto {OmieId}. Tentativa {Retry}.", omieId, retries);
+                            if (retries >= maxRetries) throw;
+                            foreach (var entry in ex.Entries)
+                            {
+                                var dbVals = await entry.GetDatabaseValuesAsync(ct);
+                                if (dbVals == null) entry.State = EntityState.Detached;
+                                else entry.OriginalValues.SetValues(dbVals);
+                            }
+                        }
+                    }
+
+                    logger.LogInformation("Produto OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
                 }
                 else
                 {
-                    if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
-                        existing.OmieUpdatedAt.Value == omieLastAlt.Value)
-                    {
-                        logger.LogDebug("Produto OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
-                        return;
-                    }
-
-                    existing.CodigoProduto = omieProduto.Codigo;
-                    existing.Descricao = omieProduto.Descricao;
-                    existing.PrecoUnitario = omieProduto.ValorUnitario;
-                    existing.Ncm = omieProduto.Ncm;
-                    existing.UnidadeMedida = omieProduto.Unidade;
-                    existing.PesoLiquido = omieProduto.PesoLiquido;
-                    existing.PesoBruto = omieProduto.PesoBruto;
-                    existing.FamiliaProduto = omieProduto.FamiliaProduto;
-                    existing.Ativo = omieProduto.Inativo == "N";
-                    existing.UpdatedAt = DateTime.UtcNow;
-                    existing.OmieUpdatedAt = omieLastAlt;
+                    logger.LogWarning("Produto OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
                 }
-
-                await dbContext.SaveChangesAsync(ct);
-                logger.LogInformation("Produto OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
             }
-            else
+            finally 
             {
-                logger.LogWarning("Produto OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
+                await lockService.ReleaseLockAsync(GetLockKey(omieId), lockToken, ct);
             }
         }
+
+        private async Task<string?> AcquireResourceLockAsync(long omieId, CancellationToken ct)
+        {
+            var lockKey = GetLockKey(omieId);
+            var lockToken = Guid.NewGuid().ToString();
+            for (int i = 0; i < 60; i++) 
+            {
+                if (await lockService.TryAcquireLockAsync(lockKey, lockToken, TimeSpan.FromMinutes(2), ct))
+                    return lockToken;
+                
+                await Task.Delay(500, ct); 
+            }
+            return null;
+        }
+
+        private string GetLockKey(long omieId) => $"sync:{EntityName}:{omieId}";
 
         public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;
     }

@@ -92,7 +92,10 @@ namespace Tabatine.Infrastructure.Services
                 pagina++;
             }
 
-            await syncState.SetLastSyncDateAsync("EtapaFaturamento", DateTime.UtcNow, ct);
+            if (!ct.IsCancellationRequested)
+            {
+                await syncState.SetLastSyncDateAsync("EtapaFaturamento", DateTime.UtcNow, ct);
+            }
             logger.LogInformation("Sincronização de Etapas de Faturamento finalizada.");
         }
 

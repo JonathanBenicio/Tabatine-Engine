@@ -27,7 +27,10 @@ namespace Tabatine.Infrastructure.Services
             await SyncLocaisAsync(ct);
             await SyncSaldosAsync(ct);
 
-            await syncState.SetLastSyncDateAsync("Estoque", syncStartTime, ct);
+            if (!ct.IsCancellationRequested)
+            {
+                await syncState.SetLastSyncDateAsync("Estoque", syncStartTime, ct);
+            }
             logger.LogInformation("Sincronização de Estoque finalizada.");
         }
 

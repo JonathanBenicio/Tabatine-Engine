@@ -80,7 +80,10 @@ namespace Tabatine.Infrastructure.Services
                 pagina++;
             }
 
-            await syncState.SetLastSyncDateAsync("CondicaoPagamento", DateTime.UtcNow, ct);
+            if (!ct.IsCancellationRequested)
+            {
+                await syncState.SetLastSyncDateAsync("CondicaoPagamento", DateTime.UtcNow, ct);
+            }
             logger.LogInformation("Sincronização de Condições de Pagamento finalizada.");
         }
 

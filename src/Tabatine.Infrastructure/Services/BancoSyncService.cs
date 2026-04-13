@@ -84,7 +84,10 @@ namespace Tabatine.Infrastructure.Services
                 pagina++;
             }
 
-            await syncState.SetLastSyncDateAsync("Bancos", DateTime.UtcNow, ct);
+            if (!ct.IsCancellationRequested)
+            {
+                await syncState.SetLastSyncDateAsync("Bancos", DateTime.UtcNow, ct);
+            }
             logger.LogInformation("Sincronização de Bancos finalizada.");
         }
 

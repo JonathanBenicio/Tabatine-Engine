@@ -16,8 +16,10 @@ namespace Tabatine.Infrastructure.Services
         IOmieClient omieClient, 
         AppDbContext dbContext, 
         ISyncStateRepository syncState, 
-        ILogger<ClienteSyncService> logger) : ISyncService
+        ILogger<ClienteSyncService> logger,
+        IDistributedLockService lockService) : ISyncService
     {
+        private const string EntityName = "cliente";
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
             logger.LogInformation("Iniciando sincronização de Clientes...");
@@ -40,17 +42,147 @@ namespace Tabatine.Infrastructure.Services
                     .Where(c => omieIds.Contains(c.OmieId))
                     .ToDictionaryAsync(c => c.OmieId, ct);
 
-                foreach (var omieCliente in response.ClientesCadastro)
-                {
-                    var omieId = omieCliente.CodigoClienteOmie;
+                var activeLocks = new Dictionary<long, string>();
 
-                    if (!processedOmieIds.Add(omieId))
+                try 
+                {
+                    foreach (var omieCliente in response.ClientesCadastro)
                     {
-                        logger.LogWarning("Cliente OmieId {OmieId} duplicado na resposta da Omie. Pulando.", omieId);
-                        continue;
+                        var omieId = omieCliente.CodigoClienteOmie;
+
+                        // Adquire trava individual
+                        var lockToken = await AcquireResourceLockAsync(omieId, ct);
+                        if (lockToken == null)
+                        {
+                            logger.LogWarning("Não foi possível adquirir trava para o Cliente {OmieId} em lote. Pulando.", omieId);
+                            continue;
+                        }
+                        activeLocks[omieId] = lockToken;
+
+                        if (!processedOmieIds.Add(omieId))
+                        {
+                            logger.LogWarning("Cliente OmieId {OmieId} duplicado na resposta da Omie. Pulando.", omieId);
+                            continue;
+                        }
+
+                        existingClientes.TryGetValue(omieId, out var existing);
+                        var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieCliente.DAlt, omieCliente.HAlt);
+
+                        if (existing == null)
+                        {
+                            var novo = new Cliente
+                            {
+                                Id = Guid.NewGuid(),
+                                OmieId = omieId,
+                                RazaoSocial = omieCliente.RazaoSocial,
+                                NomeFantasia = omieCliente.NomeFantasia,
+                                CnpjCpf = omieCliente.CnpjCpf,
+                                Email = omieCliente.Email,
+                                Telefone = omieCliente.Telefone,
+                                Endereco = omieCliente.Endereco,
+                                EnderecoNumero = omieCliente.EnderecoNumero,
+                                EnderecoComplemento = omieCliente.Complemento,
+                                Bairro = omieCliente.Bairro,
+                                Cep = omieCliente.Cep,
+                                Estado = omieCliente.Estado,
+                                Cidade = omieCliente.Cidade,
+                                InscricaoEstadual = omieCliente.InscricaoEstadual,
+                                InscricaoMunicipal = omieCliente.InscricaoMunicipal,
+                                OptanteSimplesNacional = omieCliente.OptanteSimplesNacional == "S",
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow,
+                                OmieUpdatedAt = omieLastAlt
+                            };
+
+                            dbContext.Clientes.Add(novo);
+                            existingClientes[omieId] = novo;
+                        }
+                        else
+                        {
+                            if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
+                                existing.OmieUpdatedAt.Value == omieLastAlt.Value)
+                            {
+                                continue;
+                            }
+
+                            existing.RazaoSocial = omieCliente.RazaoSocial;
+                            existing.NomeFantasia = omieCliente.NomeFantasia;
+                            existing.CnpjCpf = omieCliente.CnpjCpf;
+                            existing.Email = omieCliente.Email;
+                            existing.Telefone = omieCliente.Telefone;
+                            existing.Endereco = omieCliente.Endereco;
+                            existing.EnderecoNumero = omieCliente.EnderecoNumero;
+                            existing.EnderecoComplemento = omieCliente.Complemento;
+                            existing.Bairro = omieCliente.Bairro;
+                            existing.Cep = omieCliente.Cep;
+                            existing.Estado = omieCliente.Estado;
+                            existing.Cidade = omieCliente.Cidade;
+                            existing.InscricaoEstadual = omieCliente.InscricaoEstadual;
+                            existing.InscricaoMunicipal = omieCliente.InscricaoMunicipal;
+                            existing.OptanteSimplesNacional = omieCliente.OptanteSimplesNacional == "S";
+                            existing.UpdatedAt = DateTime.UtcNow;
+                            existing.OmieUpdatedAt = omieLastAlt;
+                        }
                     }
 
-                    existingClientes.TryGetValue(omieId, out var existing);
+                    int retries = 0;
+                    const int maxRetries = 2;
+                    while (retries < maxRetries)
+                    {
+                        try
+                        {
+                            await dbContext.SaveChangesAsync(ct);
+                            break;
+                        }
+                        catch (DbUpdateConcurrencyException ex)
+                        {
+                            retries++;
+                            logger.LogWarning(ex, "Concorrência residual detectada em Clientes lote. Tentativa {Retry}.", retries);
+                            if (retries >= maxRetries) throw;
+                            foreach (var entry in ex.Entries)
+                            {
+                                var dbVals = await entry.GetDatabaseValuesAsync(ct);
+                                if (dbVals == null) entry.State = EntityState.Detached;
+                                else entry.OriginalValues.SetValues(dbVals);
+                            }
+                        }
+                    }
+                }
+                finally 
+                {
+                    foreach (var kvp in activeLocks)
+                        await lockService.ReleaseLockAsync(GetLockKey(kvp.Key), kvp.Value, ct);
+                }
+
+                logger.LogInformation("Página {Pagina} de {Total} de clientes sincronizada.", pagina, response.TotalDePaginas);
+                temMais = pagina < response.TotalDePaginas;
+                pagina++;
+            }
+
+            if (!ct.IsCancellationRequested)
+            {
+                await syncState.SetLastSyncDateAsync("Clientes", syncStartTime, ct);
+            }
+
+            logger.LogInformation("Sincronização de Clientes finalizada.");
+        }
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            var lockToken = await AcquireResourceLockAsync(omieId, ct);
+            if (lockToken == null)
+            {
+                logger.LogWarning("Não foi possível adquirir trava para o Cliente {OmieId} após espera. Abortando sync individual.", omieId);
+                return;
+            }
+
+            try 
+            {
+                logger.LogInformation("Sincronizando Cliente/Fornecedor específico OmieId: {OmieId}", omieId);
+                var omieCliente = await omieClient.ConsultarClienteAsync(omieId, ct);
+
+                if (omieCliente != null)
+                {
+                    var existing = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieId, ct);
                     var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieCliente.DAlt, omieCliente.HAlt);
 
                     if (existing == null)
@@ -58,7 +190,7 @@ namespace Tabatine.Infrastructure.Services
                         var novo = new Cliente
                         {
                             Id = Guid.NewGuid(),
-                            OmieId = omieCliente.CodigoClienteOmie,
+                            OmieId = omieId,
                             RazaoSocial = omieCliente.RazaoSocial,
                             NomeFantasia = omieCliente.NomeFantasia,
                             CnpjCpf = omieCliente.CnpjCpf,
@@ -78,18 +210,14 @@ namespace Tabatine.Infrastructure.Services
                             UpdatedAt = DateTime.UtcNow,
                             OmieUpdatedAt = omieLastAlt
                         };
-
                         dbContext.Clientes.Add(novo);
-                        existingClientes[omieId] = novo;
                     }
                     else
                     {
-                        // Se o timestamp da Omie for igual ao que já temos, pula o update
                         if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
                             existing.OmieUpdatedAt.Value == omieLastAlt.Value)
                         {
-                            logger.LogDebug("Cliente OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieCliente.CodigoClienteOmie);
-                            continue;
+                            return;
                         }
 
                         existing.RazaoSocial = omieCliente.RazaoSocial;
@@ -110,94 +238,58 @@ namespace Tabatine.Infrastructure.Services
                         existing.UpdatedAt = DateTime.UtcNow;
                         existing.OmieUpdatedAt = omieLastAlt;
                     }
-                }
 
-                await dbContext.SaveChangesAsync(ct);
-                logger.LogInformation("Página {Pagina} de {Total} de clientes sincronizada.", pagina, response.TotalDePaginas);
-
-                temMais = pagina < response.TotalDePaginas;
-                pagina++;
-            }
-
-            if (!ct.IsCancellationRequested)
-            {
-                await syncState.SetLastSyncDateAsync("Clientes", syncStartTime, ct);
-            }
-
-            logger.LogInformation("Sincronização de Clientes finalizada.");
-        }
-        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
-        {
-            logger.LogInformation("Sincronizando Cliente/Fornecedor específico OmieId: {OmieId}", omieId);
-            var omieCliente = await omieClient.ConsultarClienteAsync(omieId, ct);
-
-            if (omieCliente != null)
-            {
-                var existing = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieId, ct);
-                var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieCliente.DAlt, omieCliente.HAlt);
-
-                if (existing == null)
-                {
-                    dbContext.Clientes.Add(new Cliente
+                    int retries = 0;
+                    const int maxRetries = 2;
+                    while (retries < maxRetries)
                     {
-                        Id = Guid.NewGuid(),
-                        OmieId = omieCliente.CodigoClienteOmie,
-                        RazaoSocial = omieCliente.RazaoSocial,
-                        NomeFantasia = omieCliente.NomeFantasia,
-                        CnpjCpf = omieCliente.CnpjCpf,
-                        Email = omieCliente.Email,
-                        Telefone = omieCliente.Telefone,
-                        Endereco = omieCliente.Endereco,
-                        EnderecoNumero = omieCliente.EnderecoNumero,
-                        EnderecoComplemento = omieCliente.Complemento,
-                        Bairro = omieCliente.Bairro,
-                        Cep = omieCliente.Cep,
-                        Estado = omieCliente.Estado,
-                        Cidade = omieCliente.Cidade,
-                        InscricaoEstadual = omieCliente.InscricaoEstadual,
-                        InscricaoMunicipal = omieCliente.InscricaoMunicipal,
-                        OptanteSimplesNacional = omieCliente.OptanteSimplesNacional == "S",
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
-                        OmieUpdatedAt = omieLastAlt
-                    });
+                        try
+                        {
+                            await dbContext.SaveChangesAsync(ct);
+                            break;
+                        }
+                        catch (DbUpdateConcurrencyException ex)
+                        {
+                            retries++;
+                            logger.LogWarning(ex, "Concorrência individual em Cliente {OmieId}. Tentativa {Retry}.", omieId, retries);
+                            if (retries >= maxRetries) throw;
+                            foreach (var entry in ex.Entries)
+                            {
+                                var dbVals = await entry.GetDatabaseValuesAsync(ct);
+                                if (dbVals == null) entry.State = EntityState.Detached;
+                                else entry.OriginalValues.SetValues(dbVals);
+                            }
+                        }
+                    }
+
+                    logger.LogInformation("Cliente/Fornecedor OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
                 }
                 else
                 {
-                    if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
-                        existing.OmieUpdatedAt.Value == omieLastAlt.Value)
-                    {
-                        logger.LogDebug("Cliente OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
-                        return;
-                    }
-
-                    existing.RazaoSocial = omieCliente.RazaoSocial;
-                    existing.NomeFantasia = omieCliente.NomeFantasia;
-                    existing.CnpjCpf = omieCliente.CnpjCpf;
-                    existing.Email = omieCliente.Email;
-                    existing.Telefone = omieCliente.Telefone;
-                    existing.Endereco = omieCliente.Endereco;
-                    existing.EnderecoNumero = omieCliente.EnderecoNumero;
-                    existing.EnderecoComplemento = omieCliente.Complemento;
-                    existing.Bairro = omieCliente.Bairro;
-                    existing.Cep = omieCliente.Cep;
-                    existing.Estado = omieCliente.Estado;
-                    existing.Cidade = omieCliente.Cidade;
-                    existing.InscricaoEstadual = omieCliente.InscricaoEstadual;
-                    existing.InscricaoMunicipal = omieCliente.InscricaoMunicipal;
-                    existing.OptanteSimplesNacional = omieCliente.OptanteSimplesNacional == "S";
-                    existing.UpdatedAt = DateTime.UtcNow;
-                    existing.OmieUpdatedAt = omieLastAlt;
+                    logger.LogWarning("Cliente/Fornecedor OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
                 }
-
-                await dbContext.SaveChangesAsync(ct);
-                logger.LogInformation("Cliente/Fornecedor OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
             }
-            else
+            finally 
             {
-                logger.LogWarning("Cliente/Fornecedor OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
+                await lockService.ReleaseLockAsync(GetLockKey(omieId), lockToken, ct);
             }
         }
+
+        private async Task<string?> AcquireResourceLockAsync(long omieId, CancellationToken ct)
+        {
+            var lockKey = GetLockKey(omieId);
+            var lockToken = Guid.NewGuid().ToString();
+            for (int i = 0; i < 60; i++) 
+            {
+                if (await lockService.TryAcquireLockAsync(lockKey, lockToken, TimeSpan.FromMinutes(2), ct))
+                    return lockToken;
+                
+                await Task.Delay(500, ct); 
+            }
+            return null;
+        }
+
+        private string GetLockKey(long omieId) => $"sync:{EntityName}:{omieId}";
 
         public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;
     }

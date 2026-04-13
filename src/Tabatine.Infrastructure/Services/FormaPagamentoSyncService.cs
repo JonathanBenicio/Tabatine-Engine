@@ -84,7 +84,10 @@ namespace Tabatine.Infrastructure.Services
                 pagina++;
             }
 
-            await syncState.SetLastSyncDateAsync("FormaPagamento", DateTime.UtcNow, ct);
+            if (!ct.IsCancellationRequested)
+            {
+                await syncState.SetLastSyncDateAsync("FormaPagamento", DateTime.UtcNow, ct);
+            }
             logger.LogInformation("Sincronização de Formas de Pagamento finalizada.");
         }
 
