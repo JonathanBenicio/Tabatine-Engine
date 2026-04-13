@@ -15,5 +15,3 @@ global using Tabatine.Omie.Client.Models.Pedidos;
 global using Tabatine.Omie.Client.Models.Clientes;
 global using System.Net.Http.Json;
 global using System.Text.Json;
-
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
