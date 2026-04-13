@@ -49,7 +49,7 @@ namespace Tabatine.Infrastructure.Services
         private async Task SyncProdutoSaldoAsync(long omieId, CancellationToken ct)
         {
             logger.LogInformation("Sincronizando saldo específico para Produto OmieId: {OmieId}", omieId);
-            
+
             var produto = await dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieId, ct);
             if (produto == null)
             {
@@ -95,7 +95,7 @@ namespace Tabatine.Infrastructure.Services
         private async Task SyncLocaisAsync(CancellationToken ct)
         {
             logger.LogInformation("Sincronizando Locais de Estoque...");
-            
+
             var existingLocais = await dbContext.LocaisEstoque.ToDictionaryAsync(l => l.OmieId, ct);
 
             await foreach (var item in omieClient.ListarLocaisEstoqueAsync(ct))
@@ -139,11 +139,11 @@ namespace Tabatine.Infrastructure.Services
             var produtosCache = await dbContext.Produtos.Select(p => new { p.Id, p.OmieId }).ToDictionaryAsync(p => p.OmieId, p => p.Id, ct);
             var locaisCache = await dbContext.LocaisEstoque.Select(l => new { l.Id, l.OmieId }).ToDictionaryAsync(l => l.OmieId, l => l.Id, ct);
 
-            var request = new ListarPosEstoqueRequest 
-            { 
-                Pagina = 1, 
+            var request = new ListarPosEstoqueRequest
+            {
+                Pagina = 1,
                 RegPorPagina = 100,
-                ExibeTodos = "S" 
+                ExibeTodos = "S"
             };
 
             int count = 0;
@@ -159,13 +159,13 @@ namespace Tabatine.Infrastructure.Services
 
                 if (!locaisCache.TryGetValue(item.CodigoLocalEstoque, out var localId))
                 {
-                    logger.LogWarning("Local OmieId {LocalId} não encontrado no banco local. Pulando saldo para Produto {CodProd}.", 
+                    logger.LogWarning("Local OmieId {LocalId} não encontrado no banco local. Pulando saldo para Produto {CodProd}.",
                         item.CodigoLocalEstoque, item.CodProd);
-                    continue; // Skip instead of trying to query/add
+                    continue;
                 }
 
                 pendingSaldos.Add((produtoId, localId, item));
-                
+
                 count++;
                 if (count % 500 == 0)
                 {
@@ -187,6 +187,12 @@ namespace Tabatine.Infrastructure.Services
             logger.LogInformation("Total de {Count} registros de saldo processados.", count);
         }
 
+        /// <summary>
+        /// Salva alterações com tratamento ItemByItem para violações de FK (23503).
+        /// Se o SaveChanges em lote falhar por FK inválida, cada entidade pendente é
+        /// tentada individualmente, descartando apenas a(s) com problema, preservando
+        /// o restante do lote.
+        /// </summary>
         private async Task SaveChangesSafelyAsync(CancellationToken ct)
         {
             try
@@ -195,9 +201,41 @@ namespace Tabatine.Infrastructure.Services
             }
             catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23503" })
             {
-                logger.LogWarning(ex, "Violação de FK detectada durante sincronização de estoque. Continuando sem salvar o lote problemático.");
-                // Limpa o rastreamento para evitar que o erro persista em chamadas futuras
+                logger.LogWarning(ex, "Violação de FK no lote de estoque. Tentando salvar item por item para isolar o problema.");
+
+                // Captura as entradas pendentes antes de limpar o tracker
+                var entries = dbContext.ChangeTracker.Entries()
+                    .Where(e => e.State is EntityState.Added or EntityState.Modified)
+                    .ToList();
+
                 dbContext.ChangeTracker.Clear();
+
+                int salvos = 0;
+                int descartados = 0;
+
+                foreach (var entry in entries)
+                {
+                    try
+                    {
+                        entry.State = entry.State; // Re-attach na nova state
+                        dbContext.Entry(entry.Entity).State = entry.State == EntityState.Detached
+                            ? EntityState.Added
+                            : entry.State;
+
+                        await dbContext.SaveChangesAsync(ct);
+                        salvos++;
+                    }
+                    catch (DbUpdateException itemEx) when (itemEx.InnerException is Npgsql.PostgresException { SqlState: "23503" })
+                    {
+                        logger.LogWarning("Saldo de estoque descartado por FK inválida: {Entity}.", entry.Entity.GetType().Name);
+                        dbContext.ChangeTracker.Clear();
+                        descartados++;
+                    }
+                }
+
+                logger.LogInformation(
+                    "Salvamento item-por-item concluído: {Salvos} registros salvos, {Descartados} descartados por FK inválida.",
+                    salvos, descartados);
             }
         }
 
