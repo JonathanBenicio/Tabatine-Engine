@@ -64,36 +64,38 @@ jobs:
 
             const fileList = files.trim().split('\n').map(f => `- \`${f}\``).join('\n');
 
-            const body = `## 🔍 Mudanças Detectadas em Regras de Agentes
-
-            > **Este PR modifica documentação que governa o comportamento dos agentes AI.**
-            > Verifique se as alterações abaixo são consistentes com o restante da documentação.
-
-            ### Arquivos Alterados
-            ${fileList}
-
-            ### Resumo
-            | Categoria | Quantidade |
-            |---|---|
-            | Rules (\`.agents/rules/\`) | ${rulesCount} |
-            | Skills (\`.agents/skills/\`) | ${skillsCount} |
-            | Workflows (\`.agents/workflows/\`) | ${workflowsCount} |
-            | Root (AGENTS/GEMINI.md) | ${rootCount} |
-
-            ### ⚠️ Checklist de Revisão Obrigatório
-
-            - [ ] As regras alteradas **não contradizem** outros documentos em \`.agents/rules/\`?
-            - [ ] Se uma nova regra foi adicionada, ela tem seção \`## Validação\` com referência cruzada?
-            - [ ] Se um padrão de \`SyncService\` foi alterado, o \`sync-service-patterns.md\` foi atualizado?
-            - [ ] Se as regras de EF Core mudaram, o \`code-review-checklist/SKILL.md\` reflete a mudança?
-            - [ ] O \`AGENTS.md\` na raiz do projeto está atualizado com as novas regras/skills?
-
-            ---
-            *Gerado automaticamente por \`.github/workflows/agent-rules-review.yml\` — [Epic #48](../../issues/48)*`;
+            const body = [
+              '## 🔍 Mudanças Detectadas em Regras de Agentes',
+              '',
+              '> **Este PR modifica documentação que governa o comportamento dos agentes AI.**',
+              '> Verifique se as alterações abaixo são consistentes com o restante da documentação.',
+              '',
+              '### Arquivos Alterados',
+              fileList,
+              '',
+              '### Resumo',
+              '| Categoria | Quantidade |',
+              '|---|---|',
+              `| Rules (\`.agents/rules/\`) | ${rulesCount} |`,
+              `| Skills (\`.agents/skills/\`) | ${skillsCount} |`,
+              `| Workflows (\`.agents/workflows/\`) | ${workflowsCount} |`,
+              `| Root (AGENTS/GEMINI.md) | ${rootCount} |`,
+              '',
+              '### ⚠️ Checklist de Revisão Obrigatório',
+              '',
+              '- [ ] As regras alteradas **não contradizem** outros documentos em `.agents/rules/`?',
+              '- [ ] Se uma nova regra foi adicionada, ela tem seção `## Validação` com referência cruzada?',
+              '- [ ] Se um padrão de `SyncService` foi alterado, o `sync-service-patterns.md` foi atualizado?',
+              '- [ ] Se as regras de EF Core mudaram, o `code-review-checklist/SKILL.md` reflete a mudança?',
+              '- [ ] O `AGENTS.md` na raiz do projeto está atualizado com as novas regras/skills?',
+              '',
+              '---',
+              '*Gerado automaticamente por `.github/workflows/agent-rules-review.yml` — [Epic #48](../../issues/48)*'
+            ].join('\n');
 
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: body.split('\n').map(l => l.trim()).join('\n')
+              body: body
             });

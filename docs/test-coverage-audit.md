@@ -71,14 +71,14 @@ Legenda de status:
 
 ## Resumo Executivo
 
-| Status | Contagem | % |
-|--------|----------|---|
+| Status | Contagem | % do Total (22 entidades) |
+|--------|----------|--------------------------|
 | ✅ Coberta | 10 | 45% |
 | 🟡 Parcial | 9 | 41% |
-| ❌ Descoberta | 6 | 27% |
-| **Total** | **22*** | — |
+| ❌ Descoberta | 3 | 14% |
+| **Total** | **22** | **100%** |
 
-> *Somente entidades de negócio (excluídas: `OmieEntityBase`, `SyncLock`, `Perfil`)
+> *Total calculado sobre entidades de negócio rastreáveis pelo Omie. Excluídas do total: `OmieEntityBase` (classe base abstrata), `SyncLock` (infraestrutura interna), `Perfil` (fora do escopo da sincronização Omie). Contagem bruta: 25 entidades.
 
 **Cobertura total estimada:** ~60% (considerando parciais como 50%)
 

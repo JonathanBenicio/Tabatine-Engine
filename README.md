@@ -1,7 +1,7 @@
 # Tabatine Engine - Omie Sync Service
 
 ![Build Status](https://github.com/JonathanBenicio/Tabatine-Engine/actions/workflows/main_tabatine-worker.yml/badge.svg)
-![Code Coverage](https://img.shields.io/badge/Coverage-80.5%25-green)
+![Coverage Report](https://github.com/JonathanBenicio/Tabatine-Engine/actions/workflows/main_tabatine-worker.yml/badge.svg?branch=main&event=push)
 
 O **Tabatine Engine** é o núcleo de processamento e sincronização de dados entre o **Omie ERP** e o banco de dados local (Supabase/PostgreSQL). Desenvolvido em **.NET 10**, ele garante que as informações de vendas, clientes, produtos, notas fiscais, vendedores, contas correntes e outros 10+ módulos vitais estejam sempre atualizadas para consumo rápido pelo frontend.
 

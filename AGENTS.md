@@ -32,7 +32,9 @@ dotnet tool restore
 dotnet stryker --project src/Tabatine.Infrastructure/Tabatine.Infrastructure.csproj
 ```
 
-> **Note**: This project currently has no test suite. Agents should create tests when implementing new features.
+> **Note**: This project has an integration test suite in `src/Tabatine.Worker.IntegrationTests/`.
+> Check `docs/test-audit.md` for entity coverage status and `docs/test-coverage-audit.md` for the coverage roadmap.
+> Before creating new tests, verify if a test for the entity/scenario already exists.
 
 ---
 
