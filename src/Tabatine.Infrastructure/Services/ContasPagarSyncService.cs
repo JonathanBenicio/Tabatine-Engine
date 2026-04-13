@@ -22,11 +22,29 @@ namespace Tabatine.Infrastructure.Services
     {
         private const string SyncKey = "LancamentosPagar";
 
+        // Chave legada usada antes do rename no PR #47. Mantida para migração
+        // transparente do cursor na primeira execução após o deploy.
+        private const string SyncKeyLegado = "ContasPagar";
+
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
             logger.LogInformation("Iniciando sincronização de Contas a Pagar...");
 
+            // Migração transparente: se ainda não existe cursor com a nova chave,
+            // tenta reaproveitar o cursor da chave legada para evitar full sync desnecessário.
             var lastSyncDate = await syncState.GetLastSyncDateAsync(SyncKey, ct);
+            if (lastSyncDate == null)
+            {
+                var legacyDate = await syncState.GetLastSyncDateAsync(SyncKeyLegado, ct);
+                if (legacyDate != null)
+                {
+                    logger.LogInformation(
+                        "Cursor legado 'ContasPagar' encontrado ({Date}). Migrando para 'LancamentosPagar'.",
+                        legacyDate);
+                    lastSyncDate = legacyDate;
+                }
+            }
+
             var syncStartTime = DateTime.UtcNow;
 
             var processedOmieIds = new HashSet<long>();
@@ -96,7 +114,10 @@ namespace Tabatine.Infrastructure.Services
                 pagina++;
             }
 
-            await syncState.SetLastSyncDateAsync(SyncKey, syncStartTime, ct);
+            if (!ct.IsCancellationRequested)
+            {
+                await syncState.SetLastSyncDateAsync(SyncKey, syncStartTime, ct);
+            }
             logger.LogInformation("Sincronização de Contas a Pagar finalizada. Total processado: {Count}", processedOmieIds.Count);
         }
 
@@ -109,8 +130,8 @@ namespace Tabatine.Infrastructure.Services
             {
                 // Busca dependências necessárias (Cliente/Fornecedor e Conta Corrente)
                 var cliente = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieItem.CodigoClienteFornecedor, ct);
-                var contaCorrente = omieItem.CodigoContaCorrente.HasValue 
-                    ? await dbContext.ContasCorrente.FirstOrDefaultAsync(cc => cc.OmieId == omieItem.CodigoContaCorrente.Value, ct) 
+                var contaCorrente = omieItem.CodigoContaCorrente.HasValue
+                    ? await dbContext.ContasCorrente.FirstOrDefaultAsync(cc => cc.OmieId == omieItem.CodigoContaCorrente.Value, ct)
                     : null;
 
                 var existing = await dbContext.TitulosPagar.FirstOrDefaultAsync(t => t.OmieId == omieId, ct);
@@ -137,7 +158,7 @@ namespace Tabatine.Infrastructure.Services
         {
             logger.LogInformation("Cancelando TituloPagar OmieId: {OmieId} localmente via soft-delete.", omieId);
             var existing = await dbContext.TitulosPagar.FirstOrDefaultAsync(t => t.OmieId == omieId, ct);
-            
+
             if (existing != null)
             {
                 existing.StatusTitulo = "CANCELADO";
