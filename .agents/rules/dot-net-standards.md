@@ -65,6 +65,23 @@ public class ClienteSyncService(IOmieClient omieClient, ILogger<ClienteSyncServi
   - `Error`: Falhas críticas que interrompem a sincronização de um registro ou processo.
 - **Table Logs**: Registros críticos de auditoria devem ser salvos na tabela `Logs` do banco de dados (usando `LogEntry`).
 
+### Regra do Caminho Nulo Crítico
+
+- **Regra:** Qualquer operação crítica (ex: update final de entidade, processamento de evento) que faça re-fetch (`FindAsync`, `FirstOrDefaultAsync`) DEVE logar em nível `Error` quando o retorno for `null`. O bloco `if (entity == null) { return; }` silencioso **é proibido** em processos críticos.
+
+```csharp
+// ✅ CORRETO: Log de erro + return explícito
+var dbEvent = await dbContext.WebhookEvents.FindAsync(id, ct);
+if (dbEvent == null)
+{
+    logger.LogError("WebhookEvent {Id} não encontrado. Evento pode ter sido perdido.", id);
+    return;
+}
+
+// ❌ PROIBIDO: Silêncio no caminho nulo crítico
+if (dbEvent != null) { /* processa */ } // O null não é logado
+```
+
 ---
 
 ## Estruturas de Dados e Payloads (DTOs)

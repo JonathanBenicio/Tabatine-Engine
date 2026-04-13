@@ -107,3 +107,45 @@ const data: UserData = ...
 // Questions use ❓
 ❓ QUESTION: What happens if user is null here?
 ```
+
+## .NET / EF Core Specific (Tabatine Engine)
+
+### Anti-Patterns Críticos (Bloqueantes)
+
+```csharp
+// 🔴 BLOCKING: Add() em entidade rastreada pelo EF Core
+var existing = await dbContext.Entidades.FirstOrDefaultAsync(e => e.OmieId == id, ct);
+dbContext.Entidades.Add(existing); // Causa InvalidOperationException ou INSERT duplicado
+// ✅ FIX: Modificar propriedades diretamente — EF detecta automaticamente
+
+// 🔴 BLOCKING: Cursor de sync salvo sem guard de cancelamento
+await syncState.SetLastSyncDateAsync("Entidade", DateTime.UtcNow, ct);
+// ✅ FIX: if (!ct.IsCancellationRequested) { await syncState.SetLastSyncDateAsync(...); }
+
+// 🔴 BLOCKING: Caminho null silencioso em operação crítica
+var dbEvent = await dbContext.WebhookEvents.FindAsync(id, ct);
+if (dbEvent != null) { /* processa */ } // Se null, ninguém sabe
+// ✅ FIX: Log em nível Error quando null + return explícito
+```
+
+### Anti-Patterns de Teste
+
+```csharp
+// 🟡 SUGGESTION: Task.Delay fixo antes de polling
+await Task.Delay(1000); // Anti-pattern de timing
+// ✅ FIX: Usar apenas polling loop com timeout via Stopwatch
+
+// 🟡 SUGGESTION: DisableTestParallelization global
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
+// ✅ FIX: Usar [Collection("NomeDoCollection")] apenas nas classes que precisam
+```
+
+### Checklist Rápido para SyncServices
+
+- [ ] Guard `ct.IsCancellationRequested` antes de salvar cursor?
+- [ ] `CancellationToken` em TODAS as chamadas async?
+- [ ] Nenhum `Add()` em entidade já rastreada?
+- [ ] Log de `Error` para caminhos null críticos?
+- [ ] `SyncKey` renomeada com migration de cursor?
+
+> **Referência completa:** `.agents/rules/sync-service-patterns.md`
