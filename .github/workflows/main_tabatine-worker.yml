@@ -121,7 +121,8 @@ jobs:
         run: dotnet tool restore
 
       - name: Run Stryker
-        run: dotnet stryker -p src/Tabatine.Infrastructure/Tabatine.Infrastructure.csproj --config-file src/Tabatine.Infrastructure/stryker-config.json
+        working-directory: src/Tabatine.Infrastructure
+        run: dotnet stryker --project Tabatine.Infrastructure.csproj --config-file stryker-config.json
 
       - name: 📝 Comment Mutation Score on PR
         if: github.event_name == 'pull_request'
