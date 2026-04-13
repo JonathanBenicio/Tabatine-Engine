@@ -58,7 +58,7 @@ public class ClienteWebhookIntegrationTests(IntegrationTestWebAppFactory factory
             using var scope = Factory.Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             clienteDB = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieId);
-            
+
             if (clienteDB != null) break;
             await Task.Delay(500);
         }

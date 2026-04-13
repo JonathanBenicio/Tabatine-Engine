@@ -13,29 +13,22 @@ using Tabatine.Omie.Client.Models.Geral;
 
 namespace Tabatine.Infrastructure.Services
 {
-    public class CondicaoPagamentoSyncService : ISyncService
+    public class CondicaoPagamentoSyncService(
+        IOmieClient omieClient, 
+        AppDbContext dbContext, 
+        ISyncStateRepository syncState,
+        ILogger<CondicaoPagamentoSyncService> logger) : ISyncService
     {
-        private readonly IOmieClient _omieClient;
-        private readonly AppDbContext _dbContext;
-        private readonly ILogger<CondicaoPagamentoSyncService> _logger;
-
-        public CondicaoPagamentoSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<CondicaoPagamentoSyncService> logger)
-        {
-            _omieClient = omieClient;
-            _dbContext = dbContext;
-            _logger = logger;
-        }
-
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            _logger.LogInformation("Iniciando sincronização de Condições de Pagamento...");
+            logger.LogInformation("Iniciando sincronização de Condições de Pagamento...");
 
             int pagina = 1;
             bool temMais = true;
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarParcelasAsync(pagina, ct);
+                var response = await omieClient.ListarParcelasAsync(pagina, ct);
 
                 if (response == null) break;
 
@@ -43,7 +36,7 @@ namespace Tabatine.Infrastructure.Services
                 var processedOmieIds = new HashSet<long>();
 
                 var codigos = rawCadastros.Where(c => c.Codigo > 0).Select(c => c.Codigo.ToString()).ToList();
-                var existingCondicoes = await _dbContext.CondicoesPagamento
+                var existingCondicoes = await dbContext.CondicoesPagamento
                     .Where(c => codigos.Contains(c.Codigo))
                     .ToDictionaryAsync(c => c.Codigo, ct);
 
@@ -68,7 +61,7 @@ namespace Tabatine.Infrastructure.Services
                             UpdatedAt = DateTime.UtcNow,
                             OmieId = omieCondicao.Codigo // Use the nCodigo as OmieId too
                         };
-                        _dbContext.CondicoesPagamento.Add(nova);
+                        dbContext.CondicoesPagamento.Add(nova);
                         existingCondicoes[codigoStr] = nova;
                     }
                     else
@@ -81,18 +74,22 @@ namespace Tabatine.Infrastructure.Services
                     }
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de condições de pagamento sincronizada.", pagina, response.TotalDePaginas);
+                await dbContext.SaveChangesAsync(ct);
+                logger.LogInformation("Página {Pagina} de {Total} de condições de pagamento sincronizada.", pagina, response.TotalDePaginas);
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;
             }
 
-            _logger.LogInformation("Sincronização de Condições de Pagamento finalizada.");
+            if (!ct.IsCancellationRequested)
+            {
+                await syncState.SetLastSyncDateAsync("CondicaoPagamento", DateTime.UtcNow, ct);
+            }
+            logger.LogInformation("Sincronização de Condições de Pagamento finalizada.");
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogWarning("SyncById solicitado para CondicaoPagamento OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
+            logger.LogWarning("SyncById solicitado para CondicaoPagamento OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
             await Task.CompletedTask;
         }
 

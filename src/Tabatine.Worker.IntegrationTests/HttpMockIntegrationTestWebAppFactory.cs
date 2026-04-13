@@ -75,6 +75,7 @@ public class HttpMockIntegrationTestWebAppFactory : WebApplicationFactory<Progra
 
     public new async Task DisposeAsync()
     {
+        await base.DisposeAsync();
         OmieMockServer.Stop();
         await _dbContainer.StopAsync();
     }

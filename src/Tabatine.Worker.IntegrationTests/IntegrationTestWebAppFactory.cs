@@ -17,8 +17,11 @@ public class IntegrationTestWebAppFactory : WebApplicationFactory<Program>, IAsy
     {
         builder.ConfigureAppConfiguration((context, config) =>
         {
+            var connectionString = _dbContainer.GetConnectionString() + ";Pooling=false;No Reset On Close=true;GssEncryptionMode=Disable";
+
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
+                { "ConnectionStrings:DefaultConnection", connectionString },
                 { "WebhookProcessor:PollingIntervalMs", "100" },
                 { "WebhookProcessor:UseSkipLocked", "false" }
             });
@@ -65,6 +68,7 @@ public class IntegrationTestWebAppFactory : WebApplicationFactory<Program>, IAsy
 
     public new async Task DisposeAsync()
     {
+        await base.DisposeAsync();
         await _dbContainer.StopAsync();
     }
 

@@ -14,25 +14,18 @@ using Tabatine.Omie.Client.Models;
 
 namespace Tabatine.Infrastructure.Services
 {
-    public class VendedorSyncService : ISyncService
+    public class VendedorSyncService(
+        IOmieClient omieClient, 
+        AppDbContext dbContext, 
+        ISyncStateRepository syncState,
+        ILogger<VendedorSyncService> logger,
+        IDistributedLockService lockService) : ISyncService
     {
-        private readonly IOmieClient _omieClient;
-        private readonly AppDbContext _dbContext;
-        private readonly ISyncStateRepository _syncState;
-        private readonly ILogger<VendedorSyncService> _logger;
-
-        public VendedorSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<VendedorSyncService> logger)
-        {
-            _omieClient = omieClient;
-            _dbContext = dbContext;
-            _syncState = syncState;
-            _logger = logger;
-        }
-
+        private const string EntityName = "vendedor";
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            var lastSyncDate = await _syncState.GetLastSyncDateAsync("Vendedores", ct);
-            _logger.LogInformation("Iniciando sincronização de Vendedores a partir de {LastSyncDate}...", lastSyncDate?.ToString("yyyy-MM-dd") ?? "o início");
+            var lastSyncDate = await syncState.GetLastSyncDateAsync("Vendedores", ct);
+            logger.LogInformation("Iniciando sincronização de Vendedores a partir de {LastSyncDate}...", lastSyncDate?.ToString("yyyy-MM-dd") ?? "o início");
 
             // Rastreia OmieIds já processados neste ciclo para evitar duplicatas
             var processedOmieIds = new HashSet<long>();
@@ -42,28 +35,136 @@ namespace Tabatine.Infrastructure.Services
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarVendedoresAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
+                var response = await omieClient.ListarVendedoresAsync(pagina, filtrarDe: lastSyncDate, cancellationToken: ct);
 
                 if (response == null || response.Vendedores == null || response.Vendedores.Count == 0) break;
 
                 var omieIds = response.Vendedores.Select(v => v.Codigo).ToList();
-                var existingVendedores = await _dbContext.Vendedores
+                var existingVendedores = await dbContext.Vendedores
                     .Where(v => omieIds.Contains(v.OmieId))
                     .ToDictionaryAsync(v => v.OmieId, ct);
 
-                foreach (var omieItem in response.Vendedores)
-                {
-                    var omieId = omieItem.Codigo;
+                var activeLocks = new Dictionary<long, string>();
 
-                    // Pula se já processamos este OmieId neste ciclo
-                    if (!processedOmieIds.Add(omieId))
+                try 
+                {
+                    foreach (var omieItem in response.Vendedores)
                     {
-                        _logger.LogDebug("Vendedor OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
-                        continue;
+                        var omieId = omieItem.Codigo;
+
+                        // Adquire trava individual
+                        var lockToken = await AcquireResourceLockAsync(omieId, ct);
+                        if (lockToken == null)
+                        {
+                            logger.LogWarning("Não foi possível adquirir trava para o Vendedor {OmieId} em lote. Pulando.", omieId);
+                            continue;
+                        }
+                        activeLocks[omieId] = lockToken;
+
+                        // Pula se já processamos este OmieId neste ciclo
+                        if (!processedOmieIds.Add(omieId))
+                        {
+                            logger.LogDebug("Vendedor OmieId {OmieId} duplicado na resposta. Pulando.", omieId);
+                            continue;
+                        }
+
+                        existingVendedores.TryGetValue(omieId, out var existing);
+                        var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieItem.DAlt, omieItem.HAlt);
+
+                        if (existing == null)
+                        {
+                            var novoVendedor = new Vendedor
+                            {
+                                Id = Guid.NewGuid(),
+                                OmieId = omieId,
+                                Nome = omieItem.Nome,
+                                Email = omieItem.Email,
+                                Comissao = omieItem.Comissao,
+                                Inativo = omieItem.Inativo == "S",
+                                CreatedAt = DateTime.UtcNow,
+                                UpdatedAt = DateTime.UtcNow,
+                                OmieUpdatedAt = omieLastAlt
+                            };
+                            dbContext.Vendedores.Add(novoVendedor);
+                            existingVendedores[omieId] = novoVendedor;
+                        }
+                        else
+                        {
+                            // Se o timestamp da Omie for igual ao que já temos, pula o update
+                            if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
+                                existing.OmieUpdatedAt.Value == omieLastAlt.Value)
+                            {
+                                continue;
+                            }
+
+                            existing.Nome = omieItem.Nome;
+                            existing.Email = omieItem.Email;
+                            existing.Comissao = omieItem.Comissao;
+                            existing.Inativo = omieItem.Inativo == "S";
+                            existing.UpdatedAt = DateTime.UtcNow;
+                            existing.OmieUpdatedAt = omieLastAlt;
+                        }
                     }
 
-                    existingVendedores.TryGetValue(omieId, out var existing);
-                    var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieItem.DAlt, omieItem.HAlt);
+                    int retries = 0;
+                    const int maxRetries = 2;
+                    while (retries < maxRetries)
+                    {
+                        try
+                        {
+                            await dbContext.SaveChangesAsync(ct);
+                            break;
+                        }
+                        catch (DbUpdateConcurrencyException ex)
+                        {
+                            retries++;
+                            logger.LogWarning(ex, "Concorrência residual detectada em Vendedores lote. Tentativa {Retry}.", retries);
+                            if (retries >= maxRetries) throw;
+                            foreach (var entry in ex.Entries)
+                            {
+                                var dbVals = await entry.GetDatabaseValuesAsync(ct);
+                                if (dbVals == null) entry.State = EntityState.Detached;
+                                else entry.OriginalValues.SetValues(dbVals);
+                            }
+                        }
+                    }
+                }
+                finally 
+                {
+                    foreach (var kvp in activeLocks)
+                        await lockService.ReleaseLockAsync(GetLockKey(kvp.Key), kvp.Value, ct);
+                }
+
+                logger.LogInformation("Página {Pagina} de {Total} de vendedores sincronizada.", pagina, response.TotalDePaginas);
+                temMais = pagina < response.TotalDePaginas;
+                pagina++;
+            }
+
+            if (!ct.IsCancellationRequested)
+            {
+                await syncState.SetLastSyncDateAsync("Vendedores", DateTime.UtcNow, ct);
+            }
+
+            logger.LogInformation("Sincronização de Vendedores finalizada.");
+        }
+        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
+        {
+            var lockToken = await AcquireResourceLockAsync(omieId, ct);
+            if (lockToken == null)
+            {
+                logger.LogWarning("Não foi possível adquirir trava para o Vendedor {OmieId} após espera. Abortando sync individual.", omieId);
+                return;
+            }
+
+            try 
+            {
+                logger.LogInformation("Sincronizando Vendedor específico OmieId: {OmieId}", omieId);
+                var omieVendedor = await omieClient.ConsultarVendedorAsync(omieId, ct);
+
+                if (omieVendedor != null)
+                {
+                    var existing = await dbContext.Vendedores.FirstOrDefaultAsync(v => v.OmieId == omieId, ct);
+                    var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieVendedor.DAlt, omieVendedor.HAlt);
 
                     if (existing == null)
                     {
@@ -71,100 +172,83 @@ namespace Tabatine.Infrastructure.Services
                         {
                             Id = Guid.NewGuid(),
                             OmieId = omieId,
-                            Nome = omieItem.Nome,
-                            Email = omieItem.Email,
-                            Comissao = omieItem.Comissao,
-                            Inativo = omieItem.Inativo == "S",
+                            Nome = omieVendedor.Nome,
+                            Email = omieVendedor.Email,
+                            Comissao = omieVendedor.Comissao,
+                            Inativo = omieVendedor.Inativo == "S",
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow,
                             OmieUpdatedAt = omieLastAlt
                         };
-                        _dbContext.Vendedores.Add(novoVendedor);
-                        existingVendedores[omieId] = novoVendedor;
+                        dbContext.Vendedores.Add(novoVendedor);
                     }
                     else
                     {
-                        // Se o timestamp da Omie for igual ao que já temos, pula o update
                         if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
                             existing.OmieUpdatedAt.Value == omieLastAlt.Value)
                         {
-                            _logger.LogDebug("Vendedor OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
-                            continue;
+                            return;
                         }
 
-                        existing.Nome = omieItem.Nome;
-                        existing.Email = omieItem.Email;
-                        existing.Comissao = omieItem.Comissao;
-                        existing.Inativo = omieItem.Inativo == "S";
+                        existing.Nome = omieVendedor.Nome;
+                        existing.Email = omieVendedor.Email;
+                        existing.Comissao = omieVendedor.Comissao;
+                        existing.Inativo = omieVendedor.Inativo == "S";
                         existing.UpdatedAt = DateTime.UtcNow;
                         existing.OmieUpdatedAt = omieLastAlt;
                     }
-                }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de vendedores sincronizada.", pagina, response.TotalDePaginas);
-                temMais = pagina < response.TotalDePaginas;
-                pagina++;
-            }
-
-            if (!ct.IsCancellationRequested)
-            {
-                await _syncState.SetLastSyncDateAsync("Vendedores", DateTime.UtcNow, ct);
-            }
-
-            _logger.LogInformation("Sincronização de Vendedores finalizada.");
-        }
-        public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
-        {
-            _logger.LogInformation("Sincronizando Vendedor específico OmieId: {OmieId}", omieId);
-            var omieVendedor = await _omieClient.ConsultarVendedorAsync(omieId, ct);
-
-            if (omieVendedor != null)
-            {
-                var existing = await _dbContext.Vendedores.FirstOrDefaultAsync(v => v.OmieId == omieId, ct);
-                var omieLastAlt = OmieTimestampHelper.ParseOmieDateTime(omieVendedor.DAlt, omieVendedor.HAlt);
-
-                if (existing == null)
-                {
-                    var novoVendedor = new Vendedor
+                    int retries = 0;
+                    const int maxRetries = 2;
+                    while (retries < maxRetries)
                     {
-                        Id = Guid.NewGuid(),
-                        OmieId = omieId,
-                        Nome = omieVendedor.Nome,
-                        Email = omieVendedor.Email,
-                        Comissao = omieVendedor.Comissao,
-                        Inativo = omieVendedor.Inativo == "S",
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
-                        OmieUpdatedAt = omieLastAlt
-                    };
-                    _dbContext.Vendedores.Add(novoVendedor);
+                        try
+                        {
+                            await dbContext.SaveChangesAsync(ct);
+                            break;
+                        }
+                        catch (DbUpdateConcurrencyException ex)
+                        {
+                            retries++;
+                            logger.LogWarning(ex, "Concorrência individual em Vendedor {OmieId}. Tentativa {Retry}.", omieId, retries);
+                            if (retries >= maxRetries) throw;
+                            foreach (var entry in ex.Entries)
+                            {
+                                var dbVals = await entry.GetDatabaseValuesAsync(ct);
+                                if (dbVals == null) entry.State = EntityState.Detached;
+                                else entry.OriginalValues.SetValues(dbVals);
+                            }
+                        }
+                    }
+
+                    logger.LogInformation("Vendedor OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
                 }
                 else
                 {
-                    if (existing.OmieUpdatedAt.HasValue && omieLastAlt.HasValue &&
-                        existing.OmieUpdatedAt.Value == omieLastAlt.Value)
-                    {
-                        _logger.LogDebug("Vendedor OmieId {OmieId} já está atualizado. Pulando UPDATE.", omieId);
-                        return;
-                    }
-
-                    existing.Nome = omieVendedor.Nome;
-                    existing.Email = omieVendedor.Email;
-                    existing.Comissao = omieVendedor.Comissao;
-                    existing.Inativo = omieVendedor.Inativo == "S";
-                    existing.UpdatedAt = DateTime.UtcNow;
-                    existing.OmieUpdatedAt = omieLastAlt;
+                    logger.LogWarning("Vendedor OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
                 }
-
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Vendedor OmieId {OmieId} sincronizado individualmente com sucesso.", omieId);
             }
-            else
+            finally 
             {
-                _logger.LogWarning("Vendedor OmieId {OmieId} não encontrado na Omie para consulta individual.", omieId);
+                await lockService.ReleaseLockAsync(GetLockKey(omieId), lockToken, ct);
             }
         }
+
+        private async Task<string?> AcquireResourceLockAsync(long omieId, CancellationToken ct)
+        {
+            var lockKey = GetLockKey(omieId);
+            var lockToken = Guid.NewGuid().ToString();
+            for (int i = 0; i < 60; i++) 
+            {
+                if (await lockService.TryAcquireLockAsync(lockKey, lockToken, TimeSpan.FromMinutes(2), ct))
+                    return lockToken;
+                
+                await Task.Delay(500, ct); 
+            }
+            return null;
+        }
+
+        private string GetLockKey(long omieId) => $"sync:{EntityName}:{omieId}";
 
         public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;
     }

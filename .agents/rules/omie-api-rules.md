@@ -34,6 +34,40 @@ Essas regras definem os limites e restrições de alto nível para a integraçã
 ## 6. Garantia de Documento de Origem
 - **Regra de Negócio (Omie):** É proibido inserir lançamentos financeiros avulsos originados em pedidos comerciais. A aplicação externa se limitará a integrar e confirmar o **Documento de Origem**.
 
+## 7. Cursor de Sincronização — Guard de Cancelamento (Obrigatório)
+
+- **Constraint CRÍTICA:** O cursor de data/estado (`SetLastSyncDateAsync`) DEVE ser salvo SOMENTE se a sincronização foi completada com sucesso E sem cancelamento.
+- **Risco:** Salvar o cursor após cancelamento (`CancellationToken` sinalizado) marca a sincronização como bem-sucedida, fazendo o próximo ciclo **ignorar dados não processados**.
+- **Escopo:** Aplica-se a TODOS os serviços, incluindo tabelas de apoio (Full Sync).
+
+```csharp
+// ✅ CORRETO: Guard antes de atualizar cursor
+if (!ct.IsCancellationRequested)
+{
+    await syncState.SetLastSyncDateAsync("Bancos", DateTime.UtcNow, ct);
+}
+
+// ❌ PROIBIDO: Salvar cursor sem guard
+await syncState.SetLastSyncDateAsync("Bancos", DateTime.UtcNow, ct);
+```
+
+## 8. Renomear `SyncKey` Exige Migração de Cursor Histórico
+
+- **Regra:** Ao alterar o valor de uma constante `SyncKey` em um SyncService, é obrigatório garantir que o cursor histórico não seja perdido.
+- **Risco:** Renomear sem migração causa Full Sync não intencional na primeira execução após o deploy, com alto custo para bases volumosas.
+- **Ação Obrigatória:** Criar uma data migration SQL que copie o cursor do key antigo para o novo:
+
+```sql
+-- Migration obrigatória ao renomear SyncKey
+UPDATE sync_states SET key = 'LancamentosPagar' WHERE key = 'ContasPagar';
+```
+
+---
+
+## Validação
+
+Este documento é verificado pelo checklist em [sync-service-patterns.md](sync-service-patterns.md) e pelo workflow `/pr-review`.
+
 ---
 *Para padrões de código e templates de implementação, acesse:*
 - [Omie API Core Skills](../skills/omie-api-skills/SKILL.md)

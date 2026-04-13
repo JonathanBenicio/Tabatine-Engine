@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Tabatine.Omie.Client.Models;
 
 namespace Tabatine.Worker.IntegrationTests.Helpers;
@@ -38,8 +39,15 @@ public class SandboxOmieHelper(string appKey, string appSecret, string baseUrl)
 
 public class OmieRequest<T>
 {
+    [JsonPropertyName("app_key")]
     public string AppKey { get; set; } = string.Empty;
+
+    [JsonPropertyName("app_secret")]
     public string AppSecret { get; set; } = string.Empty;
+
+    [JsonPropertyName("call")]
     public string Call { get; set; } = string.Empty;
+
+    [JsonPropertyName("param")]
     public List<T> Param { get; set; } = new();
 }

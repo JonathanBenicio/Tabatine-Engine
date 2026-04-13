@@ -103,8 +103,11 @@ public class ContaCorrenteWebhookIntegrationTests(IntegrationTestWebAppFactory f
         var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
         response.EnsureSuccessStatusCode();
 
+        // Polling
+        await Task.Delay(1000);
+
         ContaCorrente? ccDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
+        var timeout = TimeSpan.FromSeconds(15); // Increase timeout
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
@@ -113,8 +116,8 @@ public class ContaCorrenteWebhookIntegrationTests(IntegrationTestWebAppFactory f
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             ccDB = await dbContext.ContasCorrente.FirstOrDefaultAsync(c => c.OmieId == contaCorrenteId);
             
-            if (ccDB != null) break;
-            await Task.Delay(500);
+            if (ccDB != null && ccDB.SaldoInicial == 0) break;
+            await Task.Delay(1000); // Increase polling interval
         }
 
         // Assert

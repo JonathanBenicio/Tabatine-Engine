@@ -12,22 +12,15 @@ using System.Threading.Tasks;
 
 namespace Tabatine.Infrastructure.Services
 {
-    public class EtapaFaturamentoSyncService : ISyncService
+    public class EtapaFaturamentoSyncService(
+        IOmieClient omieClient, 
+        AppDbContext dbContext, 
+        ISyncStateRepository syncState,
+        ILogger<EtapaFaturamentoSyncService> logger) : ISyncService
     {
-        private readonly IOmieClient _omieClient;
-        private readonly AppDbContext _dbContext;
-        private readonly ILogger<EtapaFaturamentoSyncService> _logger;
-
-        public EtapaFaturamentoSyncService(IOmieClient omieClient, AppDbContext dbContext, ILogger<EtapaFaturamentoSyncService> logger)
-        {
-            _omieClient = omieClient;
-            _dbContext = dbContext;
-            _logger = logger;
-        }
-
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            _logger.LogInformation("Iniciando sincronização de Etapas de Faturamento...");
+            logger.LogInformation("Iniciando sincronização de Etapas de Faturamento...");
             
             // Etapas geralmente não filtram por data, sincronizamos tudo
 
@@ -36,7 +29,7 @@ namespace Tabatine.Infrastructure.Services
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarEtapasFaturamentoAsync(pagina, ct);
+                var response = await omieClient.ListarEtapasFaturamentoAsync(pagina, ct);
                 
                 if (response == null || response.Cadastros == null || response.Cadastros.Count == 0) break;
 
@@ -44,7 +37,7 @@ namespace Tabatine.Infrastructure.Services
                 var allCodOperacao = response.Cadastros.Select(c => c.CodigoOperacao).ToList();
                 var allCodEtapas = response.Cadastros.SelectMany(c => c.Etapas.Select(e => e.Codigo)).Distinct().ToList();
 
-                var existingEtapas = await _dbContext.EtapasFaturamento
+                var existingEtapas = await dbContext.EtapasFaturamento
                     .Where(e => allCodOperacao.Contains(e.CodigoOperacao) && allCodEtapas.Contains(e.Codigo))
                     .ToListAsync(ct);
 
@@ -79,7 +72,7 @@ namespace Tabatine.Infrastructure.Services
                                 UpdatedAt = DateTime.UtcNow,
                                 OmieId = 0 // Não há ID numérico para etapas no endpoint Listar
                             };
-                            _dbContext.EtapasFaturamento.Add(nova);
+                            dbContext.EtapasFaturamento.Add(nova);
                             existingDict[key] = nova;
                         }
                         else
@@ -93,18 +86,22 @@ namespace Tabatine.Infrastructure.Services
                     }
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de etapas sincronizada.", pagina, response.TotalDePaginas);
+                await dbContext.SaveChangesAsync(ct);
+                logger.LogInformation("Página {Pagina} de {Total} de etapas sincronizada.", pagina, response.TotalDePaginas);
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;
             }
 
-            _logger.LogInformation("Sincronização de Etapas de Faturamento finalizada.");
+            if (!ct.IsCancellationRequested)
+            {
+                await syncState.SetLastSyncDateAsync("EtapaFaturamento", DateTime.UtcNow, ct);
+            }
+            logger.LogInformation("Sincronização de Etapas de Faturamento finalizada.");
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogWarning("SyncById solicitado para EtapaFaturamento OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
+            logger.LogWarning("SyncById solicitado para EtapaFaturamento OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
             await Task.CompletedTask;
         }
 
