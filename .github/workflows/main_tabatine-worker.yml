@@ -27,6 +27,10 @@ env:
   Omie__AppKey: ${{ secrets.OMIE_APPKEY || 'ci-placeholder' }}
   Omie__AppSecret: ${{ secrets.OMIE_APPSECRET || 'ci-placeholder' }}
   Omie__BaseUrl: ${{ secrets.OMIE_BASEURL || 'https://app.omie.com.br/api/v1' }}
+  # Credenciais de Sandbox para Testes E2E
+  Omie__AppKey_Sandbox: ${{ secrets.OMIE_APPKEY_SANDBOX || 'sandbox-placeholder' }}
+  Omie__AppSecret_Sandbox: ${{ secrets.OMIE_APPSECRET_SANDBOX || 'sandbox-placeholder' }}
+  Omie__BaseUrl_Sandbox: ${{ secrets.OMIE_BASEURL_SANDBOX || 'https://app.omie.com.br/api/v1/' }}
   ConnectionStrings__DefaultConnection: ${{ secrets.CONNECTIONSTRINGS_DEFAULTCONNECTION || 'Host=localhost;Database=ci;Username=ci;Password=ci' }}
 
 jobs:
