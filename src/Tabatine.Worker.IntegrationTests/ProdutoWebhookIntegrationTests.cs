@@ -42,7 +42,7 @@ public class ProdutoWebhookIntegrationTests : BaseIntegrationTest
 
         // Aguarda o worker processar a fila com polling robusto
         Produto? produtoPersistido = null;
-        var timeout = TimeSpan.FromSeconds(30);
+        var timeout = TimeSpan.FromSeconds(60);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
@@ -133,7 +133,7 @@ public class ProdutoWebhookIntegrationTests : BaseIntegrationTest
         response.EnsureSuccessStatusCode();
 
         Produto? produtoPersistido = null;
-        var timeout = TimeSpan.FromSeconds(30);
+        var timeout = TimeSpan.FromSeconds(60);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)

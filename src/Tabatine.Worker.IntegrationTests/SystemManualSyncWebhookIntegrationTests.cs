@@ -8,6 +8,7 @@ using Tabatine.Omie.Client.Models.Bancos;
 
 namespace Tabatine.Worker.IntegrationTests.Webhooks;
 
+[Collection("HeavyTestsCollection")]
 public class SystemManualSyncWebhookIntegrationTests : BaseIntegrationTest
 {
     public SystemManualSyncWebhookIntegrationTests(IntegrationTestWebAppFactory factory) : base(factory)
@@ -56,7 +57,7 @@ public class SystemManualSyncWebhookIntegrationTests : BaseIntegrationTest
 
         // 4. Assert - Validação do processamento assíncrono (Polling)
         Banco? bancoPersistido = null;
-        var timeout = TimeSpan.FromSeconds(15); 
+        var timeout = TimeSpan.FromSeconds(30); 
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)

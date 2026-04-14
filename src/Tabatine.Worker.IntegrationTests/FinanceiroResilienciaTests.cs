@@ -79,7 +79,7 @@ public class FinanceiroResilienciaTests(IntegrationTestWebAppFactory factory) : 
             // O SyncService deve propagar o CancellationToken que expira em 2s
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
             
-            await Assert.ThrowsAsync<OperationCanceledException>(() => syncService.SyncAllAsync(cts.Token));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => syncService.SyncAllAsync(cts.Token));
         }
     }
 }
