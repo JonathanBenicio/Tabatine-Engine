@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -62,24 +62,24 @@ public class AllSyncsIntegrationTests : BaseIntegrationTest
             Console.WriteLine($"[TEST DEBUG] FALTANDO: {string.Join(", ", missing)}");
         }
 
-        syncStates.Count.Should().Be(14, "Todos os 14 serviços devem ter registrado seu estado de sincronização.");
+        Assert.Equal(14, syncStates.Count);
 
         // Assert - Check Data Persistence in tables (one by one)
-        (await assertDb.Bancos.AnyAsync(b => b.CodigoBanco == "001")).Should().BeTrue("Bancos");
-        (await assertDb.MeiosPagamento.AnyAsync(m => m.Codigo == "BOLETO")).Should().BeTrue("Meios de Pagamento");
-        (await assertDb.EtapasFaturamento.AnyAsync(e => e.Codigo == "10")).Should().BeTrue("Etapas de Faturamento");
-        (await assertDb.FormasPagamento.AnyAsync(f => f.Codigo == "BOL")).Should().BeTrue("Formas de Pagamento");
-        (await assertDb.CondicoesPagamento.AnyAsync(c => c.Codigo == "101")).Should().BeTrue("Condições de Pagamento");
-        (await assertDb.Vendedores.AnyAsync(v => v.OmieId == 555)).Should().BeTrue("Vendedores");
-        (await assertDb.ContasCorrente.AnyAsync(c => c.OmieId == 444)).Should().BeTrue("Contas Corrente");
-        (await assertDb.Clientes.AnyAsync(c => c.OmieId == 111)).Should().BeTrue("Clientes");
-        (await assertDb.Produtos.AnyAsync(p => p.OmieId == 222)).Should().BeTrue("Produtos");
-        (await assertDb.LocaisEstoque.AnyAsync(l => l.OmieId == 888)).Should().BeTrue("Locais de Estoque");
-        (await assertDb.ProdutosEstoque.AnyAsync()).Should().BeTrue("Saldos de Estoque");
-        (await assertDb.PedidosVenda.AnyAsync(p => p.OmieId == 333)).Should().BeTrue("Pedidos de Venda");
-        (await assertDb.NotasFiscais.AnyAsync(n => n.OmieId == 777)).Should().BeTrue("Notas Fiscais");
-        (await assertDb.TitulosReceber.AnyAsync(t => t.OmieId == 666)).Should().BeTrue("Contas a Receber");
-        (await assertDb.TitulosPagar.AnyAsync(t => t.OmieId == 999)).Should().BeTrue("Contas a Pagar");
+        Assert.True(await assertDb.Bancos.AnyAsync(b => b.CodigoBanco == "001"), "Bancos");
+        Assert.True(await assertDb.MeiosPagamento.AnyAsync(m => m.Codigo == "BOLETO"), "Meios de Pagamento");
+        Assert.True(await assertDb.EtapasFaturamento.AnyAsync(e => e.Codigo == "10"), "Etapas de Faturamento");
+        Assert.True(await assertDb.FormasPagamento.AnyAsync(f => f.Codigo == "BOL"), "Formas de Pagamento");
+        Assert.True(await assertDb.CondicoesPagamento.AnyAsync(c => c.Codigo == "101"), "Condições de Pagamento");
+        Assert.True(await assertDb.Vendedores.AnyAsync(v => v.OmieId == 555), "Vendedores");
+        Assert.True(await assertDb.ContasCorrente.AnyAsync(c => c.OmieId == 444), "Contas Corrente");
+        Assert.True(await assertDb.Clientes.AnyAsync(c => c.OmieId == 111), "Clientes");
+        Assert.True(await assertDb.Produtos.AnyAsync(p => p.OmieId == 222), "Produtos");
+        Assert.True(await assertDb.LocaisEstoque.AnyAsync(l => l.OmieId == 888), "Locais de Estoque");
+        Assert.True(await assertDb.ProdutosEstoque.AnyAsync(), "Saldos de Estoque");
+        Assert.True(await assertDb.PedidosVenda.AnyAsync(p => p.OmieId == 333), "Pedidos de Venda");
+        Assert.True(await assertDb.NotasFiscais.AnyAsync(n => n.OmieId == 777), "Notas Fiscais");
+        Assert.True(await assertDb.TitulosReceber.AnyAsync(t => t.OmieId == 666), "Contas a Receber");
+        Assert.True(await assertDb.TitulosPagar.AnyAsync(t => t.OmieId == 999), "Contas a Pagar");
     }
 
     private void SetupAllMocks()

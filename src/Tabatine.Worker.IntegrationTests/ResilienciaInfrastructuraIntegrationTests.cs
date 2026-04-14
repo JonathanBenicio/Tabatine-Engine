@@ -70,8 +70,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
         await Task.WhenAll(tarefa1, tarefa2);
 
         // Assert — apenas UM dos workers deve ter adquirido o lock
-        locks.Count(adquiriu => adquiriu).Should().BeLessThanOrEqualTo(1,
-            "Apenas um worker deve conseguir adquirir o lock distribuído simultaneamente");
+        Assert.True(locks.Count(adquiriu => adquiriu) <= 1, "Apenas um worker deve conseguir adquirir o lock distribuído simultaneamente");
     }
 
     [Fact]
@@ -110,7 +109,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
         }
 
         // Assert — deve conseguir adquirir pois o anterior expirou
-        adquiriu.Should().BeTrue("Lock expirado deve ser liberado para novo worker adquirir");
+        Assert.True(adquiriu, "Lock expirado deve ser liberado para novo worker adquirir");
     }
 
     // ──────────────────────────────────────────────
@@ -173,7 +172,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
             var webhookPersistido = await dbContext.WebhookEvents
                 .AnyAsync(w => w.Event == "Financas.ContaReceber.Incluido");
 
-            webhookPersistido.Should().BeTrue("O WebhookEvent deve ser persistido mesmo em caso de falha no processamento");
+            Assert.True(webhookPersistido, "O WebhookEvent deve ser persistido mesmo em caso de falha no processamento");
         }
     }
 
@@ -225,9 +224,9 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
             await Task.Delay(500);
         }
 
-        webhookDB.Should().NotBeNull("O WebhookEvent deve ser persistido com o MessageId correto");
-        webhookDB!.Event.Should().Be("Financas.ContaReceber.Incluido");
-        webhookDB.Status.Should().Be(WebhookEvent.StatusCompleted, "O evento processado com sucesso deve ter status Completed");
+        Assert.NotNull(webhookDB);
+        Assert.Equal("Financas.ContaReceber.Incluido", webhookDB!.Event);
+        Assert.Equal(WebhookEvent.StatusCompleted, webhookDB.Status);
     }
 
     // ──────────────────────────────────────────────
@@ -287,8 +286,8 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var cliente = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == 998877L);
 
-            cliente.Should().NotBeNull("Cliente do período retroativo deve ser sincronizado");
-            cliente!.RazaoSocial.Should().Be("Cliente Retroativo ABC");
+            Assert.NotNull(cliente);
+            Assert.Equal("Cliente Retroativo ABC", cliente!.RazaoSocial);
         }
     }
 
@@ -329,10 +328,8 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var stateAtual = await dbContext.IntegrationSyncStates.FirstOrDefaultAsync(s => s.ModuleName == moduleName);
 
-            stateAtual.Should().NotBeNull("O estado de sincronização deve ser registrado após o sync");
-            stateAtual!.LastSyncDate.Should().BeAfter(
-                cursorAntes ?? DateTime.MinValue,
-                "O cursor de sincronização deve avançar após cada execução bem-sucedida");
+            Assert.NotNull(stateAtual);
+            Assert.True(stateAtual!.LastSyncDate > (cursorAntes ?? DateTime.MinValue), "O cursor de sincronização deve avançar após cada execução bem-sucedida");
         }
     }
 

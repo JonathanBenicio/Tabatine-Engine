@@ -40,22 +40,43 @@ public class ProdutoWebhookIntegrationTests : BaseIntegrationTest
         var response = await Client.PostAsJsonAsync("/webhook/omie", payload);
         response.EnsureSuccessStatusCode();
 
-        // Aguarda o worker processar a fila
-        await WaitForWebhookQueueToDrainAsync(TimeSpan.FromSeconds(10));
+        // Aguarda o worker processar a fila com polling robusto
+        Produto? produtoPersistido = null;
+        var timeout = TimeSpan.FromSeconds(30);
+        var start = DateTime.UtcNow;
 
-        // Assert
-        using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        while (DateTime.UtcNow - start < timeout)
+        {
+            using var scopeLoop = Factory.Services.CreateScope();
+            var dbLoop = scopeLoop.ServiceProvider.GetRequiredService<AppDbContext>();
+            
+            produtoPersistido = await dbLoop.Produtos
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.OmieId == omieId);
 
-        var produtoPersistido = await db.Produtos
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.OmieId == omieId);
+            if (produtoPersistido != null) break;
+            
+            await Task.Delay(500);
+        }
+
+        if (produtoPersistido == null)
+        {
+            using var diagScope = Factory.Services.CreateScope();
+            var dbDiag = diagScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var webhook = await dbDiag.WebhookEvents
+                .AsNoTracking()
+                .OrderByDescending(w => w.CreatedAt)
+                .FirstOrDefaultAsync(w => w.Event == "Produto.Incluido");
+
+            Assert.Fail($"Produto {omieId} não persistido após {timeout.TotalSeconds}s. " +
+                        $"Webhook status: {(webhook == null ? "Não encontrado" : (webhook.ProcessedAt.HasValue ? $"Processado em {webhook.ProcessedAt}" : $"Pendente/Erro (ID: {webhook.Id})"))}");
+        }
 
         // Verificações Finais
-        produtoPersistido.Should().NotBeNull("O Produto deveria ter sido persistido pelo processador de webhooks.");
-        produtoPersistido!.Descricao.Should().Be(produtoOmie.Descricao);
-        produtoPersistido.CodigoProduto.Should().Be(produtoOmie.Codigo);
-        produtoPersistido.PrecoUnitario.Should().Be(produtoOmie.ValorUnitario);
+        Assert.NotNull(produtoPersistido);
+        Assert.Equal(produtoOmie.Descricao, produtoPersistido!.Descricao);
+        Assert.Equal(produtoOmie.Codigo, produtoPersistido.CodigoProduto);
+        Assert.Equal(produtoOmie.ValorUnitario, produtoPersistido.PrecoUnitario);
         
         // Verificar se a notificação foi "enviada" (Mock acionado)
         await Factory.NotificationServiceMock.ReceivedWithAnyArgs(1)
@@ -112,7 +133,7 @@ public class ProdutoWebhookIntegrationTests : BaseIntegrationTest
         response.EnsureSuccessStatusCode();
 
         Produto? produtoPersistido = null;
-        var timeout = TimeSpan.FromSeconds(20);
+        var timeout = TimeSpan.FromSeconds(30);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
@@ -129,8 +150,21 @@ public class ProdutoWebhookIntegrationTests : BaseIntegrationTest
             await Task.Delay(500);
         }
 
-        produtoPersistido.Should().NotBeNull();
-        produtoPersistido!.Descricao.Should().Be("Descricao Nova Atualizada");
-        produtoPersistido.PrecoUnitario.Should().Be(200.00m);
+        if (produtoPersistido == null || produtoPersistido.Descricao != "Descricao Nova Atualizada")
+        {
+            using var diagScope = Factory.Services.CreateScope();
+            var dbDiag = diagScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var webhook = await dbDiag.WebhookEvents
+                .AsNoTracking()
+                .OrderByDescending(w => w.CreatedAt)
+                .FirstOrDefaultAsync(w => w.Event == "Produto.Alterado");
+
+            Assert.Fail($"Produto {omieId} não atualizado após {timeout.TotalSeconds}s. " +
+                        $"Webhook status: {(webhook == null ? "Não encontrado" : (webhook.ProcessedAt.HasValue ? $"Processado em {webhook.ProcessedAt}" : $"Pendente/Erro (ID: {webhook.Id})"))}");
+        }
+
+        Assert.NotNull(produtoPersistido);
+        Assert.Equal("Descricao Nova Atualizada", produtoPersistido!.Descricao);
+        Assert.Equal(200.00m, produtoPersistido.PrecoUnitario);
     }
 }

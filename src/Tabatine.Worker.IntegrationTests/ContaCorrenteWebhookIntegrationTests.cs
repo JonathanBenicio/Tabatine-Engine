@@ -65,9 +65,9 @@ public class ContaCorrenteWebhookIntegrationTests(IntegrationTestWebAppFactory f
             await Task.Delay(500);
         }
 
-        ccDB.Should().NotBeNull("A Conta Corrente deve ser persistida/atualizada");
-        ccDB!.Descricao.Should().Be("Conta Teste Webhook");
-        ccDB.SaldoInicial.Should().Be(saldoInicialEsperado);
+        Assert.NotNull(ccDB);
+        Assert.Equal("Conta Teste Webhook", ccDB!.Descricao);
+        Assert.Equal(saldoInicialEsperado, ccDB.SaldoInicial);
     }
 
     [Fact]
@@ -121,10 +121,10 @@ public class ContaCorrenteWebhookIntegrationTests(IntegrationTestWebAppFactory f
         }
 
         // Assert
-        ccDB.Should().NotBeNull("A Conta Corrente deve existir para base da reconciliação");
+        Assert.NotNull(ccDB);
         
         // Em um cenário real completo validaríamos os lançamentos. Como o webhook isola
         // a entidade ContaCorrente, atestar que ela suporta listar e gravar o Saldo é o primeiro passo da conciliação.
-        ccDB!.Descricao.Should().Be("CC Reconciliacao");
+        Assert.Equal("CC Reconciliacao", ccDB!.Descricao);
     }
 }

@@ -43,7 +43,7 @@ public class EstoqueEdgeCasesTests(IntegrationTestWebAppFactory factory) : BaseI
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var count = await dbContext.Produtos.CountAsync(p => p.OmieId == omieIdValido);
             
-            count.Should().Be(1, "O sistema deve realizar upsert baseado no OmieId, evitando duplicidade mesmo que o payload contenha itens repetidos");
+            Assert.Equal(1, count);
         }
     }
 
@@ -85,8 +85,8 @@ public class EstoqueEdgeCasesTests(IntegrationTestWebAppFactory factory) : BaseI
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var estoque = await dbContext.ProdutosEstoque.FirstOrDefaultAsync(e => e.Produto.OmieId == omieIdProd);
 
-            estoque.Should().NotBeNull();
-            estoque!.Saldo.Should().Be(-15.5m, "Saldos negativos devem ser persistidos corretamente para refletir a realidade do ERP");
+            Assert.NotNull(estoque);
+            Assert.Equal(-15.5m, estoque!.Saldo);
         }
     }
 }

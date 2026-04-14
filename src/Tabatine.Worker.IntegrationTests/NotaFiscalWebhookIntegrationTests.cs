@@ -75,10 +75,10 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
             await Task.Delay(500);
         }
 
-        nfDB.Should().NotBeNull("A Nota Fiscal deve ser persistida no banco de dados");
-        nfDB!.NumeroNf.Should().Be("1234");
-        nfDB.ValorTotal.Should().Be(1500.50m);
-        nfDB.ChaveAcesso.Should().Be(omieNf.Compl.ChaveNfe);
+        Assert.NotNull(nfDB);
+        Assert.Equal("1234", nfDB!.NumeroNf);
+        Assert.Equal(1500.50m, nfDB.ValorTotal);
+        Assert.Equal(omieNf.Compl.ChaveNfe, nfDB.ChaveAcesso);
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
         // Se a NF deve falhar por Constraint FK, nfDb ficará nula, e o Log/DLQ conterá o registro.
         // Isso depende da FK no EFCore para PedidoVenda. 
         // Comumente, sincronizações marcam o PedidoId local como NULO.
-        nfDB.Should().NotBeNull("A NF com pedido inexistente deve ser salva com PedidoId nulo localmente");
-        nfDB!.PedidoVendaId.Should().BeNull();
+        Assert.NotNull(nfDB);
+        Assert.Null(nfDB!.PedidoVendaId);
     }
 }

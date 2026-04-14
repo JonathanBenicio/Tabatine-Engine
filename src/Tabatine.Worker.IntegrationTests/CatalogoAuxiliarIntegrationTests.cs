@@ -39,9 +39,9 @@ public class CatalogoAuxiliarIntegrationTests(IntegrationTestWebAppFactory facto
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var banco = await dbContext.Bancos.FirstOrDefaultAsync(b => b.CodigoBanco == "341");
 
-            banco.Should().NotBeNull("O banco deve ser inserido no banco de dados");
-            banco!.Nome.Should().Be("Itaú Unibanco");
-            banco.CodigoBanco.Should().Be("341");
+            Assert.NotNull(banco);
+            Assert.Equal("Itaú Unibanco", banco!.Nome);
+            Assert.Equal("341", banco.CodigoBanco);
         }
     }
 
@@ -77,11 +77,10 @@ public class CatalogoAuxiliarIntegrationTests(IntegrationTestWebAppFactory facto
             var pix = await dbContext.FormasPagamento.FirstOrDefaultAsync(f => f.Codigo == "PIX");
             var cartaoCredito = await dbContext.FormasPagamento.FirstOrDefaultAsync(f => f.Codigo == "CC");
 
-            pix.Should().NotBeNull("Forma de pagamento PIX deve ser inserida");
-            pix!.Descricao.Should().Be("Pix");
-
-            cartaoCredito.Should().NotBeNull("Forma de pagamento Cartão de Crédito deve ser inserida");
-            cartaoCredito!.Descricao.Should().Be("Cartão de Crédito");
+            Assert.NotNull(pix);
+            Assert.Equal("Pix", pix!.Descricao);
+            Assert.NotNull(cartaoCredito);
+            Assert.Equal("Cartão de Crédito", cartaoCredito!.Descricao);
         }
     }
 
@@ -116,11 +115,10 @@ public class CatalogoAuxiliarIntegrationTests(IntegrationTestWebAppFactory facto
             var aVista = await dbContext.CondicoesPagamento.FirstOrDefaultAsync(c => c.Codigo == "201");
             var prazo = await dbContext.CondicoesPagamento.FirstOrDefaultAsync(c => c.Codigo == "202");
 
-            aVista.Should().NotBeNull("Condição 'À Vista' deve existir");
-            aVista!.Descricao.Should().Be("À Vista");
-
-            prazo.Should().NotBeNull("Condição '30/60 dias' deve existir");
-            prazo!.Descricao.Should().Be("30/60 dias");
+            Assert.NotNull(aVista);
+            Assert.Equal("À Vista", aVista!.Descricao);
+            Assert.NotNull(prazo);
+            Assert.Equal("30/60 dias", prazo!.Descricao);
         }
     }
 
@@ -153,11 +151,10 @@ public class CatalogoAuxiliarIntegrationTests(IntegrationTestWebAppFactory facto
             var boleto = await dbContext.MeiosPagamento.FirstOrDefaultAsync(m => m.Codigo == "BOLETO");
             var transf = await dbContext.MeiosPagamento.FirstOrDefaultAsync(m => m.Codigo == "TRANSF");
 
-            boleto.Should().NotBeNull();
-            boleto!.Descricao.Should().Be("Boleto Bancário");
-
-            transf.Should().NotBeNull();
-            transf!.Descricao.Should().Be("Transferência Bancária");
+            Assert.NotNull(boleto);
+            Assert.Equal("Boleto Bancário", boleto!.Descricao);
+            Assert.NotNull(transf);
+            Assert.Equal("Transferência Bancária", transf!.Descricao);
         }
     }
 
@@ -191,7 +188,7 @@ public class CatalogoAuxiliarIntegrationTests(IntegrationTestWebAppFactory facto
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var count = await dbContext.Bancos.CountAsync(b => b.CodigoBanco == "999");
-            count.Should().Be(1, "Sync idempotente não deve duplicar registros de Banco");
+            Assert.Equal(1, count);
         }
     }
 }

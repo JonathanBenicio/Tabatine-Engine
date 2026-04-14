@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Tabatine.Core.Interfaces;
@@ -32,8 +31,8 @@ public class SandboxClienteE2ETests(SandboxIntegrationTestWebAppFactory factory)
         // 3. Assert
         var clienteNoDb = await db.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieId);
         
-        clienteNoDb.Should().NotBeNull("O cliente criado na Sandbox deve ter sido sincronizado para o banco local.");
-        clienteNoDb!.RazaoSocial.Should().Be(razaoSocial);
+        Assert.NotNull(clienteNoDb);
+        Assert.Equal(razaoSocial, clienteNoDb!.RazaoSocial);
 
         // 4. Act 2 - Segunda sincronização (Incremental)
         // Deve registrar "0 sincronizados" ou simplesmente não duplicar nada
@@ -41,6 +40,6 @@ public class SandboxClienteE2ETests(SandboxIntegrationTestWebAppFactory factory)
         await syncService.SyncByIdAsync(omieId, CancellationToken.None);
         var countDepois = await db.Clientes.CountAsync();
 
-        countDepois.Should().Be(countAntes, "Uma segunda sincronização imediata não deve inserir novos registros.");
+        Assert.Equal(countAntes, countDepois);
     }
 }

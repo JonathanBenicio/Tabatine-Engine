@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -54,7 +54,7 @@ public class EtapasFormasFaturamentoIntegrationTests(IntegrationTestWebAppFactor
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.Codigo == codigoEtapa);
 
-        etapaDB.Should().NotBeNull("A etapa de faturamento deve ser persistida.");
-        etapaDB!.Descricao.Should().Be(descricaoEtapa);
+        Assert.NotNull(etapaDB);
+        Assert.Equal(descricaoEtapa, etapaDB!.Descricao);
     }
 }

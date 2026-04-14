@@ -100,8 +100,7 @@ public class EstoqueVolumeIntegrationTests(IntegrationTestWebAppFactory factory)
             var dbContext = assertScope.ServiceProvider.GetRequiredService<AppDbContext>();
             var totalPersistido = await dbContext.ProdutosEstoque.CountAsync();
 
-            totalPersistido.Should().Be(totalRegistros,
-                $"Todos os {totalRegistros} saldos de estoque devem ser persistidos sem perda via streaming");
+            Assert.Equal(totalRegistros, totalPersistido);
         }
     }
 
@@ -164,7 +163,7 @@ public class EstoqueVolumeIntegrationTests(IntegrationTestWebAppFactory factory)
             var count = await dbContext.ProdutosEstoque
                 .CountAsync(e => e.Produto != null && e.Produto.OmieId == codigoProdutoOmie);
 
-            count.Should().Be(1, "Resincronização não deve duplicar registros de ProdutoEstoque");
+            Assert.Equal(1, count);
         }
     }
 }

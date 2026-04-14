@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Xunit;
 using Microsoft.Extensions.DependencyInjection;
 using Tabatine.Infrastructure.Services;
 using Tabatine.Worker.IntegrationTests.Helpers;
@@ -42,6 +42,6 @@ public class OmieResilienciaIntegrationTests(HttpMockIntegrationTestWebAppFactor
 
         // Assert
         // Verificamos se houve 2 chamadas no log do WireMock
-        Factory.OmieMockServer.LogEntries.Should().HaveCount(2, "O cliente deve ter tentado novamente após o erro 425.");
+        Assert.Equal(2, Factory.OmieMockServer.LogEntries.Count());
     }
 }

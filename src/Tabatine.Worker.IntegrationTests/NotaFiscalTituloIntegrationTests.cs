@@ -107,8 +107,8 @@ public class NotaFiscalTituloIntegrationTests(IntegrationTestWebAppFactory facto
             await Task.Delay(500);
         }
 
-        nfDB.Should().NotBeNull("A NF deve ser persistida");
-        nfDB!.ValorTotal.Should().Be(850.00m);
+        Assert.NotNull(nfDB);
+        Assert.Equal(850.00m, nfDB!.ValorTotal);
 
         // Valida vinculação: se o sistema cria NotaFiscalTitulo, deve existir ao menos 1
         // Caso a FK seja resolvida apenas por ID, verificamos o campo direto
@@ -119,10 +119,10 @@ public class NotaFiscalTituloIntegrationTests(IntegrationTestWebAppFactory facto
                 .Include(n => n.Titulos)
                 .FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
 
-            nfComTitulos.Should().NotBeNull();
+            Assert.NotNull(nfComTitulos);
             // Valida que a NF possui pelo menos um vínculo com título, ou que o TituloReceber referenciado existe
             var titulo = await dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieIdTituloReceber);
-            titulo.Should().NotBeNull("O TituloReceber vinculado à NF deve existir no banco");
+            Assert.NotNull(titulo);
         }
     }
 
@@ -190,8 +190,8 @@ public class NotaFiscalTituloIntegrationTests(IntegrationTestWebAppFactory facto
             await Task.Delay(500);
         }
 
-        nfDB.Should().NotBeNull();
-        nfDB!.ValorTotal.Should().Be(3000.00m);
-        nfDB.NumeroNf.Should().Be("7778");
+        Assert.NotNull(nfDB);
+        Assert.Equal(3000.00m, nfDB!.ValorTotal);
+        Assert.Equal("7778", nfDB.NumeroNf);
     }
 }

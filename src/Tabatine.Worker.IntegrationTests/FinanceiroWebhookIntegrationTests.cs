@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using Tabatine.Core.Entities;
 using Tabatine.Omie.Client.Models.Financeiro;
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Tabatine.Infrastructure.Data;
@@ -66,10 +65,10 @@ public class FinanceiroWebhookIntegrationTests(IntegrationTestWebAppFactory fact
             await Task.Delay(500);
         }
 
-        registroDB.Should().NotBeNull("A conta a receber deve ser persistida");
-        registroDB!.NumeroDocumento.Should().Be("DOC-REC-001");
-        registroDB.ValorDocumento.Should().Be(1500.50m);
-        registroDB.StatusTitulo.Should().Be("ABERTO");
+        Assert.NotNull(registroDB);
+        Assert.Equal("DOC-REC-001", registroDB!.NumeroDocumento);
+        Assert.Equal(1500.50m, registroDB.ValorDocumento);
+        Assert.Equal("ABERTO", registroDB.StatusTitulo);
     }
 
     [Fact]
@@ -127,8 +126,8 @@ public class FinanceiroWebhookIntegrationTests(IntegrationTestWebAppFactory fact
             await Task.Delay(500);
         }
 
-        registroDB.Should().NotBeNull();
-        registroDB!.StatusTitulo.Should().Be("CANCELADO", "O título deve ser marcado como CANCELADO ao receber o evento de exclusão");
+        Assert.NotNull(registroDB);
+        Assert.Equal("CANCELADO", registroDB!.StatusTitulo);
     }
 
     [Fact]
@@ -176,7 +175,7 @@ public class FinanceiroWebhookIntegrationTests(IntegrationTestWebAppFactory fact
         }
 
         // Não deve ter sido inserido devido ao erro da API Omie
-        registroDB.Should().BeNull("O registro não deveria ter sido integrado devido à queda da API Omie.");
+        Assert.Null(registroDB);
 
         // Opcional: Aqui poderíamos validar a tabela WebhookEvents onde DLQ = true caso esteja mapeado
         // usando a DbContext local.

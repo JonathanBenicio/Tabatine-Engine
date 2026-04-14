@@ -49,13 +49,13 @@ public class FinanceiroResilienciaTests(IntegrationTestWebAppFactory factory) : 
         DateTime end = DateTime.UtcNow;
 
         // Assert
-        (end - start).TotalMilliseconds.Should().BeGreaterThan(2000, "O teste deve refletir a latência introduzida no Mock");
+        Assert.True((end - start).TotalMilliseconds > 2000);
 
         using (var scope = Factory.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var titulo = await dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieId);
-            titulo.Should().NotBeNull("Mesmo com lentidão, o dado deve ser persistido corretamente se estiver dentro do timeout");
+            Assert.NotNull(titulo);
         }
     }
 
@@ -79,8 +79,7 @@ public class FinanceiroResilienciaTests(IntegrationTestWebAppFactory factory) : 
             // O SyncService deve propagar o CancellationToken que expira em 2s
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
             
-            var action = () => syncService.SyncAllAsync(cts.Token);
-            await action.Should().ThrowAsync<OperationCanceledException>();
+            await Assert.ThrowsAsync<OperationCanceledException>(() => syncService.SyncAllAsync(cts.Token));
         }
     }
 }

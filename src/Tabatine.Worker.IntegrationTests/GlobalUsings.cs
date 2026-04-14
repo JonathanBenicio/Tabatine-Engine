@@ -4,7 +4,6 @@ global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.DependencyInjection.Extensions;
 global using Microsoft.EntityFrameworkCore;
 global using NSubstitute;
-global using FluentAssertions;
 global using Tabatine.Core.Entities;
 global using Tabatine.Core.Interfaces;
 global using Tabatine.Infrastructure.Data;

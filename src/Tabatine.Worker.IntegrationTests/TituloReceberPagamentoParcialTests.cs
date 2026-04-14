@@ -59,10 +59,10 @@ public class TituloReceberPagamentoParcialTests(IntegrationTestWebAppFactory fac
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var reg = await dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieId);
 
-            reg.Should().NotBeNull("O título deve existir após 1ª sincronização");
-            reg!.ValorRecebido.Should().Be(300.00m, "Primeiro pagamento parcial de R$300");
-            reg.ValorSaldo.Should().Be(600.00m);
-            reg.StatusTitulo.Should().Be("PAGO_PARCIAL");
+            Assert.NotNull(reg);
+            Assert.Equal(300.00m, reg!.ValorRecebido);
+            Assert.Equal(600.00m, reg.ValorSaldo);
+            Assert.Equal("PAGO_PARCIAL", reg.StatusTitulo);
         }
 
         // Segunda liquidação: pagou mais R$ 600,00 → totalmente quitado
@@ -109,11 +109,11 @@ public class TituloReceberPagamentoParcialTests(IntegrationTestWebAppFactory fac
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var reg = await dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieId);
 
-            reg.Should().NotBeNull();
-            reg!.ValorRecebido.Should().Be(900.00m, "Valor total pago deve ser R$900");
-            reg.ValorSaldo.Should().Be(0.00m, "Saldo deve ser zero após liquidação total");
-            reg.StatusTitulo.Should().Be("RECEBIDO", "Status deve ser RECEBIDO após quitação completa");
-            reg.DataBaixa.Should().NotBeNull("Data de baixa deve ser registrada na quitação");
+            Assert.NotNull(reg);
+            Assert.Equal(900.00m, reg!.ValorRecebido);
+            Assert.Equal(0.00m, reg.ValorSaldo);
+            Assert.Equal("RECEBIDO", reg.StatusTitulo);
+            Assert.NotNull(reg.DataBaixa);
         }
     }
 
@@ -181,8 +181,8 @@ public class TituloReceberPagamentoParcialTests(IntegrationTestWebAppFactory fac
             await Task.Delay(500);
         }
 
-        ccDB.Should().NotBeNull("A conta corrente deve ser localizada no BD");
-        ccDB!.SaldoInicial.Should().Be(5000.00m, "Saldo inicial deve manter-se conforme Omie");
-        ccDB.Descricao.Should().Be("CC Movimento Crédito/Débito");
+        Assert.NotNull(ccDB);
+        Assert.Equal(5000.00m, ccDB!.SaldoInicial);
+        Assert.Equal("CC Movimento Crédito/Débito", ccDB.Descricao);
     }
 }

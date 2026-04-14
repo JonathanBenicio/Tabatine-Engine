@@ -1,6 +1,6 @@
 using Tabatine.Core.Entities;
 using Tabatine.Omie.Client.Models.Financeiro;
-using FluentAssertions;
+using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Tabatine.Infrastructure.Data;
@@ -56,11 +56,11 @@ public class FinanceiroPartialPaymentTests(IntegrationTestWebAppFactory factory)
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var registroDB = await dbContext.TitulosPagar.FirstOrDefaultAsync(t => t.OmieId == omieId);
 
-            registroDB.Should().NotBeNull();
-            registroDB!.ValorDocumento.Should().Be(1000.00m);
-            registroDB.ValorPago.Should().Be(400.00m);
-            registroDB.ValorSaldo.Should().Be(600.00m);
-            registroDB.DataBaixa.Should().Be(new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc));
+            Assert.NotNull(registroDB);
+            Assert.Equal(1000.00m, registroDB!.ValorDocumento);
+            Assert.Equal(400.00m, registroDB.ValorPago);
+            Assert.Equal(600.00m, registroDB.ValorSaldo);
+            Assert.Equal(new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc), registroDB.DataBaixa);
         }
     }
 }

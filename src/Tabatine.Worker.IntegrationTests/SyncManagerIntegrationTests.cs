@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -47,23 +46,23 @@ public class SyncManagerIntegrationTests : BaseIntegrationTest
         var syncStates = await assertDb.IntegrationSyncStates.ToListAsync();
 
         // Deve haver estados de sync salvos para todos os módulos configurados (aprox. 14 no ciclo)
-        syncStates.Should().NotBeEmpty("O SyncManager deve ter inicializado a sincronização e gravado estados para múltiplos serviços.");
+        Assert.NotEmpty(syncStates);
         
         // O mínimo esperado é > 10 (considerando que são 14 módulos ao todo)
-        syncStates.Count.Should().BeGreaterThan(10, "Todos os serviços atrelados ao SyncManager deveriam ter registrado sua execução no SyncState.");
+        Assert.True(syncStates.Count > 10, "Todos os serviços atrelados ao SyncManager deveriam ter registrado sua execução no SyncState.");
 
         // Validando módulos vitais
         var modulos = syncStates.Select(s => s.ModuleName).ToList();
-        modulos.Should().Contain("Bancos");
-        modulos.Should().Contain("Clientes");
-        modulos.Should().Contain("Pedidos");
-        modulos.Should().Contain("NotasFiscais");
-        modulos.Should().Contain("Estoque");
+        Assert.Contains("Bancos", modulos);
+        Assert.Contains("Clientes", modulos);
+        Assert.Contains("Pedidos", modulos);
+        Assert.Contains("NotasFiscais", modulos);
+        Assert.Contains("Estoque", modulos);
 
         // Todos os módulos listados não devem ter falhado (LastSyncDate deve refletir agora)
         foreach (var state in syncStates)
         {
-            state.LastSyncDate.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(2));
+            Assert.True(Math.Abs((state.LastSyncDate - DateTime.UtcNow).TotalMinutes) < 2);
         }
     }
 }

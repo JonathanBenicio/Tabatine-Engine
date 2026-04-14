@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using Tabatine.Core.Entities;
 using Tabatine.Omie.Client.Models.Estoque;
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Tabatine.Infrastructure.Data;
@@ -63,8 +62,8 @@ public class EstoqueWebhookIntegrationTests(IntegrationTestWebAppFactory factory
             await Task.Delay(500);
         }
 
-        localDB.Should().NotBeNull("O local de estoque deve ser sincronizado");
-        localDB!.Descricao.Should().Be("Local de Teste Webhook");
+        Assert.NotNull(localDB);
+        Assert.Equal("Local de Teste Webhook", localDB!.Descricao);
     }
 
     [Fact]
@@ -141,8 +140,8 @@ public class EstoqueWebhookIntegrationTests(IntegrationTestWebAppFactory factory
             await Task.Delay(500);
         }
 
-        saldoDB.Should().NotBeNull();
-        saldoDB!.Saldo.Should().Be(100);
+        Assert.NotNull(saldoDB);
+        Assert.Equal(100, saldoDB!.Saldo);
 
         // Verificação de Debouncing: O Mock deve ter sido chamado exatamente UMA vez (ou pelo menos não duas vezes no curtíssimo intervalo)
         // Como o processamento é assíncrono, aguardamos um pouco mais para garantir que o segundo não rodaria depois
@@ -209,7 +208,7 @@ public class EstoqueWebhookIntegrationTests(IntegrationTestWebAppFactory factory
             await Task.Delay(500);
         }
 
-        saldoDB.Should().NotBeNull();
-        saldoDB!.Saldo.Should().Be(-50, "O banco deve persistir saldo negativo adequadamente.");
+        Assert.NotNull(saldoDB);
+        Assert.Equal(-50, saldoDB!.Saldo);
     }
 }

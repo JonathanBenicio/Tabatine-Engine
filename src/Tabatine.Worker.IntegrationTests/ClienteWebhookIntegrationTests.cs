@@ -63,9 +63,9 @@ public class ClienteWebhookIntegrationTests(IntegrationTestWebAppFactory factory
             await Task.Delay(500);
         }
 
-        clienteDB.Should().NotBeNull("O cliente deve ser persistido no banco de dados");
-        clienteDB!.RazaoSocial.Should().Be(omieCliente.RazaoSocial);
-        clienteDB.CnpjCpf.Should().Be(omieCliente.CnpjCpf);
-        clienteDB.Cidade.Should().Be("São Paulo");
+        Assert.NotNull(clienteDB);
+        Assert.Equal(omieCliente.RazaoSocial, clienteDB!.RazaoSocial);
+        Assert.Equal(omieCliente.CnpjCpf, clienteDB.CnpjCpf);
+        Assert.Equal("São Paulo", clienteDB.Cidade);
     }
 }

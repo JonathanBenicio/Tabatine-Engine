@@ -58,9 +58,9 @@ public class VendedorWebhookIntegrationTests(IntegrationTestWebAppFactory factor
             await Task.Delay(500);
         }
 
-        vendedorDB.Should().NotBeNull("O Vendedor deve ser persistido no banco de dados");
-        vendedorDB!.Nome.Should().Be("Vendedor Teste Webhook");
-        vendedorDB.Email.Should().Be("vendedor@teste.com");
-        vendedorDB.Comissao.Should().Be(5.5m);
+        Assert.NotNull(vendedorDB);
+        Assert.Equal("Vendedor Teste Webhook", vendedorDB!.Nome);
+        Assert.Equal("vendedor@teste.com", vendedorDB.Email);
+        Assert.Equal(5.5m, vendedorDB.Comissao);
     }
 }

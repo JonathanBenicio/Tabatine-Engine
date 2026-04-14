@@ -34,9 +34,6 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
         using var connection = new Npgsql.NpgsqlConnection(_factory.GetConnectionString());
         await connection.OpenAsync();
 
-        // Tentar drenar a fila de webhooks para evitar que eventos de testes anteriores interfiram
-        await WaitForWebhookQueueToDrainAsync(TimeSpan.FromSeconds(5));
-
         // Inicialização thread-safe do Respawner (Singleton para a suite)
         if (_respawner == null)
         {
@@ -59,36 +56,13 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
             }
         }
 
-        // Resetar o banco antes de cada teste de forma limpa
+        // Resetar o banco antes de cada teste de forma limpa.
+        // O WebhookProcessorWorker está rodando em paralelo, então o reset deve ser rápido.
         await _respawner.ResetAsync(connection);
 
         // Limpar mocks compartilhados pelo Factory para garantir um estado limpo
         _factory.OmieClientMock.ClearReceivedCalls();
         _factory.NotificationServiceMock.ClearReceivedCalls();
-    }
-
-    protected async Task WaitForWebhookQueueToDrainAsync(TimeSpan timeout)
-    {
-        try 
-        {
-            using var scope = _factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-            // Espera até o timeout para que a fila fique vazia
-            var sw = Stopwatch.StartNew();
-            while (sw.Elapsed < timeout)
-            {
-                var pendingCount = await dbContext.WebhookEvents
-                    .CountAsync(w => w.Status == WebhookEvent.StatusPending || w.Status == WebhookEvent.StatusProcessing);
-
-                if (pendingCount == 0) break;
-                await Task.Delay(200);
-            }
-        }
-        catch 
-        {
-            // Silenciosamente falha se o banco não estiver pronto ou a tabela não existir
-        }
     }
 
     protected async Task WaitForConditionAsync(Func<Task<bool>> condition, string errorMessage = "Tempo esgotado aguardando condição.")

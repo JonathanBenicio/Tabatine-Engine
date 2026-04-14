@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
@@ -73,8 +72,8 @@ public class SystemManualSyncWebhookIntegrationTests : BaseIntegrationTest
         }
 
         // 5. Verificações Finais
-        bancoPersistido.Should().NotBeNull("A sincronização manual deveria ser acionada, invocando a fila de SyncManager e sincronizando o Banco de teste mockado.");
-        bancoPersistido!.Nome.Should().Be(omieBanco.Nome);
-        bancoPersistido.CodigoIspb.Should().Be(omieBanco.CodigoIspb);
+        Assert.NotNull(bancoPersistido);
+        Assert.Equal(omieBanco.Nome, bancoPersistido!.Nome);
+        Assert.Equal(omieBanco.CodigoIspb, bancoPersistido.CodigoIspb);
     }
 }

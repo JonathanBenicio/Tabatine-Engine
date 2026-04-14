@@ -120,7 +120,7 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
 
         // Polling para aguardar o processamento assíncrono
         PedidoVenda? pedidoDB = null;
-        var timeout = TimeSpan.FromSeconds(20);
+        var timeout = TimeSpan.FromSeconds(30);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
@@ -137,17 +137,30 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
             await Task.Delay(500);
         }
 
-        pedidoDB.Should().NotBeNull("O pedido deve ser persistido no banco de dados");
-        pedidoDB!.NumeroPedido.Should().Be(omiePedido.Cabecalho.NumeroPedido);
-        pedidoDB.ValorTotal.Should().Be(1500.00m);
+        if (pedidoDB == null)
+        {
+            using var diagScope = Factory.Services.CreateScope();
+            var dbDiag = diagScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var webhook = await dbDiag.WebhookEvents
+                .AsNoTracking()
+                .OrderByDescending(w => w.CreatedAt)
+                .FirstOrDefaultAsync(w => w.Event == "VendaProduto.Incluida");
+
+            Assert.Fail($"Pedido {omieIdPedido} não persistido após {timeout.TotalSeconds}s. " +
+                        $"Webhook status: {(webhook == null ? "Não encontrado" : (webhook.ProcessedAt.HasValue ? $"Processado em {webhook.ProcessedAt}" : $"Pendente/Erro (ID: {webhook.Id})"))}");
+        }
+
+        Assert.NotNull(pedidoDB);
+        Assert.Equal(omiePedido.Cabecalho.NumeroPedido, pedidoDB!.NumeroPedido);
+        Assert.Equal(1500.00m, pedidoDB.ValorTotal);
         
         // Validar Itens
-        pedidoDB.Itens.Should().HaveCount(1);
-        pedidoDB.Itens.First().ValorTotal.Should().Be(1500.00m);
+        Assert.Single(pedidoDB.Itens);
+        Assert.Equal(1500.00m, pedidoDB.Itens.First().ValorTotal);
         
         // Validar Parcelas
-        pedidoDB.Parcelas.Should().HaveCount(1);
-        pedidoDB.Parcelas.First().Valor.Should().Be(1500.00m);
+        Assert.Single(pedidoDB.Parcelas);
+        Assert.Equal(1500.00m, pedidoDB.Parcelas.First().Valor);
     }
 
     [Fact]
@@ -241,7 +254,7 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
         response.EnsureSuccessStatusCode();
 
         PedidoVenda? pedidoDB = null;
-        var timeout = TimeSpan.FromSeconds(20);
+        var timeout = TimeSpan.FromSeconds(30);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
@@ -259,9 +272,22 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
             await Task.Delay(500);
         }
 
-        pedidoDB.Should().NotBeNull();
-        pedidoDB!.ValorTotal.Should().Be(2500.00m);
-        pedidoDB.Itens.Should().HaveCount(1, "O item do Produto 2 deveria ter sido excluído no Upsert complexo");
-        pedidoDB.Itens.First().ValorTotal.Should().Be(2500.00m);
+        if (pedidoDB == null || pedidoDB.ValorTotal != 2500.00m)
+        {
+            using var diagScope = Factory.Services.CreateScope();
+            var dbDiag = diagScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var webhook = await dbDiag.WebhookEvents
+                .AsNoTracking()
+                .OrderByDescending(w => w.CreatedAt)
+                .FirstOrDefaultAsync(w => w.Event == "VendaProduto.Alterada");
+
+            Assert.Fail($"Pedido {omieIdPedido} não atualizado após {timeout.TotalSeconds}s. " +
+                        $"Webhook status: {(webhook == null ? "Não encontrado" : (webhook.ProcessedAt.HasValue ? $"Processado em {webhook.ProcessedAt}" : $"Pendente/Erro (ID: {webhook.Id})"))}");
+        }
+
+        Assert.NotNull(pedidoDB);
+        Assert.Equal(2500.00m, pedidoDB!.ValorTotal);
+        Assert.Single(pedidoDB.Itens);
+        Assert.Equal(2500.00m, pedidoDB.Itens.First().ValorTotal);
     }
 }

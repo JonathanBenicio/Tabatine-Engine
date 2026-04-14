@@ -76,9 +76,9 @@ public class PedidoIntegridadeTests(IntegrationTestWebAppFactory factory) : Base
                 .Include(p => p.Itens)
                 .FirstOrDefaultAsync(p => p.OmieId == omieIdPedido);
 
-            pedido.Should().NotBeNull();
-            pedido!.Itens.Count.Should().Be(1, "O item removido no Omie deve ser removido do banco local para manter integridade");
-            pedido.Itens.Any(i => i.OmieId == omieIdItem2).Should().BeFalse();
+            Assert.NotNull(pedido);
+            Assert.Single(pedido!.Itens);
+            Assert.DoesNotContain(pedido.Itens, i => i.OmieId == omieIdItem2);
         }
     }
 
@@ -141,8 +141,8 @@ public class PedidoIntegridadeTests(IntegrationTestWebAppFactory factory) : Base
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var nf = await dbContext.NotasFiscais.FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
 
-            nf.Should().NotBeNull("A Nota Fiscal deve ser salva mesmo sem o pedido existir");
-            nf!.PedidoVendaId.Should().BeNull("O vínculo deve estar nulo se o pedido não foi encontrado");
+            Assert.NotNull(nf);
+            Assert.Null(nf!.PedidoVendaId);
         }
     }
 }
