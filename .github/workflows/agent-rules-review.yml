@@ -1,6 +1,7 @@
 name: "🔍 Agent Rules Review — Detectar Mudanças em .agents/"
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - '.agents/rules/**'
@@ -93,9 +94,14 @@ jobs:
               '*Gerado automaticamente por `.github/workflows/agent-rules-review.yml` — [Epic #48](../../issues/48)*'
             ].join('\n');
 
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
+            if (context.issue.number) {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            } else {
+              console.log('Não é um contexto de PR. Comentário não enviado.');
+              console.log(body);
+            }
