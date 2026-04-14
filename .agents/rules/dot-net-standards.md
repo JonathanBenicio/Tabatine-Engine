@@ -147,9 +147,10 @@ public async IAsyncEnumerable<Cliente> FetchClientesAsync([EnumeratorCancellatio
 
 ---
 
-## Injeção de Dependência
+## Padrões de Teste
 
-- Sempre que uma nova interface/implementação for criada (ex: `IWebhookEventHandler`, `ISyncService`), o agente DEVE instruir a adição do registro no container de DI.
-- No projeto Worker, isso geralmente ocorre em `Extensions/ServiceCollectionExtensions.cs` ou `Program.cs`.
-- Usar `AddScoped` para serviços que dependem de `DbContext`.
-- Usar `AddSingleton` ou `AddTransient` para clientes HTTP ou serviços sem estado, dependendo da política do `IHttpClientFactory`.
+- **Framework de Testes**: Utilize **xUnit**.
+- **Asserções**: Utilize exclusivamente as asserções nativas do **xUnit** (`Assert.Equal`, `Assert.NotNull`, etc.).
+- **PROIBIÇÃO (FluentAssertions)**: O uso da biblioteca `FluentAssertions` é **ESTRITAMENTE PROIBIDO** devido a mudanças de licenciamento. NUNCA adicione este pacote ou utilize a sintaxe `.Should()`.
+- **Mocking**: Utilize **NSubstitute**.
+- **AAA Pattern**: Siga o padrão Arrange-Act-Assert em todos os testes.

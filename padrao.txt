@@ -13,6 +13,7 @@ Como o sistema lida com sincronização e limites de taxa (Rate Limits) da Omie:
 * **Paralelismo Controlado**: No `SyncManager.cs`, os serviços rodam de forma sequencial para evitar bloqueios. Para itens independentes (como Bancos e Meios de Pagamento), você pode usar `Task.WhenAll` com um `SemaphoreSlim` para limitar o grau de paralelismo sem estourar o limite de 240 req/min da Omie.
 * **Bulk Operations**: Ao persistir dados no PostgreSQL/Supabase, utilize o `EFCore.BulkExtensions` para inserções em massa em vez de múltiplos `AddAsync`, reduzindo o overhead de ida e volta ao banco.
 * **Paginação Inteligente**: Otimize o uso de `registros_por_pagina` (entre 50 e 100) conforme sugerido na documentação interna, garantindo que a memória do Worker não sature com payloads gigantescos.
+* **De-queue em Lote (Performance)**: No `WebhookProcessorWorker`, utilize o padrão de processamento em loop sem espera entre mensagens. Se o banco retornar uma mensagem processada, o worker deve verificar imediatamente se há mais (`hasMore`) antes de aguardar o `PollingIntervalMs`. Isso reduz a latência de processamento massivo de webhooks de minutos para segundos.
 
 ### 3. Observabilidade e Monitoramento
 Você já possui uma tabela de `Logs`, mas pode elevar o nível:
@@ -21,7 +22,7 @@ Você já possui uma tabela de `Logs`, mas pode elevar o nível:
 * **Métricas de Sincronização**: Exponha métricas (usando Prometheus ou Azure Monitor) sobre o tempo médio de sincronização por entidade e a taxa de sucesso/falha dos jobs.
 
 ### 4. Testes e Garantia de Qualidade
-* **Testes de Unidade (xUnit/FluentAssertions)**: Foque nos mapeadores de dados (Mappers) e nos helpers de data/hora (como o `OmieTimestampHelper`).
+* **Testes de Unidade (xUnit)**: Foque nos mapeadores de dados (Mappers) e nos helpers de data/hora (como o `OmieTimestampHelper`).
 * **Testes de Integração**: Utilize **Testcontainers** para subir uma instância real de PostgreSQL durante os testes, garantindo que as Migrations e a Fluent API do EF Core funcionem como esperado.
 * **Mocking da API Omie**: Use o `WireMock.Net` para simular as respostas da API Omie (incluindo cenários de erro e throttling) sem consumir sua chave real de produção.
 

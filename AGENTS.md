@@ -278,6 +278,15 @@ src/
 
 ---
 
+## Testing Standards
+
+- **Assertion Library**: Use native **xUnit Assert** (`Assert.Equal`, `Assert.NotNull`).
+- **Forbidden Library**: **FluentAssertions** is strictly prohibited due to licensing changes (v8+ costs).
+- **Mocking**: Use **NSubstitute** for dependencies.
+- **Async Testing**: Use `await` appropriately; ensure `CancellationToken` is passed where supported.
+
+---
+
 ## Key Patterns
 
 1. **Idempotency**: Jobs must be restartable without duplicating data

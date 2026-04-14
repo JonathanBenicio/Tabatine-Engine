@@ -129,6 +129,9 @@ Para respeitar o curto *timeout* da Omie de 7 segundos e evitar o bloqueio da fi
 1. **Ingestão (Fast Acknowledge)**: O endpoint apenas valida a estrutura, insere o payload bruto na tabela `WebhookEvents` do banco de dados e retorna `200 OK` instantaneamente.
 2. **Processamento (Background Worker)**: O serviço especializado `WebhookProcessorWorker` varre a fila no banco de dados com concorrência segura (`SELECT ... FOR UPDATE SKIP LOCKED`), processando os eventos de **Vendas**, **Notas Fiscais**, **Clientes**, **Produtos**, **Vendedores** e **Contas Correntes**.
 3. **Debouncing de Estoque**: Para prevenir sobrecarga em movimentações massivas, as notificações de `MovimentacaoEstoque` e `AjusteEstoque` possuem um **agrupamento (debouncing) de 10 segundos**. Múltiplas alterações no mesmo produto dentro desta janela são consolidadas em uma única sincronização.
+4. **De-queue Dinâmico**: O worker implementa uma lógica de "Vazão Máxima", onde ignora o intervalo de polling se houver carga pendente no banco, garantindo que a fila seja drenada o mais rápido possível através da propriedade `hasMore`.
+5. **Retry com Backoff Exponencial**: Mensagens que falham (ex: erro temporário de rede ou trava de registro) são colocadas em estado `Failed` com um `NextRetryAt` calculado por exponenciação (2^tentativa minutos), até o limite de 3 tentativas, quando movem para `DeadLetter`.
+6. **Resiliência de Clock Drift**: O polling utiliza uma margem de segurança de 1 segundo (`NOW() + INTERVAL '1 second'`) para compensar possíveis dessincronizações de relógio entre o Host e o container de banco de dados.
 
 > [!NOTE]
 > Consulte a [Documentação de Status dos Webhooks](docs/omie-webhooks-status.md) para a lista completa de tópicos suportados.
