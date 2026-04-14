@@ -198,8 +198,8 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
                 ValorTotal = 2000.00m,
                 Itens = new List<ItemPedido>
                 {
-                    new() { Id = Guid.NewGuid(), ProdutoId = p1.Id, Quantidade = 1, ValorUnitario = 1000, ValorTotal = 1000 },
-                    new() { Id = Guid.NewGuid(), ProdutoId = p2.Id, Quantidade = 1, ValorUnitario = 1000, ValorTotal = 1000 }
+                    new() { Id = Guid.NewGuid(), OmieId = 111222L, ProdutoId = p1.Id, Quantidade = 1, ValorUnitario = 1000, ValorTotal = 1000 },
+                    new() { Id = Guid.NewGuid(), OmieId = 333444L, ProdutoId = p2.Id, Quantidade = 1, ValorUnitario = 1000, ValorTotal = 1000 }
                 },
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow

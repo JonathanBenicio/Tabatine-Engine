@@ -92,6 +92,8 @@ public partial class WebhookProcessorWorker(
                         return null;
                     }
 
+                    logger.LogDebug("Webhook encontrado: ID={Id}, Evento={Event}, Status={Status}", ev.Id, ev.Event, ev.Status);
+
                     ev.Status = WebhookEvent.StatusProcessing;
                     
                     await dbContext.Database.ExecuteSqlInterpolatedAsync(
