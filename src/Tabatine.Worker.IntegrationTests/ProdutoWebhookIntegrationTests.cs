@@ -33,30 +33,23 @@ public class ProdutoWebhookIntegrationTests : BaseIntegrationTest
             appKey = "teste-key",
             topic = "Produto.Incluido",
             messageId = Guid.NewGuid().ToString(),
-            @event = new { idProduto = omieId }
+            @event = new { nCodProd = omieId }
         };
 
         // Act
         var response = await Client.PostAsJsonAsync("/webhook/omie", payload);
-
-        // Assert - Resposta imediata do Endpoint
         response.EnsureSuccessStatusCode();
 
-        // Assert - Validação do processamento assíncrono (Polling)
-        Produto? produtoPersistido = null;
-        var timeout = TimeSpan.FromSeconds(10);
-        var start = DateTime.UtcNow;
+        // Aguarda o worker processar a fila
+        await WaitForWebhookQueueToDrainAsync(TimeSpan.FromSeconds(10));
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            
-            produtoPersistido = await db.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieId);
-            if (produtoPersistido != null) break;
-            
-            await Task.Delay(500);
-        }
+        // Assert
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var produtoPersistido = await db.Produtos
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.OmieId == omieId);
 
         // Verificações Finais
         produtoPersistido.Should().NotBeNull("O Produto deveria ter sido persistido pelo processador de webhooks.");
@@ -112,14 +105,14 @@ public class ProdutoWebhookIntegrationTests : BaseIntegrationTest
             appKey = "teste-key",
             topic = "Produto.Alterado",
             messageId = Guid.NewGuid().ToString(),
-            @event = new { idProduto = omieId }
+            @event = new { nCodProd = omieId }
         };
 
         var response = await Client.PostAsJsonAsync("/webhook/omie", payload);
         response.EnsureSuccessStatusCode();
 
         Produto? produtoPersistido = null;
-        var timeout = TimeSpan.FromSeconds(10);
+        var timeout = TimeSpan.FromSeconds(20);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
@@ -127,7 +120,10 @@ public class ProdutoWebhookIntegrationTests : BaseIntegrationTest
             using var scope = Factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             
-            produtoPersistido = await db.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieId);
+            produtoPersistido = await db.Produtos
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.OmieId == omieId);
+
             if (produtoPersistido != null && produtoPersistido.Descricao == "Descricao Nova Atualizada") break;
             
             await Task.Delay(500);

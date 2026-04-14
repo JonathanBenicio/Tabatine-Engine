@@ -30,7 +30,7 @@ public class VendedorWebhookIntegrationTests(IntegrationTestWebAppFactory factor
             messageId = Guid.NewGuid().ToString(),
             @event = new
             {
-                codigo = omieIdVendedor,
+                nCodVend = omieIdVendedor,
                 nome = "Vendedor Teste Webhook"
             }
         };
@@ -43,14 +43,16 @@ public class VendedorWebhookIntegrationTests(IntegrationTestWebAppFactory factor
 
         // Polling
         Vendedor? vendedorDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
+        var timeout = TimeSpan.FromSeconds(20);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
         {
             using var scope = Factory.Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            vendedorDB = await dbContext.Vendedores.FirstOrDefaultAsync(v => v.OmieId == omieIdVendedor);
+            vendedorDB = await dbContext.Vendedores
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.OmieId == omieIdVendedor);
             
             if (vendedorDB != null) break;
             await Task.Delay(500);

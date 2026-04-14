@@ -18,20 +18,18 @@ public class SandboxIntegrationTestWebAppFactory : IntegrationTestWebAppFactory
 
         builder.ConfigureTestServices(services =>
         {
-            var config = services
-                .Where(d => d.ServiceType == typeof(IConfiguration))
-                .Select(d => d.ImplementationInstance)
-                .OfType<IConfiguration>()
-                .FirstOrDefault();
+            // Resolve a configuração atualizada (incluindo appsettings.Local.json)
+            var sp = services.BuildServiceProvider();
+            var config = sp.GetRequiredService<IConfiguration>();
 
-            if (config == null) return;
-
-            var appKey = config["Omie:AppKey_Sandbox"];
-            var appSecret = config["Omie:AppSecret_Sandbox"];
-            var baseUrl = config["Omie:BaseUrl_Sandbox"];
+            var appKey = config["Omie:Sandbox:AppKey"];
+            var appSecret = config["Omie:Sandbox:AppSecret"];
+            var baseUrl = config["Omie:Sandbox:BaseUrl"];
 
             if (string.IsNullOrEmpty(appKey) || string.IsNullOrEmpty(appSecret))
             {
+                // Se não houver chaves de sandbox, mantém o comportamento de mock da base (opcional)
+                // ou lança erro se o teste for explicitamente de sandbox
                 return;
             }
 

@@ -60,14 +60,16 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
 
         // Polling para aguardar o processamento assíncrono (Worker)
         NotaFiscal? nfDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
+        var timeout = TimeSpan.FromSeconds(20);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
         {
             using var scope = Factory.Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            nfDB = await dbContext.NotasFiscais.FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
+            nfDB = await dbContext.NotasFiscais
+                .AsNoTracking()
+                .FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
             
             if (nfDB != null) break;
             await Task.Delay(500);

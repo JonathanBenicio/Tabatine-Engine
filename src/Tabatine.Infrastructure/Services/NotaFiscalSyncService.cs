@@ -35,7 +35,7 @@ namespace Tabatine.Infrastructure.Services
 
                 if (response == null || response.NotasFiscais == null || response.NotasFiscais.Count == 0) break;
 
-                await ProcessNotaFiscalBatchAsync(response.NotasFiscais, ct);
+                await ProcessNotaFiscalBatchAsync(response.NotasFiscais, null, ct);
 
                 logger.LogInformation("Página {Pagina} de {Total} de Notas Fiscais sincronizada.", pagina, response.TotalDePaginas);
                 temMais = pagina < response.TotalDePaginas;
@@ -65,7 +65,8 @@ namespace Tabatine.Infrastructure.Services
 
                 if (omieNf != null)
                 {
-                    await ProcessNotaFiscalBatchAsync(new List<OmieNotaFiscal> { omieNf }, ct);
+                    var preAcquired = new Dictionary<long, string> { { omieId, lockToken } };
+                    await ProcessNotaFiscalBatchAsync(new List<OmieNotaFiscal> { omieNf }, preAcquired, ct);
                 }
                 else
                 {
@@ -78,7 +79,7 @@ namespace Tabatine.Infrastructure.Services
             }
         }
 
-        private async Task ProcessNotaFiscalBatchAsync(List<OmieNotaFiscal> notasFiscaisOmie, CancellationToken ct)
+        private async Task ProcessNotaFiscalBatchAsync(List<OmieNotaFiscal> notasFiscaisOmie, IReadOnlyDictionary<long, string>? preAcquiredLocks, CancellationToken ct)
         {
             var activeLocks = new Dictionary<long, string>();
             try 
@@ -86,6 +87,13 @@ namespace Tabatine.Infrastructure.Services
                 foreach (var nf in notasFiscaisOmie)
                 {
                     var omieIdNf = nf.Compl.IdNf;
+                    
+                    if (preAcquiredLocks != null && preAcquiredLocks.TryGetValue(omieIdNf, out var existingToken))
+                    {
+                        activeLocks[omieIdNf] = existingToken;
+                        continue;
+                    }
+
                     var lockToken = await AcquireResourceLockAsync(omieIdNf, ct);
                     if (lockToken == null)
                     {
@@ -118,7 +126,7 @@ namespace Tabatine.Infrastructure.Services
 
                 var allOmieProdIds = notasFiscaisOmie
                     .Where(n => activeLocks.ContainsKey(n.Compl.IdNf))
-                    .SelectMany(n => n.Det.Select(d => d.Prod.Codigo.ToString()))
+                    .SelectMany(n => n.Det.Select(d => d.Prod.Codigo))
                     .Distinct().ToList();
 
                 var produtos = await dbContext.Produtos
@@ -354,7 +362,12 @@ namespace Tabatine.Infrastructure.Services
             finally 
             {
                 foreach (var kvp in activeLocks)
+                {
+                    // Não libera se a trava foi passada por quem chamou (SyncByIdAsync)
+                    if (preAcquiredLocks != null && preAcquiredLocks.ContainsKey(kvp.Key)) continue;
+                    
                     await lockService.ReleaseLockAsync(GetLockKey(kvp.Key), kvp.Value, ct);
+                }
             }
         }
 

@@ -17,6 +17,9 @@ public class IntegrationTestWebAppFactory : WebApplicationFactory<Program>, IAsy
     {
         builder.ConfigureAppConfiguration((context, config) =>
         {
+            var contentRoot = context.HostingEnvironment.ContentRootPath;
+            config.AddJsonFile(System.IO.Path.Combine(contentRoot, "appsettings.Local.json"), optional: true);
+            
             var connectionString = _dbContainer.GetConnectionString() + ";Pooling=false;No Reset On Close=true;GssEncryptionMode=Disable";
 
             config.AddInMemoryCollection(new Dictionary<string, string?>

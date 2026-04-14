@@ -72,7 +72,8 @@ namespace Tabatine.Infrastructure.Services
                 
                 if (omiePedido != null)
                 {
-                    await ProcessPedidosBatchAsync(new List<OmiePedido> { omiePedido }, ct);
+                    await ProcessPedidosBatchAsync(new List<OmiePedido> { omiePedido }, ct, 
+                        preAcquiredLocks: new Dictionary<long, string> { { omieId, lockToken } });
                 }
                 else
                 {
@@ -108,7 +109,7 @@ namespace Tabatine.Infrastructure.Services
 
         private string GetLockKey(long omieId) => $"sync:{EntityName}:{omieId}";
 
-        private async Task ProcessPedidosBatchAsync(List<OmiePedido> pedidosOmie, CancellationToken ct)
+        private async Task ProcessPedidosBatchAsync(List<OmiePedido> pedidosOmie, CancellationToken ct, Dictionary<long, string>? preAcquiredLocks = null)
         {
             var omiePedidoIds = pedidosOmie.Select(p => p.Cabecalho.CodigoPedido).ToList();
             var omieClienteIds = pedidosOmie.Select(p => p.Cabecalho.CodigoCliente).Distinct().ToList();
@@ -185,14 +186,29 @@ namespace Tabatine.Infrastructure.Services
                 {
                     var omieId = omiePedido.Cabecalho.CodigoPedido;
 
-                    // Adquire trava individual antes de processar
-                    var lockToken = await AcquireResourceLockAsync(omieId, ct);
+                    // Adquire trava individual antes de processar, a menos que já tenha sido adquirida
+                    string? lockToken = null;
+                    if (preAcquiredLocks != null && preAcquiredLocks.TryGetValue(omieId, out var existingToken))
+                    {
+                        lockToken = existingToken;
+                    }
+                    else
+                    {
+                        lockToken = await AcquireResourceLockAsync(omieId, ct);
+                    }
+
                     if (lockToken == null)
                     {
                         logger.LogWarning("Não foi possível adquirir trava para o Pedido {OmieId} em lote. Pulando.", omieId);
                         continue;
                     }
-                    activeLocks[omieId] = lockToken;
+
+                    // Só adicionamos ao activeLocks para liberação posterior se NÃO for um lock pré-adquirido
+                    // (porque quem pré-adquiriu é responsável por liberar)
+                    if (preAcquiredLocks == null || !preAcquiredLocks.ContainsKey(omieId))
+                    {
+                        activeLocks[omieId] = lockToken;
+                    }
 
                     if (!clientes.TryGetValue(omiePedido.Cabecalho.CodigoCliente, out var cliente))
                     {
@@ -370,14 +386,22 @@ namespace Tabatine.Infrastructure.Services
                     {
                         logger.LogDebug("Removendo {Count} itens existentes do pedido {OmieId} (ID: {Id})", itemsToDelete.Count, existingPedido.OmieId, existingPedido.Id);
                         dbContext.ItensPedido.RemoveRange(itemsToDelete);
-                        await dbContext.SaveChangesAsync(ct); // Flush deletion to avoid conflicts
+                        
+                        // Importante: Limpa a coleção no objeto em memória imediatamente
                         existingPedido.Itens.Clear();
+                        
+                        // O dbContext.SaveChangesAsync(ct) será chamado ao final do lote para preservar a atomicidade
                     }
+
+                    // Busca os produtos necessários para este pedido específico para confirmar se estão no dicionário
+                    var omieProdIds = omiePedido.Det.Select(d => d.Produto.CodigoProduto).ToList();
+                    logger.LogDebug("Processando {Count} itens para o pedido {OmieId}. ProdutoIds na Omie: {Ids}", omieProdIds.Count, omieId, string.Join(", ", omieProdIds));
 
                     foreach (var item in omiePedido.Det)
                     {
                         if (produtos.TryGetValue(item.Produto.CodigoProduto, out var produto))
                         {
+                            logger.LogTrace("Adicionando item {ItemOmieId} (Produto: {ProdCode}) ao pedido {OmieId}", item.Ide.CodigoItem, item.Produto.CodigoProduto, omieId);
                             existingPedido.Itens.Add(new ItemPedido
                             {
                                 Id = Guid.NewGuid(),
@@ -433,7 +457,8 @@ namespace Tabatine.Infrastructure.Services
                     {
                         logger.LogDebug("Removendo {Count} parcelas existentes do pedido {OmieId}", parcelasToDelete.Count, existingPedido.OmieId);
                         dbContext.PedidoParcelas.RemoveRange(parcelasToDelete);
-                        await dbContext.SaveChangesAsync(ct);
+                        
+                        // Limpa a coleção em memória
                         existingPedido.Parcelas.Clear();
                     }
 
@@ -469,6 +494,7 @@ namespace Tabatine.Infrastructure.Services
                     try
                     {
                         await dbContext.SaveChangesAsync(ct);
+                        logger.LogInformation("Lote de {Count} pedidos sincronizado com sucesso.", pedidosOmie.Count);
                         break;
                     }
                     catch (DbUpdateConcurrencyException ex)

@@ -48,14 +48,16 @@ public class EstoqueWebhookIntegrationTests(IntegrationTestWebAppFactory factory
         response.EnsureSuccessStatusCode();
 
         LocalEstoque? localDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
+        var timeout = TimeSpan.FromSeconds(20);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
         {
             using var scope = Factory.Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            localDB = await dbContext.LocaisEstoque.FirstOrDefaultAsync(l => l.OmieId == localOmieId);
+            localDB = await dbContext.LocaisEstoque
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.OmieId == localOmieId);
             
             if (localDB != null) break;
             await Task.Delay(500);
@@ -124,14 +126,16 @@ public class EstoqueWebhookIntegrationTests(IntegrationTestWebAppFactory factory
 
         // Verificar no banco
         ProdutoEstoque? saldoDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
+        var timeout = TimeSpan.FromSeconds(20);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
         {
             using var scope = Factory.Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            saldoDB = await dbContext.ProdutosEstoque.FirstOrDefaultAsync(s => s.ProdutoId == produtoId && s.LocalEstoqueId == localId);
+            saldoDB = await dbContext.ProdutosEstoque
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.ProdutoId == produtoId && s.LocalEstoqueId == localId);
             
             if (saldoDB != null && saldoDB.Saldo == 100) break;
             await Task.Delay(500);

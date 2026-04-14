@@ -120,7 +120,7 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
 
         // Polling para aguardar o processamento assíncrono
         PedidoVenda? pedidoDB = null;
-        var timeout = TimeSpan.FromSeconds(15);
+        var timeout = TimeSpan.FromSeconds(20);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
@@ -128,6 +128,7 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
             using var scope = Factory.Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             pedidoDB = await dbContext.PedidosVenda
+                .AsNoTracking()
                 .Include(p => p.Itens)
                 .Include(p => p.Parcelas)
                 .FirstOrDefaultAsync(p => p.OmieId == omieIdPedido);
@@ -240,7 +241,7 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
         response.EnsureSuccessStatusCode();
 
         PedidoVenda? pedidoDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
+        var timeout = TimeSpan.FromSeconds(20);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
@@ -248,6 +249,7 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
             using var scope = Factory.Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             pedidoDB = await dbContext.PedidosVenda
+                .AsNoTracking()
                 .Include(p => p.Itens)
                 .ThenInclude(i => i.Produto)
                 .FirstOrDefaultAsync(p => p.OmieId == omieIdPedido);

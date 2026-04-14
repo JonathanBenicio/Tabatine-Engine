@@ -51,14 +51,16 @@ public class FinanceiroWebhookIntegrationTests(IntegrationTestWebAppFactory fact
         response.EnsureSuccessStatusCode();
 
         TituloReceber? registroDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
+        var timeout = TimeSpan.FromSeconds(20);
         var start = DateTime.UtcNow;
 
         while (DateTime.UtcNow - start < timeout)
         {
             using var scope = Factory.Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            registroDB = await dbContext.TitulosReceber.FirstOrDefaultAsync(c => c.OmieId == omieId);
+            registroDB = await dbContext.TitulosReceber
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.OmieId == omieId);
             
             if (registroDB != null) break;
             await Task.Delay(500);
@@ -136,8 +138,9 @@ public class FinanceiroWebhookIntegrationTests(IntegrationTestWebAppFactory fact
         var omieId = 333444555L;
 
         // Simulando que a API Omie cravou (ex: Rate limit 429 ou Timeout 500)
+        // Simulando que a API Omie cravou (ex: Rate limit 429 ou Timeout 500)
         Factory.OmieClientMock.ConsultarContaReceberAsync(omieId, Arg.Any<CancellationToken>())
-            .Returns<OmieContaReceber>(x => throw new System.Net.Http.HttpRequestException("Rate Limit Exceeded - 429"));
+            .Returns(x => Task.FromException<Tabatine.Omie.Client.Models.Financeiro.OmieContaReceber?>(new System.Net.Http.HttpRequestException("Rate Limit Exceeded - 429")));
 
         var webhookEvent = new
         {

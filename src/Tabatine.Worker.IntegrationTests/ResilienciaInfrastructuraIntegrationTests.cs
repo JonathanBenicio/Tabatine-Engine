@@ -125,14 +125,14 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
 
         // Primeira chamada: lança exceção (simula falha transiente)
         Factory.OmieClientMock.ConsultarContaReceberAsync(omieIdFalha, Arg.Any<CancellationToken>())
-            .Returns<Tabatine.Omie.Client.Models.Financeiro.OmieContaReceber>(x =>
+            .Returns(x =>
             {
                 tentativas++;
                 if (tentativas < 2)
-                    throw new System.Net.Http.HttpRequestException("Falha transiente na API Omie - Retry");
+                    return Task.FromException<Tabatine.Omie.Client.Models.Financeiro.OmieContaReceber?>(new System.Net.Http.HttpRequestException("Falha transiente na API Omie - Retry"));
 
                 // Na segunda tentativa: sucesso
-                return new Tabatine.Omie.Client.Models.Financeiro.OmieContaReceber
+                return Task.FromResult<Tabatine.Omie.Client.Models.Financeiro.OmieContaReceber?>(new Tabatine.Omie.Client.Models.Financeiro.OmieContaReceber
                 {
                     CodigoLancamentoOmie = omieIdFalha,
                     CodigoClienteFornecedor = 111L,
@@ -142,7 +142,7 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
                     ValorDocumento = 500.00m,
                     StatusTitulo = "ABERTO",
                     Info = new Tabatine.Omie.Client.Models.Financeiro.OmieContaReceberInfo { DAlt = "10/04/2026", HAlt = "12:00:00" }
-                };
+                });
             });
 
         var webhookEvent = new
@@ -215,8 +215,13 @@ public class ResilienciaInfrastructuraIntegrationTests(IntegrationTestWebAppFact
         {
             using var scope = Factory.Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            webhookDB = await dbContext.WebhookEvents.FirstOrDefaultAsync(w => w.MessageId == messageId);
-            if (webhookDB != null) break;
+            webhookDB = await dbContext.WebhookEvents
+                .AsNoTracking()
+                .FirstOrDefaultAsync(w => w.MessageId == messageId);
+            
+            // Garantir que esperamos o processamento terminar (status muda de Pending)
+            if (webhookDB != null && webhookDB.Status != WebhookEvent.StatusPending) break;
+            
             await Task.Delay(500);
         }
 

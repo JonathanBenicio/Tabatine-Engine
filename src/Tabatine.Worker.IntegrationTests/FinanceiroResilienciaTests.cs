@@ -33,9 +33,9 @@ public class FinanceiroResilienciaTests(IntegrationTestWebAppFactory factory) : 
 
         // Simula latência de 2 segundos na API
         Factory.OmieClientMock.ListarContasReceberAsync(Arg.Any<int>(), Arg.Any<DateTime?>(), Arg.Any<DateTime?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(async _ =>
+            .Returns(async x =>
             {
-                await Task.Delay(2000);
+                await Task.Delay(2000, (CancellationToken)x[4]);
                 return response;
             });
 
@@ -65,9 +65,9 @@ public class FinanceiroResilienciaTests(IntegrationTestWebAppFactory factory) : 
         // Arrange
         // Simula uma API que demora demais (ex: 30s)
         Factory.OmieClientMock.ListarContasReceberAsync(Arg.Any<int>(), Arg.Any<DateTime?>(), Arg.Any<DateTime?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(async _ =>
+            .Returns(async x =>
             {
-                await Task.Delay(30000);
+                await Task.Delay(30000, (CancellationToken)x[4]);
                 return new ListarContasReceberResponse();
             });
 

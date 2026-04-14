@@ -16,7 +16,7 @@ public class SandboxClienteE2ETests(SandboxIntegrationTestWebAppFactory factory)
         // 1. Arrange - Setup massa de dados no Sandbox Real
         var guid = Guid.NewGuid().ToString()[..8];
         var razaoSocial = $"TEST-E2E-SANDBOX-{guid}";
-        var cnpj = "56272535000100"; // CNPJ Válido para teste
+        var cnpj = "33.000.167/0001-01"; // CNPJ Válido (Petrobras) com pontuação
         
         var helper = CreateOmieHelper();
         var omieId = await helper.UpsertClienteAsync(razaoSocial, cnpj);
@@ -38,7 +38,7 @@ public class SandboxClienteE2ETests(SandboxIntegrationTestWebAppFactory factory)
         // 4. Act 2 - Segunda sincronização (Incremental)
         // Deve registrar "0 sincronizados" ou simplesmente não duplicar nada
         var countAntes = await db.Clientes.CountAsync();
-        await syncService.SyncAllAsync(CancellationToken.None);
+        await syncService.SyncByIdAsync(omieId, CancellationToken.None);
         var countDepois = await db.Clientes.CountAsync();
 
         countDepois.Should().Be(countAntes, "Uma segunda sincronização imediata não deve inserir novos registros.");

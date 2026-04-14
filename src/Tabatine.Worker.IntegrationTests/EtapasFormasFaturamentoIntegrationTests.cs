@@ -41,37 +41,18 @@ public class EtapasFormasFaturamentoIntegrationTests(IntegrationTestWebAppFactor
         Factory.OmieClientMock.ListarEtapasFaturamentoAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(responseOmie);
 
-        // Nao tem webhook especifico para etapa, vamos assumir que o webhook de Pedido ou Sincronismo Manual invoca
-        // Aqui simulo o sync direto para as Etapas de Faturamento para o teste.
+        // Act - Chamar o serviço diretamente em vez de passar pelo SyncManager (que tem delays artificiais)
         using var scope = Factory.Services.CreateScope();
-        var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Core.Interfaces.ISyncService>();
+        var syncService = scope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Services.EtapaFaturamentoSyncService>();
+        await syncService.SyncAllAsync();
 
-        // Act
-        // Simplificação: Roda o Sync All ou apenas invoco a listagem/mapeamento via repository? 
-        // Vamos forçar o db update se fosse recebido no worker:
-        var webhookEvent = new
-        {
-            topic = "System.ManualSync",
-            messageId = Guid.NewGuid().ToString(),
-            @event = new { ModuleRequest = "EtapasFaturamento" }
-        };
-
-        var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
-        response.EnsureSuccessStatusCode();
-
-        EtapaFaturamento? etapaDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
-        var start = DateTime.UtcNow;
-
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var readScope = Factory.Services.CreateScope();
-            var dbContext = readScope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Data.AppDbContext>();
-            etapaDB = await dbContext.EtapasFaturamento.FirstOrDefaultAsync(e => e.Codigo == codigoEtapa);
-            
-            if (etapaDB != null) break;
-            await Task.Delay(500);
-        }
+        // Assert
+        using var readScope = Factory.Services.CreateScope();
+        var dbContext = readScope.ServiceProvider.GetRequiredService<Tabatine.Infrastructure.Data.AppDbContext>();
+        
+        var etapaDB = await dbContext.EtapasFaturamento
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Codigo == codigoEtapa);
 
         etapaDB.Should().NotBeNull("A etapa de faturamento deve ser persistida.");
         etapaDB!.Descricao.Should().Be(descricaoEtapa);
