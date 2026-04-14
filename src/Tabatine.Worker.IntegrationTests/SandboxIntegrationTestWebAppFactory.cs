@@ -22,9 +22,9 @@ public class SandboxIntegrationTestWebAppFactory : IntegrationTestWebAppFactory
             var sp = services.BuildServiceProvider();
             var config = sp.GetRequiredService<IConfiguration>();
 
-            var appKey = config["Omie:Sandbox:AppKey"];
-            var appSecret = config["Omie:Sandbox:AppSecret"];
-            var baseUrl = config["Omie:Sandbox:BaseUrl"];
+            var appKey = config["Omie:AppKey_Sandbox"];
+            var appSecret = config["Omie:AppSecret_Sandbox"];
+            var baseUrl = config["Omie:BaseUrl_Sandbox"];
 
             if (string.IsNullOrEmpty(appKey) || string.IsNullOrEmpty(appSecret))
             {
