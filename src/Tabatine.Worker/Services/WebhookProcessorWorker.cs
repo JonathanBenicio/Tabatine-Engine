@@ -20,10 +20,10 @@ public partial class WebhookProcessorWorker(
         {
             try
             {
-                var processedAny = await ProcessNextMessageAsync(stoppingToken);
+                var (processedAny, hasMore) = await ProcessNextMessagesAsync(stoppingToken);
 
-                // Se não processou nenhuma mensagem, aguarda para não sobrecarregar o banco
-                if (!processedAny)
+                // Se não processou nenhuma mensagem e não há mais mensagens, aguarda
+                if (!processedAny && !hasMore)
                 {
                     await Task.Delay(_pollingInterval, stoppingToken);
                 }
@@ -53,7 +53,7 @@ public partial class WebhookProcessorWorker(
         LogWorkerFinalizado(logger);
     }
 
-    private async Task<bool> ProcessNextMessageAsync(CancellationToken cancellationToken)
+    private async Task<(bool Processed, bool HasMore)> ProcessNextMessagesAsync(CancellationToken cancellationToken)
     {
         IServiceScope? scope = null;
         try
@@ -76,7 +76,7 @@ public partial class WebhookProcessorWorker(
                     var sql = $@"
                         SELECT * FROM webhook_events 
                         WHERE status = '{WebhookEvent.StatusPending}' 
-                           OR (status = '{WebhookEvent.StatusFailed}' AND next_retry_at <= NOW())
+                           OR (status = '{WebhookEvent.StatusFailed}' AND next_retry_at <= NOW() + INTERVAL '1 second')
                         ORDER BY created_at ASC 
                         LIMIT 1 
                         {skipLockedSql}";
@@ -108,7 +108,7 @@ public partial class WebhookProcessorWorker(
                 }
             });
 
-            if (webhookEvent == null) return false;
+            if (webhookEvent == null) return (false, false);
 
             // 2. Fase de Processamento (Fora da transação da fila)
             LogProcessandoWebhook(logger, webhookEvent.Id, webhookEvent.Event);
@@ -168,11 +168,22 @@ public partial class WebhookProcessorWorker(
                 }
             });
 
-            return true;
+            // Verificar se há mais mensagens pendentes para notificar o loop principal
+            var hasMore = await dbContext.WebhookEvents
+                .AnyAsync(w => w.Status == WebhookEvent.StatusPending 
+                            || (w.Status == WebhookEvent.StatusFailed && w.NextRetryAt <= DateTime.UtcNow), 
+                          cancellationToken);
+
+            return (true, hasMore);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Erro no loop de processamento de webhooks: {Message}", ex.Message);
+            return (false, false);
         }
         catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
         {
-            return false;
+            return (false, false);
         }
         finally
         {
