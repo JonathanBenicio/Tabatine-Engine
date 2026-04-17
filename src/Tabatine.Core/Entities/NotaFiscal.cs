@@ -62,5 +62,7 @@ namespace Tabatine.Core.Entities
 
         public Guid? ContaCorrenteId { get; set; }
         public ContaCorrente? ContaCorrente { get; set; }
+        
+        public string? LinkDanfe { get; set; }
     }
 }

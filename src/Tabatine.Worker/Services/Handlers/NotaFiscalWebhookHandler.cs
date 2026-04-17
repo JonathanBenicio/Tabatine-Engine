@@ -1,6 +1,8 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Tabatine.Core.Entities;
 using Tabatine.Core.Interfaces;
+using Tabatine.Infrastructure.Data;
 using Tabatine.Infrastructure.Services;
 
 namespace Tabatine.Worker.Services.Handlers;
@@ -9,7 +11,12 @@ namespace Tabatine.Worker.Services.Handlers;
 /// Webhook handler for NotaFiscal events.
 /// Supports both legacy fields (codigo_nf) and Connect 2.0 fields (idNf).
 /// </summary>
-public class NotaFiscalWebhookHandler(NotaFiscalSyncService nfSyncService, IEnumerable<INotificationService> notificationServices) : IWebhookEventHandler
+public class NotaFiscalWebhookHandler(
+    NotaFiscalSyncService nfSyncService, 
+    IEnumerable<INotificationService> notificationServices,
+    AppDbContext dbContext,
+    INotificationTemplateBuilder templateBuilder,
+    Tabatine.Omie.Client.IOmieClient omieClient) : IWebhookEventHandler
 {
 
     public IEnumerable<string> SupportedEvents => new[]
@@ -56,6 +63,32 @@ public class NotaFiscalWebhookHandler(NotaFiscalSyncService nfSyncService, IEnum
 
         await nfSyncService.SyncByIdAsync(codigoNf.Value);
         
+        // Buscar a Nota Fiscal com dados relacionados para a notificação
+        var nf = await dbContext.NotasFiscais
+            .Include(n => n.Cliente)
+            .Include(n => n.Vendedor)
+            .Include(n => n.PedidoVenda)
+            .FirstOrDefaultAsync(n => n.OmieId == codigoNf.Value, cancellationToken);
+
+        if (nf == null) return;
+
+        // Se a NF tem vínculo com pedido e ainda não possui o LinkDanfe
+        if (nf.PedidoVenda != null && nf.PedidoVenda.OmieId > 0 && string.IsNullOrEmpty(nf.LinkDanfe))
+        {
+            var statusPedido = await omieClient.StatusPedidoAsync(nf.PedidoVenda.OmieId, cancellationToken);
+            if (statusPedido?.ListaNfe != null)
+            {
+                var nfeInfo = statusPedido.ListaNfe.FirstOrDefault(x => 
+                    !string.IsNullOrEmpty(x.ChaveNfe) && x.ChaveNfe == nf.ChaveAcesso);
+                
+                if (nfeInfo != null && !string.IsNullOrEmpty(nfeInfo.Danfe))
+                {
+                    nf.LinkDanfe = nfeInfo.Danfe;
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+            }
+        }
+
         string title = webhookEvent.Event switch 
         {
             "Faturamento.NotaFiscalEmitida" => "NF Emitida",
@@ -66,11 +99,11 @@ public class NotaFiscalWebhookHandler(NotaFiscalSyncService nfSyncService, IEnum
             _ => "Nota Fiscal Atualizada"
         };
         
-        var summary = $"Nota Fiscal {numeroNf ?? codigoNf.ToString()} atualizada no ERP (Evento: {webhookEvent.Event}).";
+        var richMessage = templateBuilder.BuildNotaFiscalMessage(nf, webhookEvent.Event);
         
         foreach (var service in notificationServices)
         {
-            await service.SendNotificationAsync(title, summary, "NF", codigoNf.Value);
+            await service.SendNotificationAsync(title, richMessage, "NF", codigoNf.Value);
         }
     }
 }

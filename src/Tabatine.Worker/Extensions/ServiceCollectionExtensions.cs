@@ -40,6 +40,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IDistributedLockService, DbDistributedLockService>();
         services.AddScoped<ISyncStateRepository, SyncStateRepository>();
         services.AddScoped<INotificationService, SupabaseNotificationService>();
+        services.AddScoped<INotificationTemplateBuilder, NotificationTemplateBuilder>();
 
         // Telegram: registado como concreto (para o endpoint de webhook poder resolver directamente)
         // e também como INotificationService (para broadcast via ISyncService)

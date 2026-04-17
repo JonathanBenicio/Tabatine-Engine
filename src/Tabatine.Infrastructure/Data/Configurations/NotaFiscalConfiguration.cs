@@ -54,6 +54,8 @@ namespace Tabatine.Infrastructure.Data.Configurations
                    .WithMany(c => c.NotasFiscais)
                    .HasForeignKey(n => n.ContaCorrenteId)
                    .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Property(n => n.LinkDanfe).HasMaxLength(500);
         }
     }
 }
