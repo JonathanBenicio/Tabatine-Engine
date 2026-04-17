@@ -11,7 +11,7 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
         var omieIdNf = 987654321L;
         var omieIdCliente = 12345L;
 
-        // 1. Garantir que o cliente existe (necessário para o SyncService da NF)
+        // 1. Garantir que o cliente e pedido existem (necessário para o SyncService da NF)
         using (var scope = Factory.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -24,14 +24,25 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
+            var pedido = new PedidoVenda
+            {
+                Id = Guid.NewGuid(),
+                OmieId = 88888L,
+                ClienteId = cliente.Id,
+                NumeroPedido = "PED-TEST",
+                ValorTotal = 1500.50m,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
             dbContext.Clientes.Add(cliente);
+            dbContext.PedidosVenda.Add(pedido);
             await dbContext.SaveChangesAsync();
         }
 
         // 2. Mock da resposta da Omie para consulta individual
         var omieNf = new OmieNotaFiscal
         {
-            Compl = new OmieNfCompl { IdNf = omieIdNf, ChaveNfe = "35230400000000000000000000000000000000000000", XNatureza = "Venda de Mercadoria" },
+            Compl = new OmieNfCompl { IdNf = omieIdNf, IdPedido = 88888L, ChaveNfe = "35230400000000000000000000000000000000000000", XNatureza = "Venda de Mercadoria" },
             Ide = new OmieNfIde { Numero = "1234", Serie = "1", DataEmissao = "10/04/2026", Situacao = "100" },
             Destinatario = new OmieNfDestInt { CodigoCliente = omieIdCliente },
             Total = new OmieNfTotal { IcmsTot = new OmieNfIcmstot { ValorNota = 1500.50m } }
@@ -39,6 +50,22 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
 
         Factory.OmieClientMock.ConsultarNotaFiscalAsync(omieIdNf, Arg.Any<CancellationToken>())
             .Returns(omieNf);
+
+        var statusPedidoResponse = new Tabatine.Omie.Client.Models.Pedidos.StatusPedidoResponse
+        {
+            CodigoPedido = 88888L,
+            ListaNfe = new List<Tabatine.Omie.Client.Models.Pedidos.StatusPedidoNfe>
+            {
+                new Tabatine.Omie.Client.Models.Pedidos.StatusPedidoNfe
+                {
+                    ChaveNfe = "35230400000000000000000000000000000000000000",
+                    Danfe = "https://app.omie.com.br/api/v1/produtos/nfconsultar/danfe/?codigo_nf=987654321"
+                }
+            }
+        };
+
+        Factory.OmieClientMock.StatusPedidoAsync(88888L, Arg.Any<CancellationToken>())
+            .Returns(statusPedidoResponse);
 
         // 3. Payload do Webhook (Simulando Connect 2.0)
         var webhookEvent = new
@@ -79,6 +106,7 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
         Assert.Equal("1234", nfDB!.NumeroNf);
         Assert.Equal(1500.50m, nfDB.ValorTotal);
         Assert.Equal(omieNf.Compl.ChaveNfe, nfDB.ChaveAcesso);
+        Assert.Equal("https://app.omie.com.br/api/v1/produtos/nfconsultar/danfe/?codigo_nf=987654321", nfDB.LinkDanfe);
     }
 
     [Fact]

@@ -284,6 +284,12 @@ namespace Tabatine.Omie.Client
             return response;
         }
 
+        public async Task<StatusPedidoResponse?> StatusPedidoAsync(long codigoPedidoOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new StatusPedidoRequest { CodigoPedido = codigoPedidoOmie };
+            return await SendRequestAsync<StatusPedidoRequest, StatusPedidoResponse>("produtos/pedido/", "StatusPedido", param, cancellationToken);
+        }
+
         public async Task<OmieNotaFiscal?> ConsultarNotaFiscalAsync(long codigoNfOmie, CancellationToken cancellationToken = default)
         {
             var param = new { codigo_nf = codigoNfOmie };
