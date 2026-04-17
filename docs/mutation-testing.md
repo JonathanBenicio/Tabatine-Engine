@@ -74,13 +74,13 @@ dotnet stryker \
 
 ### Via GitHub Actions (CI/CD)
 
-O workflow `.github/workflows/mutation-tests.yml` executa automaticamente:
+O workflow `.github/workflows/main_tabatine-worker.yml` executa automaticamente um job (`mutation-test`) dedicado para testar os mutantes:
 
 | Trigger | Quando |
 |---------|--------|
 | `workflow_dispatch` | Execução manual sob demanda |
 | `schedule` | Todo dia 1 de cada mês, às 3h UTC |
-| `pull_request → main` | PRs que alteram `Services/**` ou `Repositories/**` |
+| `pull_request → main` | PRs que alteram `src/**` |
 
 **Para executar manualmente:**
 1. Acesse a aba **Actions** no GitHub
