@@ -50,11 +50,11 @@ namespace Tabatine.Infrastructure.Services
                     {
                         var omieId = omieCliente.CodigoClienteOmie;
 
-                        // Adquire trava individual
-                        var lockToken = await AcquireResourceLockAsync(omieId, ct);
+                        // Adquire trava sem espera no lote: pula registro imediatamente se já estiver sendo processado por outro worker
+                        var lockToken = await AcquireResourceLockAsync(omieId, ct, wait: false);
                         if (lockToken == null)
                         {
-                            logger.LogWarning("Não foi possível adquirir trava para o Cliente {OmieId} em lote. Pulando.", omieId);
+                            logger.LogInformation("Cliente {OmieId} já está sendo processado por outro worker. Pulando no lote.", omieId);
                             continue;
                         }
                         activeLocks[omieId] = lockToken;
@@ -178,7 +178,8 @@ namespace Tabatine.Infrastructure.Services
         }
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            var lockToken = await AcquireResourceLockAsync(omieId, ct);
+            // Sync individual (webhook): aguarda até 30s para garantir que a notificação seja processada
+            var lockToken = await AcquireResourceLockAsync(omieId, ct, wait: true);
             if (lockToken == null)
             {
                 logger.LogWarning("Não foi possível adquirir trava para o Cliente {OmieId} após espera. Abortando sync individual.", omieId);
@@ -295,16 +296,22 @@ namespace Tabatine.Infrastructure.Services
             }
         }
 
-        private async Task<string?> AcquireResourceLockAsync(long omieId, CancellationToken ct)
+        private async Task<string?> AcquireResourceLockAsync(long omieId, CancellationToken ct, bool wait = true)
         {
             var lockKey = GetLockKey(omieId);
             var lockToken = Guid.NewGuid().ToString();
-            for (int i = 0; i < 60; i++) 
+
+            if (await lockService.TryAcquireLockAsync(lockKey, lockToken, TimeSpan.FromMinutes(2), ct))
+                return lockToken;
+
+            if (!wait) return null;
+
+            // SyncByIdAsync: aguarda até 30s (60 × 500ms) para garantir processamento de webhooks
+            for (int i = 1; i < 60; i++) 
             {
+                await Task.Delay(500, ct); 
                 if (await lockService.TryAcquireLockAsync(lockKey, lockToken, TimeSpan.FromMinutes(2), ct))
                     return lockToken;
-                
-                await Task.Delay(500, ct); 
             }
             return null;
         }
