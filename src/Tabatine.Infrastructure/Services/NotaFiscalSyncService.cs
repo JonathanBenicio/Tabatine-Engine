@@ -213,8 +213,8 @@ namespace Tabatine.Infrastructure.Services
                             ValorIbs = omieNf.Total.IcmsTot.ValorIbs,
                             ValorCbs = omieNf.Total.IcmsTot.ValorCbs,
                             Denegada = omieNf.Ide.Denegada == "S",
-                            ClienteId = cliente.Id,
-                            PedidoVendaId = pedido?.Id,
+                            Cliente = cliente,
+                            PedidoVenda = pedido,
                             VendedorId = pedido?.VendedorId,
                             ContaCorrenteId = pedido?.ContaCorrenteId,
                             IdTransportadora = omieNf.Compl.IdTransportadora,
@@ -267,6 +267,7 @@ namespace Tabatine.Infrastructure.Services
                         existing.Denegada = omieNf.Ide.Denegada == "S";
                         existing.VendedorId = pedido?.VendedorId;
                         existing.ContaCorrenteId = pedido?.ContaCorrenteId;
+                        existing.PedidoVenda = pedido; // Garante o vínculo atualizado
                         existing.IdTransportadora = omieNf.Compl.IdTransportadora;
                         existing.UpdatedAt = DateTime.UtcNow;
                         existing.OmieUpdatedAt = omieLastAlt;

@@ -98,7 +98,8 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
                 .AsNoTracking()
                 .FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
             
-            if (nfDB != null) break;
+            // Aguarda até que a nota exista E o LinkDanfe tenha sido processado pelo handler assíncrono
+            if (nfDB != null && !string.IsNullOrEmpty(nfDB.LinkDanfe)) break;
             await Task.Delay(500);
         }
 

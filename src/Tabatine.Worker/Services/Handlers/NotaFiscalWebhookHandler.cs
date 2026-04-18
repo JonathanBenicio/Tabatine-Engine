@@ -73,18 +73,33 @@ public class NotaFiscalWebhookHandler(
         if (nf == null) return;
 
         // Se a NF tem vínculo com pedido e ainda não possui o LinkDanfe
-        if (nf.PedidoVenda != null && nf.PedidoVenda.OmieId > 0 && string.IsNullOrEmpty(nf.LinkDanfe))
+        if ((nf.PedidoVenda != null || nf.PedidoVendaId != null) && string.IsNullOrEmpty(nf.LinkDanfe))
         {
-            var statusPedido = await omieClient.StatusPedidoAsync(nf.PedidoVenda.OmieId, cancellationToken);
-            if (statusPedido?.ListaNfe != null)
+            long? pedidoOmieId = nf.PedidoVenda?.OmieId;
+            
+            // Fallback: se PedidoVenda estiver nulo (problema de tracking), buscar o OmieId do banco
+            if (pedidoOmieId == null && nf.PedidoVendaId != null)
             {
-                var nfeInfo = statusPedido.ListaNfe.FirstOrDefault(x => 
-                    !string.IsNullOrEmpty(x.ChaveNfe) && x.ChaveNfe == nf.ChaveAcesso);
-                
-                if (nfeInfo != null && !string.IsNullOrEmpty(nfeInfo.Danfe))
+                pedidoOmieId = await dbContext.PedidosVenda
+                    .Where(p => p.Id == nf.PedidoVendaId)
+                    .Select(p => p.OmieId)
+                    .FirstOrDefaultAsync(cancellationToken);
+            }
+
+            if (pedidoOmieId > 0)
+            {
+                var statusPedido = await omieClient.StatusPedidoAsync(pedidoOmieId.Value, cancellationToken);
+                if (statusPedido?.ListaNfe != null)
                 {
-                    nf.LinkDanfe = nfeInfo.Danfe;
-                    await dbContext.SaveChangesAsync(cancellationToken);
+                    var nfeInfo = statusPedido.ListaNfe.FirstOrDefault(x => 
+                        !string.IsNullOrEmpty(x.ChaveNfe) && 
+                        string.Equals(x.ChaveNfe, nf.ChaveAcesso, StringComparison.OrdinalIgnoreCase));
+                    
+                    if (nfeInfo != null && !string.IsNullOrEmpty(nfeInfo.Danfe))
+                    {
+                        nf.LinkDanfe = nfeInfo.Danfe;
+                        await dbContext.SaveChangesAsync(cancellationToken);
+                    }
                 }
             }
         }
