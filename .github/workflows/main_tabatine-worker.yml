@@ -134,35 +134,55 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const path = 'src/Tabatine.Infrastructure/StrykerOutput';
-            
+            const path = require('path');
+
+            const reportDir = 'src/Tabatine.Infrastructure/StrykerOutput/reports';
+            const jsonPath = path.join(reportDir, 'mutation-report.json');
             let body = '## 🧬 Stryker Mutation Testing\n\n';
-            
-            const jsonFiles = fs.readdirSync(path, { recursive: true })
-              .filter(f => f.toString().endsWith('.json'));
-              
-            if (jsonFiles.length > 0) {
+
+            if (!fs.existsSync(jsonPath)) {
+              body += '⚠️ Relatório JSON não encontrado — Stryker pode ter falhado.\n\n';
+            } else {
               try {
-                const reportData = JSON.parse(fs.readFileSync(`${path}/${jsonFiles[0]}`, 'utf8'));
-                const score = reportData.mutationScore ?? 'N/A';
-                const survived = reportData.survived ?? '?';
-                const killed = reportData.killed ?? '?';
-                const total = reportData.totalMutants ?? '?';
-                
-                const emoji = score >= 75 ? '🟢' : score >= 50 ? '🟡' : '🔴';
-                body += `${emoji} **Mutation Score:** ${score}%\n\n`;
+                const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+                // Schema do Stryker.NET: { schemaVersion, thresholds, projectRoot, files }
+                let killed = 0, survived = 0, timeout = 0, noCoverage = 0, total = 0;
+
+                for (const [, data] of Object.entries(raw.files || {})) {
+                  for (const mutant of data.mutants || []) {
+                    total++;
+                    if (mutant.status === 'Killed')     killed++;
+                    if (mutant.status === 'Survived')   survived++;
+                    if (mutant.status === 'Timeout')    timeout++;
+                    if (mutant.status === 'NoCoverage') noCoverage++;
+                  }
+                }
+
+                const score = total > 0 ? Math.round(((killed + timeout) / total) * 100) : 0;
+                const thresholds = raw.thresholds || { high: 75, low: 50, break: 40 };
+                const emoji = score >= thresholds.high ? '🟢' : score >= thresholds.low ? '🟡' : '🔴';
+
+                body += `${emoji} **Mutation Score: ${score}%**\n\n`;
                 body += `| Métrica | Valor |\n|---------|-------|\n`;
-                body += `| Mutantes Mortos | ${killed} |\n`;
-                body += `| Mutantes Sobrevividos | ${survived} |\n`;
-                body += `| Total de Mutantes | ${total} |\n\n`;
+                body += `| ✅ Mortos | ${killed} |\n`;
+                body += `| ❌ Sobrevividos | ${survived} |\n`;
+                body += `| ⏱️ Timeout | ${timeout} |\n`;
+                body += `| 🔇 Sem Cobertura | ${noCoverage} |\n`;
+                body += `| 📊 Total | ${total} |\n\n`;
+                body += `**Quality Gate:** 🟢 ≥${thresholds.high}% | 🟡 ≥${thresholds.low}% | 💀 break <${thresholds.break}%\n\n`;
+
+                if (score < thresholds.break) {
+                  body += `> ⛔ **FALHOU** — Score abaixo do limite de ${thresholds.break}%\n\n`;
+                } else {
+                  body += `> ✅ Quality Gate passou.\n\n`;
+                }
               } catch (e) {
-                body += '⚠️ Não foi possível parsear o relatório JSON do Stryker.\n\n';
+                body += `⚠️ Erro ao processar relatório: ${e.message}\n\n`;
               }
             }
-            
-            body += '📄 [Baixar relatório HTML completo nos artefatos da execução](' +
-              `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
-            
+
+            body += `📄 [Ver artefatos](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,

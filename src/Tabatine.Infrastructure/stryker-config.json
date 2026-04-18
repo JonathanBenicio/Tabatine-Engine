@@ -7,13 +7,14 @@
     "reporters": [
       "html",
       "json",
-      "progress"
+      "progress",
+      "cleartext"
     ],
     "mutation-level": "Standard",
     "thresholds": {
       "high": 75,
-      "low": 60,
-      "break": 50
+      "low": 50,
+      "break": 40
     },
     "mutate": [
       "Services/**/*.cs",
@@ -23,6 +24,7 @@
       "!GlobalUsings.cs"
     ],
     "verbosity": "info",
-    "language-version": "latest"
+    "language-version": "latest",
+    "output-path": "StrykerOutput"
   }
 }

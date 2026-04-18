@@ -1,0 +1,200 @@
+name: 🧬 Mutation Tests (Stryker.NET)
+
+# Fase 3 do Epic #41: Quality Gates com Stryker
+# Referência: docs/mutation-testing.md
+on:
+  workflow_dispatch:
+    inputs:
+      break_threshold:
+        description: 'Threshold de falha (break). Default: 40'
+        required: false
+        default: '40'
+  schedule:
+    # Todo dia 1 de cada mês às 3h UTC
+    - cron: '0 3 1 * *'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/Tabatine.Infrastructure/**'
+      - 'src/Tabatine.Worker.IntegrationTests/**'
+      - 'src/Tabatine.Infrastructure/stryker-config.json'
+      - '.github/workflows/mutation-tests.yml'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  DOTNET_VERSION: '10.x'
+  # Credenciais mockadas para CI — Stryker compila mas não executa chamadas reais
+  Omie__AppKey: 'ci-placeholder'
+  Omie__AppSecret: 'ci-placeholder'
+  Omie__BaseUrl: 'https://app.omie.com.br/api/v1'
+  ConnectionStrings__DefaultConnection: 'Host=localhost;Database=ci;Username=ci;Password=ci'
+  Telegram__BotToken: 'ci-placeholder'
+  Telegram__WebhookSecret: 'ci-placeholder'
+
+jobs:
+  mutation-test:
+    name: 🧬 Stryker Mutation Score
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependências
+        run: dotnet restore src/TabatineEngine.sln
+
+      - name: Restaurar dotnet tools (Stryker)
+        run: dotnet tool restore
+
+      - name: Build (validação prévia)
+        run: dotnet build src/TabatineEngine.sln --configuration Release --no-restore
+
+      - name: 🧬 Executar Stryker
+        working-directory: src/Tabatine.Infrastructure
+        run: |
+          dotnet stryker \
+            --project Tabatine.Infrastructure.csproj \
+            --config-file stryker-config.json \
+            --output StrykerOutput
+
+      # ──────────────────────────────────────────────────────────────
+      # Publicar score no PR como comentário
+      # ──────────────────────────────────────────────────────────────
+      - name: 📝 Comentar Mutation Score no PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const reportDir = 'src/Tabatine.Infrastructure/StrykerOutput/reports';
+            let body = '## 🧬 Stryker Mutation Testing\n\n';
+
+            try {
+              // O Stryker gera mutation-report.json dentro de reports/
+              const jsonPath = path.join(reportDir, 'mutation-report.json');
+              if (!fs.existsSync(jsonPath)) {
+                body += '⚠️ Relatório JSON não encontrado em `' + jsonPath + '`.\n\n';
+              } else {
+                const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+
+                // Schema do Stryker.NET: { schemaVersion, thresholds, projectRoot, files }
+                // O score é calculado a partir de cada arquivo
+                let killed = 0, survived = 0, timeout = 0, noCoverage = 0, total = 0;
+
+                for (const [file, data] of Object.entries(raw.files || {})) {
+                  for (const mutant of data.mutants || []) {
+                    total++;
+                    if (mutant.status === 'Killed')     killed++;
+                    if (mutant.status === 'Survived')   survived++;
+                    if (mutant.status === 'Timeout')    timeout++;
+                    if (mutant.status === 'NoCoverage') noCoverage++;
+                  }
+                }
+
+                const score = total > 0 ? Math.round(((killed + timeout) / total) * 100) : 0;
+                const emoji = score >= 75 ? '🟢' : score >= 50 ? '🟡' : '🔴';
+                const thresholds = raw.thresholds || { high: 75, low: 50, break: 40 };
+
+                body += `${emoji} **Mutation Score: ${score}%**\n\n`;
+                body += `| Métrica | Valor |\n|---------|-------|\n`;
+                body += `| ✅ Mutantes Mortos | ${killed} |\n`;
+                body += `| ❌ Mutantes Sobrevividos | ${survived} |\n`;
+                body += `| ⏱️ Timeout | ${timeout} |\n`;
+                body += `| 🔇 Sem Cobertura | ${noCoverage} |\n`;
+                body += `| 📊 Total | ${total} |\n\n`;
+                body += `**Thresholds configurados:** 🟢 ≥${thresholds.high}% | 🟡 ≥${thresholds.low}% | 💀 break <${thresholds.break}%\n\n`;
+
+                if (score < thresholds.break) {
+                  body += `> ⛔ **Quality Gate FALHOU** — Score abaixo do limite de ${thresholds.break}%\n\n`;
+                } else if (score < thresholds.low) {
+                  body += `> ⚠️ Score abaixo do mínimo esperado (${thresholds.low}%). Revisar mutantes sobreviventes.\n\n`;
+                } else {
+                  body += `> ✅ Quality Gate passou.\n\n`;
+                }
+              }
+            } catch (e) {
+              body += `⚠️ Erro ao processar relatório: ${e.message}\n\n`;
+            }
+
+            body += `📄 [Ver artefato completo (HTML/JSON)](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      # ──────────────────────────────────────────────────────────────
+      # Publicar score no Step Summary (schedule / workflow_dispatch)
+      # ──────────────────────────────────────────────────────────────
+      - name: 📊 Step Summary — Mutation Score
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const reportDir = 'src/Tabatine.Infrastructure/StrykerOutput/reports';
+            const jsonPath = path.join(reportDir, 'mutation-report.json');
+
+            let summary = '## 🧬 Stryker Mutation Testing\n\n';
+
+            if (fs.existsSync(jsonPath)) {
+              try {
+                const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+                let killed = 0, survived = 0, timeout = 0, noCoverage = 0, total = 0;
+
+                for (const [file, data] of Object.entries(raw.files || {})) {
+                  for (const mutant of data.mutants || []) {
+                    total++;
+                    if (mutant.status === 'Killed')     killed++;
+                    if (mutant.status === 'Survived')   survived++;
+                    if (mutant.status === 'Timeout')    timeout++;
+                    if (mutant.status === 'NoCoverage') noCoverage++;
+                  }
+                }
+
+                const score = total > 0 ? Math.round(((killed + timeout) / total) * 100) : 0;
+                const emoji = score >= 75 ? '🟢' : score >= 50 ? '🟡' : '🔴';
+
+                summary += `${emoji} **Mutation Score: ${score}%**\n\n`;
+                summary += `| ✅ Mortos | ❌ Sobrevividos | ⏱️ Timeout | 🔇 Sem Cobertura | 📊 Total |\n`;
+                summary += `|-----------|----------------|------------|-----------------|----------|\n`;
+                summary += `| ${killed} | ${survived} | ${timeout} | ${noCoverage} | ${total} |\n`;
+              } catch (e) {
+                summary += `⚠️ Erro ao processar relatório: ${e.message}\n`;
+              }
+            } else {
+              summary += '⚠️ Relatório não encontrado — o Stryker pode ter falhado.\n';
+            }
+
+            await core.summary.addRaw(summary).write();
+
+      - name: 📦 Upload Stryker Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stryker-report-${{ github.run_number }}
+          path: src/Tabatine.Infrastructure/StrykerOutput
+          retention-days: 30
