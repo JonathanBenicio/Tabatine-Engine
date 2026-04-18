@@ -25,8 +25,9 @@ public class IntegrationTestWebAppFactory : WebApplicationFactory<Program>, IAsy
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 { "ConnectionStrings:DefaultConnection", connectionString },
-                { "WebhookProcessor:PollingIntervalMs", "500" },
-                { "WebhookProcessor:UseSkipLocked", "true" }
+                { "WebhookProcessor:PollingIntervalMs", "100" },
+                { "WebhookProcessor:UseSkipLocked", "true" },
+                { "WebhookProcessor:Enabled", "true" }
             });
         });
 

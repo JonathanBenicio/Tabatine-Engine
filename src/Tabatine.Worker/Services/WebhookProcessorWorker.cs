@@ -14,6 +14,12 @@ public partial class WebhookProcessorWorker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (!configuration.GetValue<bool>("WebhookProcessor:Enabled", true))
+        {
+            logger.LogInformation("WebhookProcessorWorker está desativado via configuração.");
+            return;
+        }
+
         LogWorkerIniciado(logger);
 
         while (!stoppingToken.IsCancellationRequested)
@@ -53,7 +59,7 @@ public partial class WebhookProcessorWorker(
         LogWorkerFinalizado(logger);
     }
 
-    private async Task<(bool Processed, bool HasMore)> ProcessNextMessagesAsync(CancellationToken cancellationToken)
+    public async Task<(bool Processed, bool HasMore)> ProcessNextMessagesAsync(CancellationToken cancellationToken)
     {
         IServiceScope? scope = null;
         try
@@ -147,26 +153,44 @@ public partial class WebhookProcessorWorker(
                 }
             }
 
-            // 3. Atualização Final
+            // 3. Atualização Final (Com retry de concorrência)
             await strategy.ExecuteAsync(async () => {
                 if (cancellationToken.IsCancellationRequested) return;
 
-                var dbEvent = await dbContext.WebhookEvents.FirstOrDefaultAsync(w => w.Id == webhookEvent.Id, cancellationToken);
-                if (dbEvent != null)
+                int updateRetries = 0;
+                const int maxUpdateRetries = 3;
+
+                while (updateRetries < maxUpdateRetries)
                 {
-                    dbEvent.Status = webhookEvent.Status;
-                    dbEvent.ProcessedAt = webhookEvent.ProcessedAt;
-                    dbEvent.LastAttemptAt = webhookEvent.LastAttemptAt;
-                    dbEvent.LastErrorDetail = webhookEvent.LastErrorDetail;
-                    dbEvent.RetryCount = webhookEvent.RetryCount;
-                    dbEvent.NextRetryAt = webhookEvent.NextRetryAt;
-                    
-                    await dbContext.SaveChangesAsync(cancellationToken);
-                    logger.LogTrace("Webhook {Id} atualizado para status {Status}.", webhookEvent.Id, webhookEvent.Status);
-                }
-                else
-                {
-                    logger.LogError("Webhook {Id} não encontrado para atualização final.", webhookEvent.Id);
+                    try
+                    {
+                        var dbEvent = await dbContext.WebhookEvents.FirstOrDefaultAsync(w => w.Id == webhookEvent.Id, cancellationToken);
+                        if (dbEvent != null)
+                        {
+                            dbEvent.Status = webhookEvent.Status;
+                            dbEvent.ProcessedAt = webhookEvent.ProcessedAt;
+                            dbEvent.LastAttemptAt = webhookEvent.LastAttemptAt;
+                            dbEvent.LastErrorDetail = webhookEvent.LastErrorDetail;
+                            dbEvent.RetryCount = webhookEvent.RetryCount;
+                            dbEvent.NextRetryAt = webhookEvent.NextRetryAt;
+
+                            await dbContext.SaveChangesAsync(cancellationToken);
+                            logger.LogTrace("Webhook {Id} atualizado para status {Status}.", webhookEvent.Id, webhookEvent.Status);
+                            break;
+                        }
+                        else
+                        {
+                            logger.LogWarning("Webhook {Id} não encontrado para atualização final (tentativa {Retry}).", webhookEvent.Id, updateRetries + 1);
+                            if (updateRetries >= maxUpdateRetries - 1) break;
+                        }
+                    }
+                    catch (DbUpdateConcurrencyException)
+                    {
+                        updateRetries++;
+                        if (updateRetries >= maxUpdateRetries) throw;
+                        logger.LogWarning("Concorrência ao atualizar webhook {Id}. Tentativa {Retry} de {Max}.", webhookEvent.Id, updateRetries, maxUpdateRetries);
+                        await Task.Delay(Random.Shared.Next(50, 200), cancellationToken);
+                    }
                 }
             });
 

@@ -11,35 +11,33 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
         var omieIdProduto = 54321L;
 
         // 1. Seed de Cliente e Produto no Banco (necessários para a sincronização do Pedido)
-        using (var scope = Factory.Services.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            
-            var cliente = new Cliente 
-            { 
-                Id = Guid.NewGuid(), 
-                OmieId = omieIdCliente, 
-                RazaoSocial = "Cliente do Pedido",
-                CnpjCpf = "00000000000100",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            
-            var produto = new Produto 
-            { 
-                Id = Guid.NewGuid(), 
-                OmieId = omieIdProduto, 
-                Descricao = "Produto do Pedido",
-                CodigoProduto = "PROD001",
-                UnidadeMedida = "UN",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        
+        var cliente = new Cliente 
+        { 
+            Id = Guid.NewGuid(), 
+            OmieId = omieIdCliente, 
+            RazaoSocial = "Cliente do Pedido",
+            CnpjCpf = "00000000000100",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        
+        var produto = new Produto 
+        { 
+            Id = Guid.NewGuid(), 
+            OmieId = omieIdProduto, 
+            Descricao = "Produto do Pedido",
+            CodigoProduto = "PROD001",
+            UnidadeMedida = "UN",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
 
-            dbContext.Clientes.Add(cliente);
-            dbContext.Produtos.Add(produto);
-            await dbContext.SaveChangesAsync();
-        }
+        dbContext.Clientes.Add(cliente);
+        dbContext.Produtos.Add(produto);
+        await dbContext.SaveChangesAsync();
 
         // 2. Mock do Pedido na API Omie
         var omiePedido = new OmiePedido
@@ -118,37 +116,13 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
         // Assert
         response.EnsureSuccessStatusCode();
 
-        // Polling para aguardar o processamento assíncrono
-        PedidoVenda? pedidoDB = null;
-        var timeout = TimeSpan.FromSeconds(30);
-        var start = DateTime.UtcNow;
+        await ProcessWebhooksAsync();
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            pedidoDB = await dbContext.PedidosVenda
-                .AsNoTracking()
-                .Include(p => p.Itens)
-                .Include(p => p.Parcelas)
-                .FirstOrDefaultAsync(p => p.OmieId == omieIdPedido);
-            
-            if (pedidoDB != null && pedidoDB.Itens.Count > 0 && pedidoDB.Parcelas.Count > 0) break;
-            await Task.Delay(500);
-        }
-
-        if (pedidoDB == null)
-        {
-            using var diagScope = Factory.Services.CreateScope();
-            var dbDiag = diagScope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var webhook = await dbDiag.WebhookEvents
-                .AsNoTracking()
-                .OrderByDescending(w => w.CreatedAt)
-                .FirstOrDefaultAsync(w => w.Event == "VendaProduto.Incluida");
-
-            Assert.Fail($"Pedido {omieIdPedido} não persistido após {timeout.TotalSeconds}s. " +
-                        $"Webhook status: {(webhook == null ? "Não encontrado" : (webhook.ProcessedAt.HasValue ? $"Processado em {webhook.ProcessedAt}" : $"Pendente/Erro (ID: {webhook.Id})"))}");
-        }
+        var pedidoDB = await dbContext.PedidosVenda
+            .AsNoTracking()
+            .Include(p => p.Itens)
+            .Include(p => p.Parcelas)
+            .FirstOrDefaultAsync(p => p.OmieId == omieIdPedido);
 
         Assert.NotNull(pedidoDB);
         Assert.Equal(omiePedido.Cabecalho.NumeroPedido, pedidoDB!.NumeroPedido);
@@ -172,41 +146,39 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
         var omieIdProduto1 = 54321L;
         var omieIdProduto2 = 12345L; // Produto que será deletado no update
 
-        using (var scope = Factory.Services.CreateScope())
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        // Pré-popula cenário: Um pedido com 2 itens
+        var cliente = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieIdCliente);
+        if (cliente == null)
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            // Pré-popula cenário: Um pedido com 2 itens
-            var cliente = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieIdCliente);
-            if (cliente == null)
-            {
-                cliente = new Cliente { Id = Guid.NewGuid(), OmieId = omieIdCliente, RazaoSocial = "Cliente Teste", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
-                dbContext.Clientes.Add(cliente);
-            }
-            
-            var p1 = await dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieIdProduto1) ?? new Produto { Id = Guid.NewGuid(), OmieId = omieIdProduto1, CodigoProduto="P1", Descricao="1", CreatedAt=DateTime.UtcNow, UpdatedAt=DateTime.UtcNow };
-            var p2 = await dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieIdProduto2) ?? new Produto { Id = Guid.NewGuid(), OmieId = omieIdProduto2, CodigoProduto="P2", Descricao="2", CreatedAt=DateTime.UtcNow, UpdatedAt=DateTime.UtcNow };
-            
-            if (dbContext.Entry(p1).State == EntityState.Detached) dbContext.Produtos.Add(p1);
-            if (dbContext.Entry(p2).State == EntityState.Detached) dbContext.Produtos.Add(p2);
-
-            var pedidoOriginal = new PedidoVenda
-            {
-                Id = Guid.NewGuid(),
-                OmieId = omieIdPedido,
-                ClienteId = cliente.Id,
-                NumeroPedido = "PED-UPDATE-001",
-                ValorTotal = 2000.00m,
-                Itens = new List<ItemPedido>
-                {
-                    new() { Id = Guid.NewGuid(), OmieId = 111222L, ProdutoId = p1.Id, Quantidade = 1, ValorUnitario = 1000, ValorTotal = 1000 },
-                    new() { Id = Guid.NewGuid(), OmieId = 333444L, ProdutoId = p2.Id, Quantidade = 1, ValorUnitario = 1000, ValorTotal = 1000 }
-                },
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            dbContext.PedidosVenda.Add(pedidoOriginal);
-            await dbContext.SaveChangesAsync();
+            cliente = new Cliente { Id = Guid.NewGuid(), OmieId = omieIdCliente, RazaoSocial = "Cliente Teste", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+            dbContext.Clientes.Add(cliente);
         }
+        
+        var p1 = await dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieIdProduto1) ?? new Produto { Id = Guid.NewGuid(), OmieId = omieIdProduto1, CodigoProduto="P1", Descricao="1", CreatedAt=DateTime.UtcNow, UpdatedAt=DateTime.UtcNow };
+        var p2 = await dbContext.Produtos.FirstOrDefaultAsync(p => p.OmieId == omieIdProduto2) ?? new Produto { Id = Guid.NewGuid(), OmieId = omieIdProduto2, CodigoProduto="P2", Descricao="2", CreatedAt=DateTime.UtcNow, UpdatedAt=DateTime.UtcNow };
+        
+        if (dbContext.Entry(p1).State == EntityState.Detached) dbContext.Produtos.Add(p1);
+        if (dbContext.Entry(p2).State == EntityState.Detached) dbContext.Produtos.Add(p2);
+
+        var pedidoOriginal = new PedidoVenda
+        {
+            Id = Guid.NewGuid(),
+            OmieId = omieIdPedido,
+            ClienteId = cliente.Id,
+            NumeroPedido = "PED-UPDATE-001",
+            ValorTotal = 2000.00m,
+            Itens = new List<ItemPedido>
+            {
+                new() { Id = Guid.NewGuid(), OmieId = 111222L, ProdutoId = p1.Id, Quantidade = 1, ValorUnitario = 1000, ValorTotal = 1000 },
+                new() { Id = Guid.NewGuid(), OmieId = 333444L, ProdutoId = p2.Id, Quantidade = 1, ValorUnitario = 1000, ValorTotal = 1000 }
+            },
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        dbContext.PedidosVenda.Add(pedidoOriginal);
+        await dbContext.SaveChangesAsync();
 
         // Mock Omie return: Agora tem só 1 item, e o valor do Item 1 dobrou.
         var omiePedido = new OmiePedido
@@ -253,37 +225,13 @@ public class PedidoWebhookIntegrationTests(IntegrationTestWebAppFactory factory)
         var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
         response.EnsureSuccessStatusCode();
 
-        PedidoVenda? pedidoDB = null;
-        var timeout = TimeSpan.FromSeconds(30);
-        var start = DateTime.UtcNow;
+        await ProcessWebhooksAsync();
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            pedidoDB = await dbContext.PedidosVenda
-                .AsNoTracking()
-                .Include(p => p.Itens)
-                .ThenInclude(i => i.Produto)
-                .FirstOrDefaultAsync(p => p.OmieId == omieIdPedido);
-            
-            // Verifica se deletou 1 item e atualizou o total para 2500
-            if (pedidoDB != null && pedidoDB.ValorTotal == 2500.00m && pedidoDB.Itens.Count == 1) break;
-            await Task.Delay(500);
-        }
-
-        if (pedidoDB == null || pedidoDB.ValorTotal != 2500.00m)
-        {
-            using var diagScope = Factory.Services.CreateScope();
-            var dbDiag = diagScope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var webhook = await dbDiag.WebhookEvents
-                .AsNoTracking()
-                .OrderByDescending(w => w.CreatedAt)
-                .FirstOrDefaultAsync(w => w.Event == "VendaProduto.Alterada");
-
-            Assert.Fail($"Pedido {omieIdPedido} não atualizado após {timeout.TotalSeconds}s. " +
-                        $"Webhook status: {(webhook == null ? "Não encontrado" : (webhook.ProcessedAt.HasValue ? $"Processado em {webhook.ProcessedAt}" : $"Pendente/Erro (ID: {webhook.Id})"))}");
-        }
+        var pedidoDB = await dbContext.PedidosVenda
+            .AsNoTracking()
+            .Include(p => p.Itens)
+            .ThenInclude(i => i.Produto)
+            .FirstOrDefaultAsync(p => p.OmieId == omieIdPedido);
 
         Assert.NotNull(pedidoDB);
         Assert.Equal(2500.00m, pedidoDB!.ValorTotal);

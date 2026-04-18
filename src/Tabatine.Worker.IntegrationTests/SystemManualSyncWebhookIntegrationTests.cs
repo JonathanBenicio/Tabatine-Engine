@@ -55,22 +55,13 @@ public class SystemManualSyncWebhookIntegrationTests : BaseIntegrationTest
         // Assert - Resposta imediata 200 OK do endpoint
         response.EnsureSuccessStatusCode();
 
-        // 4. Assert - Validação do processamento assíncrono (Polling)
-        Banco? bancoPersistido = null;
-        var timeout = TimeSpan.FromSeconds(30); 
-        var start = DateTime.UtcNow;
+        await ProcessWebhooksAsync();
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            
-            // O SyncManager iterará as rotinas. Bancos é a primeira, então validamos que ela foi chamada
-            bancoPersistido = await db.Bancos.FirstOrDefaultAsync(b => b.CodigoBanco == "999");
-            if (bancoPersistido != null) break;
-            
-            await Task.Delay(500);
-        }
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // O SyncManager iterará as rotinas. Bancos é a primeira, então validamos que ela foi chamada
+        var bancoPersistido = await db.Bancos.FirstOrDefaultAsync(b => b.CodigoBanco == "999");
 
         // 5. Verificações Finais
         Assert.NotNull(bancoPersistido);

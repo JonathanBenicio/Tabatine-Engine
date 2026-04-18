@@ -48,20 +48,13 @@ public class ClienteWebhookIntegrationTests(IntegrationTestWebAppFactory factory
         // Assert
         response.EnsureSuccessStatusCode();
 
-        // Polling para aguardar o processamento assíncrono (Worker)
-        Cliente? clienteDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
-        var start = DateTime.UtcNow;
+        // Dispara o processamento manual (Síncrono para o teste)
+        await ProcessWebhooksAsync();
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            clienteDB = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieId);
-
-            if (clienteDB != null) break;
-            await Task.Delay(500);
-        }
+        // Verificar no banco de forma direta
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var clienteDB = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieId);
 
         Assert.NotNull(clienteDB);
         Assert.Equal(omieCliente.RazaoSocial, clienteDB!.RazaoSocial);

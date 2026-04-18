@@ -19,44 +19,42 @@ public class NotaFiscalTituloIntegrationTests(IntegrationTestWebAppFactory facto
         var omieIdTituloReceber = 999111L;
 
         // Pré-populando dependências
-        using (var scope = Factory.Services.CreateScope())
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var clienteExistente = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieIdCliente);
+        if (clienteExistente == null)
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-            var clienteExistente = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieIdCliente);
-            if (clienteExistente == null)
+            dbContext.Clientes.Add(new Cliente
             {
-                dbContext.Clientes.Add(new Cliente
-                {
-                    Id = Guid.NewGuid(),
-                    OmieId = omieIdCliente,
-                    RazaoSocial = "Cliente Teste NF-Titulo",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
-            }
-
-            // Título a receber já existe (gerado na emissão da NF no Omie)
-            var tituloExistente = await dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieIdTituloReceber);
-            if (tituloExistente == null)
-            {
-                dbContext.TitulosReceber.Add(new TituloReceber
-                {
-                    Id = Guid.NewGuid(),
-                    OmieId = omieIdTituloReceber,
-                    NumeroDocumento = "NF-444555666",
-                    ValorDocumento = 850.00m,
-                    ValorSaldo = 850.00m,
-                    DataEmissao = DateTime.UtcNow.Date,
-                    DataVencimento = DateTime.UtcNow.AddDays(30).Date,
-                    StatusTitulo = "ABERTO",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
-            }
-
-            await dbContext.SaveChangesAsync();
+                Id = Guid.NewGuid(),
+                OmieId = omieIdCliente,
+                RazaoSocial = "Cliente Teste NF-Titulo",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
         }
+
+        // Título a receber já existe (gerado na emissão da NF no Omie)
+        var tituloExistente = await dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieIdTituloReceber);
+        if (tituloExistente == null)
+        {
+            dbContext.TitulosReceber.Add(new TituloReceber
+            {
+                Id = Guid.NewGuid(),
+                OmieId = omieIdTituloReceber,
+                NumeroDocumento = "NF-444555666",
+                ValorDocumento = 850.00m,
+                ValorSaldo = 850.00m,
+                DataEmissao = DateTime.UtcNow.Date,
+                DataVencimento = DateTime.UtcNow.AddDays(30).Date,
+                StatusTitulo = "ABERTO",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+
+        await dbContext.SaveChangesAsync();
 
         // Mock da NF com referência ao título
         var omieNf = new OmieNotaFiscal
@@ -90,40 +88,27 @@ public class NotaFiscalTituloIntegrationTests(IntegrationTestWebAppFactory facto
         var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
         response.EnsureSuccessStatusCode();
 
-        // Assert com polling
-        NotaFiscal? nfDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
-        var start = DateTime.UtcNow;
+        await ProcessWebhooksAsync();
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            nfDB = await dbContext.NotasFiscais
-                .Include(n => n.Titulos)
-                .FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
-
-            if (nfDB != null) break;
-            await Task.Delay(500);
-        }
+        var nfDB = await dbContext.NotasFiscais
+            .AsNoTracking()
+            .Include(n => n.Titulos)
+            .FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
 
         Assert.NotNull(nfDB);
         Assert.Equal(850.00m, nfDB!.ValorTotal);
 
         // Valida vinculação: se o sistema cria NotaFiscalTitulo, deve existir ao menos 1
         // Caso a FK seja resolvida apenas por ID, verificamos o campo direto
-        using (var assertScope = Factory.Services.CreateScope())
-        {
-            var dbContext = assertScope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var nfComTitulos = await dbContext.NotasFiscais
-                .Include(n => n.Titulos)
-                .FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
+        var nfComTitulos = await dbContext.NotasFiscais
+            .AsNoTracking()
+            .Include(n => n.Titulos)
+            .FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
 
-            Assert.NotNull(nfComTitulos);
-            // Valida que a NF possui pelo menos um vínculo com título, ou que o TituloReceber referenciado existe
-            var titulo = await dbContext.TitulosReceber.FirstOrDefaultAsync(t => t.OmieId == omieIdTituloReceber);
-            Assert.NotNull(titulo);
-        }
+        Assert.NotNull(nfComTitulos);
+        // Valida que a NF possui pelo menos um vínculo com título, ou que o TituloReceber referenciado existe
+        var titulo = await dbContext.TitulosReceber.AsNoTracking().FirstOrDefaultAsync(t => t.OmieId == omieIdTituloReceber);
+        Assert.NotNull(titulo);
     }
 
     [Fact]
@@ -133,21 +118,19 @@ public class NotaFiscalTituloIntegrationTests(IntegrationTestWebAppFactory facto
         var omieIdNf = 777888999L;
         var omieIdCliente = 55544L;
 
-        using (var scope = Factory.Services.CreateScope())
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        if (!await dbContext.Clientes.AnyAsync(c => c.OmieId == omieIdCliente))
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            if (!await dbContext.Clientes.AnyAsync(c => c.OmieId == omieIdCliente))
+            dbContext.Clientes.Add(new Cliente
             {
-                dbContext.Clientes.Add(new Cliente
-                {
-                    Id = Guid.NewGuid(),
-                    OmieId = omieIdCliente,
-                    RazaoSocial = "Cliente NF Parcelada",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
-                await dbContext.SaveChangesAsync();
-            }
+                Id = Guid.NewGuid(),
+                OmieId = omieIdCliente,
+                RazaoSocial = "Cliente NF Parcelada",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await dbContext.SaveChangesAsync();
         }
 
         // Mock NF com referência a múltiplos títulos
@@ -177,18 +160,9 @@ public class NotaFiscalTituloIntegrationTests(IntegrationTestWebAppFactory facto
         var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
         response.EnsureSuccessStatusCode();
 
-        NotaFiscal? nfDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
-        var start = DateTime.UtcNow;
+        await ProcessWebhooksAsync();
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            nfDB = await dbContext.NotasFiscais.FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
-            if (nfDB != null) break;
-            await Task.Delay(500);
-        }
+        var nfDB = await dbContext.NotasFiscais.AsNoTracking().FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
 
         Assert.NotNull(nfDB);
         Assert.Equal(3000.00m, nfDB!.ValorTotal);

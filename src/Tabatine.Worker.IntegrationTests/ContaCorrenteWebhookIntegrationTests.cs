@@ -50,20 +50,11 @@ public class ContaCorrenteWebhookIntegrationTests(IntegrationTestWebAppFactory f
         // Assert
         response.EnsureSuccessStatusCode();
 
-        // Polling
-        ContaCorrente? ccDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
-        var start = DateTime.UtcNow;
+        await ProcessWebhooksAsync();
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            ccDB = await dbContext.ContasCorrente.FirstOrDefaultAsync(c => c.OmieId == omieIdCC);
-            
-            if (ccDB != null && ccDB.SaldoInicial == saldoInicialEsperado) break;
-            await Task.Delay(500);
-        }
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var ccDB = await dbContext.ContasCorrente.FirstOrDefaultAsync(c => c.OmieId == omieIdCC);
 
         Assert.NotNull(ccDB);
         Assert.Equal("Conta Teste Webhook", ccDB!.Descricao);
@@ -103,22 +94,11 @@ public class ContaCorrenteWebhookIntegrationTests(IntegrationTestWebAppFactory f
         var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
         response.EnsureSuccessStatusCode();
 
-        // Polling
-        await Task.Delay(1000);
+        await ProcessWebhooksAsync();
 
-        ContaCorrente? ccDB = null;
-        var timeout = TimeSpan.FromSeconds(15); // Increase timeout
-        var start = DateTime.UtcNow;
-
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            ccDB = await dbContext.ContasCorrente.FirstOrDefaultAsync(c => c.OmieId == contaCorrenteId);
-            
-            if (ccDB != null && ccDB.SaldoInicial == 0) break;
-            await Task.Delay(1000); // Increase polling interval
-        }
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var ccDB = await dbContext.ContasCorrente.FirstOrDefaultAsync(c => c.OmieId == contaCorrenteId);
 
         // Assert
         Assert.NotNull(ccDB);

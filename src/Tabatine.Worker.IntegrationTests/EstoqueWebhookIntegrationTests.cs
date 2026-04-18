@@ -46,21 +46,13 @@ public class EstoqueWebhookIntegrationTests(IntegrationTestWebAppFactory factory
         // Assert
         response.EnsureSuccessStatusCode();
 
-        LocalEstoque? localDB = null;
-        var timeout = TimeSpan.FromSeconds(20);
-        var start = DateTime.UtcNow;
+        await ProcessWebhooksAsync();
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            localDB = await dbContext.LocaisEstoque
-                .AsNoTracking()
-                .FirstOrDefaultAsync(l => l.OmieId == localOmieId);
-            
-            if (localDB != null) break;
-            await Task.Delay(500);
-        }
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var localDB = await dbContext.LocaisEstoque
+            .AsNoTracking()
+            .FirstOrDefaultAsync(l => l.OmieId == localOmieId);
 
         Assert.NotNull(localDB);
         Assert.Equal("Local de Teste Webhook", localDB!.Descricao);
@@ -76,20 +68,18 @@ public class EstoqueWebhookIntegrationTests(IntegrationTestWebAppFactory factory
         // Seed: Criar produto e local no banco
         Guid produtoId;
         Guid localId;
-        using (var scope = Factory.Services.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            
-            var local = new LocalEstoque { Id = Guid.NewGuid(), OmieId = localOmieId, Codigo = "LOC1", Descricao = "Local 1" };
-            var produto = new Produto { Id = Guid.NewGuid(), OmieId = produtoOmieId, CodigoProduto = "PROD1", Descricao = "Produto 1" };
-            
-            dbContext.LocaisEstoque.Add(local);
-            dbContext.Produtos.Add(produto);
-            await dbContext.SaveChangesAsync();
-            
-            produtoId = produto.Id;
-            localId = local.Id;
-        }
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        
+        var local = new LocalEstoque { Id = Guid.NewGuid(), OmieId = localOmieId, Codigo = "LOC1", Descricao = "Local 1" };
+        var produto = new Produto { Id = Guid.NewGuid(), OmieId = produtoOmieId, CodigoProduto = "PROD1", Descricao = "Produto 1" };
+        
+        dbContext.LocaisEstoque.Add(local);
+        dbContext.Produtos.Add(produto);
+        await dbContext.SaveChangesAsync();
+        
+        produtoId = produto.Id;
+        localId = local.Id;
 
         // Mock: Resumo de estoque
         var resumo = new ObterEstoqueProdutoResponse
@@ -124,28 +114,14 @@ public class EstoqueWebhookIntegrationTests(IntegrationTestWebAppFactory factory
         response2.EnsureSuccessStatusCode();
 
         // Verificar no banco
-        ProdutoEstoque? saldoDB = null;
-        var timeout = TimeSpan.FromSeconds(20);
-        var start = DateTime.UtcNow;
+        await ProcessWebhooksAsync();
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            saldoDB = await dbContext.ProdutosEstoque
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.ProdutoId == produtoId && s.LocalEstoqueId == localId);
-            
-            if (saldoDB != null && saldoDB.Saldo == 100) break;
-            await Task.Delay(500);
-        }
+        var saldoDB = await dbContext.ProdutosEstoque
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.ProdutoId == produtoId && s.LocalEstoqueId == localId);
 
         Assert.NotNull(saldoDB);
         Assert.Equal(100, saldoDB!.Saldo);
-
-        // Verificação de Debouncing: O Mock deve ter sido chamado exatamente UMA vez (ou pelo menos não duas vezes no curtíssimo intervalo)
-        // Como o processamento é assíncrono, aguardamos um pouco mais para garantir que o segundo não rodaria depois
-        await Task.Delay(2000); 
 
         // IMPORTANTE: Aqui validamos que o Debouncing barrou a segunda chamada ao SyncByIdAsync
         await Factory.OmieClientMock.Received(1).ObterResumoEstoqueProdutoAsync(Arg.Any<ObterEstoqueProdutoRequest>(), Arg.Any<CancellationToken>());
@@ -160,17 +136,16 @@ public class EstoqueWebhookIntegrationTests(IntegrationTestWebAppFactory factory
 
         Guid produtoId;
         Guid localId;
-        using (var scope = Factory.Services.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var local = new LocalEstoque { Id = Guid.NewGuid(), OmieId = localOmieId, Codigo = "LOC2", Descricao = "Local 2" };
-            var produto = new Produto { Id = Guid.NewGuid(), OmieId = produtoOmieId, CodigoProduto = "PROD2", Descricao = "Produto 2" };
-            dbContext.LocaisEstoque.Add(local);
-            dbContext.Produtos.Add(produto);
-            await dbContext.SaveChangesAsync();
-            produtoId = produto.Id;
-            localId = local.Id;
-        }
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var local = new LocalEstoque { Id = Guid.NewGuid(), OmieId = localOmieId, Codigo = "LOC2", Descricao = "Local 2" };
+        var produto = new Produto { Id = Guid.NewGuid(), OmieId = produtoOmieId, CodigoProduto = "PROD2", Descricao = "Produto 2" };
+        dbContext.LocaisEstoque.Add(local);
+        dbContext.Produtos.Add(produto);
+        await dbContext.SaveChangesAsync();
+        produtoId = produto.Id;
+        localId = local.Id;
 
         var resumo = new ObterEstoqueProdutoResponse
         {
@@ -194,19 +169,11 @@ public class EstoqueWebhookIntegrationTests(IntegrationTestWebAppFactory factory
         var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
         response.EnsureSuccessStatusCode();
 
-        ProdutoEstoque? saldoDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
-        var start = DateTime.UtcNow;
+        await ProcessWebhooksAsync();
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            saldoDB = await dbContext.ProdutosEstoque.FirstOrDefaultAsync(s => s.ProdutoId == produtoId && s.LocalEstoqueId == localId);
-            
-            if (saldoDB != null && saldoDB.Saldo == -50) break;
-            await Task.Delay(500);
-        }
+        var saldoDB = await dbContext.ProdutosEstoque
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.ProdutoId == produtoId && s.LocalEstoqueId == localId);
 
         Assert.NotNull(saldoDB);
         Assert.Equal(-50, saldoDB!.Saldo);

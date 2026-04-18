@@ -2,6 +2,7 @@ using NSubstitute;
 using NSubstitute.ClearExtensions;
 using Respawn;
 using Respawn.Graph;
+using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Tabatine.Infrastructure.Data;
@@ -63,6 +64,44 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
         // Limpar mocks compartilhados pelo Factory para garantir um estado limpo
         _factory.OmieClientMock.ClearReceivedCalls();
         _factory.NotificationServiceMock.ClearReceivedCalls();
+    }
+
+    // Força o processamento de todos os webhooks pendentes de forma síncrona
+    protected async Task ProcessWebhooksAsync(int maxMessages = 10)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var worker = scope.ServiceProvider.GetServices<IHostedService>()
+            .OfType<Tabatine.Worker.Services.WebhookProcessorWorker>()
+            .FirstOrDefault();
+
+        if (worker == null) return;
+
+        int processed = 0;
+        int emptyAttempts = 0;
+        const int maxEmptyAttempts = 5;
+
+        while (processed < maxMessages && emptyAttempts < maxEmptyAttempts)
+        {
+            var result = await worker.ProcessNextMessagesAsync(CancellationToken.None);
+            if (result.Processed)
+            {
+                processed++;
+                emptyAttempts = 0;
+            }
+            else if (result.HasMore)
+            {
+                // Tem mensagens mas falhou em processar esta (concorrência?), tenta de novo
+                await Task.Delay(100);
+            }
+            else
+            {
+                // Banco vazio, espera um pouco para garantir que o POST foi persistido
+                emptyAttempts++;
+                await Task.Delay(200);
+            }
+
+            if (!result.HasMore && processed > 0) break;
+        }
     }
 
     protected async Task WaitForConditionAsync(Func<Task<bool>> condition, string errorMessage = "Tempo esgotado aguardando condição.")

@@ -12,32 +12,31 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
         var omieIdCliente = 12345L;
 
         // 1. Garantir que o cliente e pedido existem (necessário para o SyncService da NF)
-        using (var scope = Factory.Services.CreateScope())
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var cliente = new Cliente
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var cliente = new Cliente
-            {
-                Id = Guid.NewGuid(),
-                OmieId = omieIdCliente,
-                RazaoSocial = "Cliente Teste NF",
-                CnpjCpf = "00000000000100",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            var pedido = new PedidoVenda
-            {
-                Id = Guid.NewGuid(),
-                OmieId = 88888L,
-                ClienteId = cliente.Id,
-                NumeroPedido = "PED-TEST",
-                ValorTotal = 1500.50m,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            dbContext.Clientes.Add(cliente);
-            dbContext.PedidosVenda.Add(pedido);
-            await dbContext.SaveChangesAsync();
-        }
+            Id = Guid.NewGuid(),
+            OmieId = omieIdCliente,
+            RazaoSocial = "Cliente Teste NF",
+            CnpjCpf = "00000000000100",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        var pedido = new PedidoVenda
+        {
+            Id = Guid.NewGuid(),
+            OmieId = 88888L,
+            ClienteId = cliente.Id,
+            NumeroPedido = "PED-TEST",
+            ValorTotal = 1500.50m,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        dbContext.Clientes.Add(cliente);
+        dbContext.PedidosVenda.Add(pedido);
+        await dbContext.SaveChangesAsync();
 
         // 2. Mock da resposta da Omie para consulta individual
         var omieNf = new OmieNotaFiscal
@@ -85,23 +84,11 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
         // Assert
         response.EnsureSuccessStatusCode();
 
-        // Polling para aguardar o processamento assíncrono (Worker)
-        NotaFiscal? nfDB = null;
-        var timeout = TimeSpan.FromSeconds(20);
-        var start = DateTime.UtcNow;
+        await ProcessWebhooksAsync();
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            nfDB = await dbContext.NotasFiscais
-                .AsNoTracking()
-                .FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
-            
-            // Aguarda até que a nota exista E o LinkDanfe tenha sido processado pelo handler assíncrono
-            if (nfDB != null && !string.IsNullOrEmpty(nfDB.LinkDanfe)) break;
-            await Task.Delay(500);
-        }
+        var nfDB = await dbContext.NotasFiscais
+            .AsNoTracking()
+            .FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
 
         Assert.NotNull(nfDB);
         Assert.Equal("1234", nfDB!.NumeroNf);
@@ -118,16 +105,14 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
         var omieIdCliente = 12345L;
         var omieIdPedidoInexistente = 9999999L; // Pedido não existe no BD
 
-        using (var scope = Factory.Services.CreateScope())
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var cliente = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieIdCliente);
+        if (cliente == null)
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var cliente = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieIdCliente);
-            if (cliente == null)
-            {
-                cliente = new Cliente { Id = Guid.NewGuid(), OmieId = omieIdCliente, RazaoSocial = "Cliente NF Sem Pedido", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
-                dbContext.Clientes.Add(cliente);
-                await dbContext.SaveChangesAsync();
-            }
+            cliente = new Cliente { Id = Guid.NewGuid(), OmieId = omieIdCliente, RazaoSocial = "Cliente NF Sem Pedido", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+            dbContext.Clientes.Add(cliente);
+            await dbContext.SaveChangesAsync();
         }
 
         var omieNf = new OmieNotaFiscal
@@ -152,19 +137,11 @@ public class NotaFiscalWebhookIntegrationTests(IntegrationTestWebAppFactory fact
         var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
         response.EnsureSuccessStatusCode();
 
-        NotaFiscal? nfDB = null;
-        var timeout = TimeSpan.FromSeconds(10);
-        var start = DateTime.UtcNow;
+        await ProcessWebhooksAsync();
 
-        while (DateTime.UtcNow - start < timeout)
-        {
-            using var scope = Factory.Services.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            nfDB = await dbContext.NotasFiscais.FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
-            
-            if (nfDB != null) break;
-            await Task.Delay(500);
-        }
+        var nfDB = await dbContext.NotasFiscais
+            .AsNoTracking()
+            .FirstOrDefaultAsync(n => n.OmieId == omieIdNf);
 
         // Se a NF for inserida com Pedido nulo, nfDb não pode estar nula.
         // Se a NF deve falhar por Constraint FK, nfDb ficará nula, e o Log/DLQ conterá o registro.
