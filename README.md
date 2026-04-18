@@ -101,6 +101,7 @@ Para mais detalhes sobre a evolução deste fluxo, consulte a [Issue #46](https:
 O projeto utiliza **Testcontainers** para garantir a integridade da sincronização com um banco de dados PostgreSQL real em um ambiente isolado.
 
 - **Requisito**: O [Docker Desktop](https://www.docker.com/products/docker-desktop/) deve estar instalado e **em execução** para rodar a suíte de testes.
+- **Execução Sequencial**: Para evitar colisões de dados no banco compartilhado (causadas pelo `Respawner` e por workers concorrentes), a suíte de testes de integração é configurada para desativar o paralelismo (`xunit.v3.json`). Os testes de webhooks utilizam um utilitário de processamento síncrono (`ProcessWebhooksAsync`) para garantir um estado determinístico.
 - **Timeouts**: Devido à complexidade da rota de sincronização global (14 módulos), os testes de integração possuem um timeout estendido de **5 minutos**.
   ```bash
   dotnet test src/TabatineEngine.sln --collect:"XPlat Code Coverage"
@@ -132,6 +133,7 @@ Para respeitar o curto *timeout* da Omie de 7 segundos e evitar o bloqueio da fi
 4. **De-queue Dinâmico**: O worker implementa uma lógica de "Vazão Máxima", onde ignora o intervalo de polling se houver carga pendente no banco, garantindo que a fila seja drenada o mais rápido possível através da propriedade `hasMore`.
 5. **Retry com Backoff Exponencial**: Mensagens que falham (ex: erro temporário de rede ou trava de registro) são colocadas em estado `Failed` com um `NextRetryAt` calculado por exponenciação (2^tentativa minutos), até o limite de 3 tentativas, quando movem para `DeadLetter`.
 6. **Resiliência de Clock Drift**: O polling utiliza uma margem de segurança de 1 segundo (`NOW() + INTERVAL '1 second'`) para compensar possíveis dessincronizações de relógio entre o Host e o container de banco de dados.
+7. **Resiliência contra Concorrência (Retry & Jitter)**: Durante picos de recebimento de webhooks, múltiplos workers podem tentar atualizar o mesmo registro. Todos os serviços de sincronização (`ISyncService`) e o worker principal utilizam um padrão de **Retry com Jitter (100-500ms)** para contornar `DbUpdateConcurrencyException`, garantindo que nenhum evento seja perdido em cenários de alta concorrência.
 
 > [!NOTE]
 > Consulte a [Documentação de Status dos Webhooks](docs/omie-webhooks-status.md) para a lista completa de tópicos suportados.
