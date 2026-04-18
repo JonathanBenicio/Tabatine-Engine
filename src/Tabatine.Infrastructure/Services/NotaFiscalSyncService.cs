@@ -276,7 +276,32 @@ namespace Tabatine.Infrastructure.Services
 
                         foreach (var item in existing.Itens.ToList()) dbContext.ItensNotaFiscal.Remove(item);
                         foreach (var titulo in existing.Titulos.ToList()) dbContext.NotaFiscalTitulos.Remove(titulo);
-                        await dbContext.SaveChangesAsync(ct);
+                        
+                        int cleanRetries = 0;
+                        const int maxCleanRetries = 3;
+                        while (true)
+                        {
+                            try
+                            {
+                                await dbContext.SaveChangesAsync(ct);
+                                break;
+                            }
+                            catch (DbUpdateConcurrencyException ex)
+                            {
+                                cleanRetries++;
+                                if (cleanRetries > maxCleanRetries) throw;
+                                var d = Random.Shared.Next(100, 500);
+                                logger.LogWarning(ex, "Concorrência ao limpar dependentes da NF {OmieId}. Tentativa {Retry} de {Max}. Aguardando {Delay}ms.", omieId, cleanRetries, maxCleanRetries, d);
+                                await Task.Delay(d, ct);
+                                foreach (var entry in ex.Entries)
+                                {
+                                    var dbVals = await entry.GetDatabaseValuesAsync(ct);
+                                    if (dbVals == null) entry.State = EntityState.Detached;
+                                    else entry.OriginalValues.SetValues(dbVals);
+                                }
+                            }
+                        }
+
                         existing.Itens.Clear();
                         existing.Titulos.Clear();
                     }
@@ -336,9 +361,9 @@ namespace Tabatine.Infrastructure.Services
                     }
                 }
 
-                int retries = 0;
-                const int maxRetries = 2;
-                while (retries < maxRetries)
+                int retryCount = 0;
+                const int maxRetries = 3;
+                while (true)
                 {
                     try
                     {
@@ -347,9 +372,19 @@ namespace Tabatine.Infrastructure.Services
                     }
                     catch (DbUpdateConcurrencyException ex)
                     {
-                        retries++;
-                        logger.LogWarning(ex, "Concorrência residual em Notas Fiscais lote. Tentativa {Retry}.", retries);
-                        if (retries >= maxRetries) throw;
+                        retryCount++;
+                        if (retryCount > maxRetries)
+                        {
+                            logger.LogError(ex, "Erro de concorrência persistente em {Entity} (Lote) após {Count} tentativas.", EntityName, retryCount);
+                            throw;
+                        }
+
+                        var delay = Random.Shared.Next(100, 500);
+                        logger.LogWarning(ex, "Concorrência detectada em {Entity} (Lote). Tentativa {Retry} de {MaxRetries}. Aguardando {Delay}ms.", 
+                            EntityName, retryCount, maxRetries, delay);
+
+                        await Task.Delay(delay, ct);
+
                         foreach (var entry in ex.Entries)
                         {
                             var dbVals = await entry.GetDatabaseValuesAsync(ct);

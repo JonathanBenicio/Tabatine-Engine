@@ -46,10 +46,23 @@ public abstract class BaseSandboxIntegrationTest : IAsyncLifetime
         using var scope = _factory.Services.CreateScope();
         var config = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
         
-        var appKey = config["Omie:AppKey_Sandbox"];
-        var appSecret = config["Omie:AppSecret_Sandbox"];
-        var baseUrl = config["Omie:BaseUrl_Sandbox"];
+        var appKey = GetConfigValue(config, "Omie:AppKey_Sandbox", "Omie:Sandbox:AppKey");
+        var appSecret = GetConfigValue(config, "Omie:AppSecret_Sandbox", "Omie:Sandbox:AppSecret");
+        var baseUrl = GetConfigValue(config, "Omie:BaseUrl_Sandbox", "Omie:Sandbox:BaseUrl");
         
         return new Helpers.SandboxOmieHelper(appKey!, appSecret!, baseUrl!);
+    }
+
+    private static string? GetConfigValue(Microsoft.Extensions.Configuration.IConfiguration config, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var value = config[key];
+            if (!string.IsNullOrEmpty(value) && value != "Use-Environment-Variable")
+            {
+                return value;
+            }
+        }
+        return null;
     }
 }

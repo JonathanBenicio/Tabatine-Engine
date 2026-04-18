@@ -106,9 +106,9 @@ namespace Tabatine.Infrastructure.Services
                         }
                     }
 
-                    int retries = 0;
-                    const int maxRetries = 2;
-                    while (retries < maxRetries)
+                    int retryCount = 0;
+                    const int maxRetries = 3;
+                    while (true)
                     {
                         try
                         {
@@ -117,9 +117,19 @@ namespace Tabatine.Infrastructure.Services
                         }
                         catch (DbUpdateConcurrencyException ex)
                         {
-                            retries++;
-                            logger.LogWarning(ex, "Concorrência residual detectada em Vendedores lote. Tentativa {Retry}.", retries);
-                            if (retries >= maxRetries) throw;
+                            retryCount++;
+                            if (retryCount > maxRetries)
+                            {
+                                logger.LogError(ex, "Erro de concorrência persistente em {Entity} (Lote) após {Count} tentativas.", EntityName, retryCount);
+                                throw;
+                            }
+
+                            var delay = Random.Shared.Next(100, 500);
+                            logger.LogWarning(ex, "Concorrência detectada em {Entity} (Lote). Tentativa {Retry} de {MaxRetries}. Aguardando {Delay}ms.", 
+                                EntityName, retryCount, maxRetries, delay);
+
+                            await Task.Delay(delay, ct);
+
                             foreach (var entry in ex.Entries)
                             {
                                 var dbVals = await entry.GetDatabaseValuesAsync(ct);
@@ -198,9 +208,9 @@ namespace Tabatine.Infrastructure.Services
                         existing.OmieUpdatedAt = omieLastAlt;
                     }
 
-                    int retries = 0;
-                    const int maxRetries = 2;
-                    while (retries < maxRetries)
+                    int retryCount = 0;
+                    const int maxRetries = 3;
+                    while (true)
                     {
                         try
                         {
@@ -209,9 +219,19 @@ namespace Tabatine.Infrastructure.Services
                         }
                         catch (DbUpdateConcurrencyException ex)
                         {
-                            retries++;
-                            logger.LogWarning(ex, "Concorrência individual em Vendedor {OmieId}. Tentativa {Retry}.", omieId, retries);
-                            if (retries >= maxRetries) throw;
+                            retryCount++;
+                            if (retryCount > maxRetries)
+                            {
+                                logger.LogError(ex, "Erro de concorrência persistente em {Entity} individual ({OmieId}) após {Count} tentativas.", EntityName, omieId, retryCount);
+                                throw;
+                            }
+
+                            var delay = Random.Shared.Next(100, 500);
+                            logger.LogWarning(ex, "Concorrência detectada em {Entity} individual ({OmieId}). Tentativa {Retry} de {MaxRetries}. Aguardando {Delay}ms.", 
+                                EntityName, omieId, retryCount, maxRetries, delay);
+
+                            await Task.Delay(delay, ct);
+
                             foreach (var entry in ex.Entries)
                             {
                                 var dbVals = await entry.GetDatabaseValuesAsync(ct);

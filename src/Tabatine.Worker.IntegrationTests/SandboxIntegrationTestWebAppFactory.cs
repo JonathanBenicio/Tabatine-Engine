@@ -18,21 +18,18 @@ public class SandboxIntegrationTestWebAppFactory : IntegrationTestWebAppFactory
 
         builder.ConfigureTestServices(services =>
         {
-            // Resolve a configuração atualizada (incluindo appsettings.Local.json)
-            var sp = services.BuildServiceProvider();
-            var config = sp.GetRequiredService<IConfiguration>();
+            var config = services.BuildServiceProvider().GetRequiredService<IConfiguration>();
 
-            var appKey = config["Omie:AppKey_Sandbox"];
-            var appSecret = config["Omie:AppSecret_Sandbox"];
-            var baseUrl = config["Omie:BaseUrl_Sandbox"];
+            var appKey = GetConfigValue(config, "Omie:AppKey_Sandbox", "Omie:Sandbox:AppKey");
+            var appSecret = GetConfigValue(config, "Omie:AppSecret_Sandbox", "Omie:Sandbox:AppSecret");
+            var baseUrl = GetConfigValue(config, "Omie:BaseUrl_Sandbox", "Omie:Sandbox:BaseUrl");
 
             if (string.IsNullOrEmpty(appKey) || string.IsNullOrEmpty(appSecret))
             {
-                // Se não houver chaves de sandbox, mantém o comportamento de mock da base (opcional)
-                // ou lança erro se o teste for explicitamente de sandbox
                 return;
             }
 
+            // Remove o Mock que o base.ConfigureWebHost adicionou
             services.RemoveAll<IOmieClient>();
 
             services.AddHttpClient<IOmieClient, OmieClient>(client =>
@@ -47,5 +44,18 @@ public class SandboxIntegrationTestWebAppFactory : IntegrationTestWebAppFactory
                 options.BaseUrl = baseUrl ?? "https://app.omie.com.br/api/v1/";
             });
         });
+    }
+
+    private static string? GetConfigValue(IConfiguration config, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var value = config[key];
+            if (!string.IsNullOrEmpty(value) && value != "Use-Environment-Variable")
+            {
+                return value;
+            }
+        }
+        return null;
     }
 }
