@@ -24,7 +24,6 @@
       "!GlobalUsings.cs"
     ],
     "verbosity": "info",
-    "language-version": "latest",
-    "output-path": "StrykerOutput"
+    "language-version": "latest"
   }
 }
