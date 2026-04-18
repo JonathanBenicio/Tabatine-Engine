@@ -23,8 +23,9 @@ public class DbDistributedLockService(IDbContextFactory<AppDbContext> dbFactory)
         // Tenta inserir o novo lock com ON CONFLICT.
         // O Postgres retornará 1 se inserido, 0 se houve conflito (lock ainda válido).
         // Isso evita o ruído de DbUpdateException nos logs.
+        var owner = Environment.MachineName;
         var affectedRows = await db.Database.ExecuteSqlInterpolatedAsync(
-            $"INSERT INTO sync_locks (lock_key, lock_token, expires_at) VALUES ({key}, {token}, {expiresAt}) ON CONFLICT (lock_key) DO NOTHING", 
+            $"INSERT INTO sync_locks (lock_key, lock_token, acquired_at, expires_at, owner) VALUES ({key}, {token}, {now}, {expiresAt}, {owner}) ON CONFLICT (lock_key) DO NOTHING", 
             ct);
 
         return affectedRows > 0;

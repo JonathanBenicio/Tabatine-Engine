@@ -1,0 +1,64 @@
+using Tabatine.Omie.Client.Models.Clientes;
+
+namespace Tabatine.Worker.IntegrationTests;
+
+public class ClienteWebhookIntegrationTests(IntegrationTestWebAppFactory factory) : BaseIntegrationTest(factory)
+{
+    [Fact]
+    public async Task Deve_Processar_Webhook_Cliente_E_Persistir_No_Banco_Com_Sucesso()
+    {
+        // Arrange
+        var omieId = 12345678L;
+        var omieCliente = new OmieCliente
+        {
+            CodigoClienteOmie = omieId,
+            RazaoSocial = "Empresa de Teste Integado LTDA",
+            NomeFantasia = "Teste Integrado",
+            CnpjCpf = "12345678000199",
+            Email = "contato@teste.com",
+            Telefone = "1199999999",
+            Cidade = "São Paulo",
+            Estado = "SP",
+            Endereco = "Rua dos Testes",
+            EnderecoNumero = "100",
+            Bairro = "Centro",
+            Cep = "01001000",
+            DAlt = "09/04/2026",
+            HAlt = "10:00:00"
+        };
+
+        Factory.OmieClientMock.ConsultarClienteAsync(omieId, Arg.Any<CancellationToken>())
+            .Returns(omieCliente);
+
+        var webhookEvent = new
+        {
+            topic = "ClienteFornecedor.Incluido",
+            messageId = Guid.NewGuid().ToString(),
+            @event = new
+            {
+                idCliente = omieId,
+                codigo_cliente_omie = omieId,
+                razao_social = omieCliente.RazaoSocial
+            }
+        };
+
+        // Act
+        var response = await Client.PostAsJsonAsync("/webhook/omie", webhookEvent);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+
+        // Dispara o processamento manual (Síncrono para o teste)
+        await ProcessWebhooksAsync();
+
+        // Verificar no banco de forma direta
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var clienteDB = await dbContext.Clientes.FirstOrDefaultAsync(c => c.OmieId == omieId);
+
+        Assert.NotNull(clienteDB);
+        Assert.Equal(omieCliente.RazaoSocial, clienteDB!.RazaoSocial);
+        Assert.Equal(omieCliente.CnpjCpf, clienteDB.CnpjCpf);
+        Assert.Equal("São Paulo", clienteDB.Cidade);
+    }
+}

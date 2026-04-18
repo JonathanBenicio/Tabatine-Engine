@@ -17,6 +17,24 @@ namespace Tabatine.Omie.Client.Models.Financeiro
 
         [JsonPropertyName("exibir_obs")]
         public string ExibirObs { get; set; } = "S";
+
+        [JsonPropertyName("filtrar_por_data_de")]
+        public string? FiltrarPorDataDe { get; set; }
+
+        [JsonPropertyName("filtrar_por_data_ate")]
+        public string? FiltrarPorDataAte { get; set; }
+
+        [JsonPropertyName("filtrar_apenas_alteracao")]
+        public string? FiltrarApenasAlteracao { get; set; }
+
+        [JsonPropertyName("filtrar_apenas_inclusao")]
+        public string? FiltrarApenasInclusao { get; set; }
+
+        [JsonPropertyName("filtrar_por_registro_de")]
+        public string? FiltrarPorRegistroDe { get; set; }
+
+        [JsonPropertyName("filtrar_por_registro_ate")]
+        public string? FiltrarPorRegistroAte { get; set; }
     }
 
     public class OmieContaReceber
@@ -56,6 +74,9 @@ namespace Tabatine.Omie.Client.Models.Financeiro
 
         [JsonPropertyName("status_titulo")]
         public string? StatusTitulo { get; set; }
+
+        [JsonPropertyName("data_baixa")]
+        public string? DataBaixa { get; set; }
 
         [JsonPropertyName("codigo_vendedor")]
         public long? CodigoVendedor { get; set; }

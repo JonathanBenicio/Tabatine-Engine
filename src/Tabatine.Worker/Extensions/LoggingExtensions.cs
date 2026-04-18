@@ -12,7 +12,7 @@ public static class LoggingExtensions
 
         Serilog.Debugging.SelfLog.Enable(msg => Console.WriteLine($"[SERILOG SELF-LOG] {msg}"));
 
-        Log.Logger = new LoggerConfiguration()
+        var loggerConfig = new LoggerConfiguration()
             .MinimumLevel.Debug()
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .MinimumLevel.Override("System", LogEventLevel.Warning)
@@ -22,8 +22,12 @@ public static class LoggingExtensions
             .WriteTo.Console(
                 restrictedToMinimumLevel: LogEventLevel.Debug,
                 outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day, restrictedToMinimumLevel: LogEventLevel.Debug)
-            .WriteTo.PostgreSQL(
+            .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day, restrictedToMinimumLevel: LogEventLevel.Debug);
+
+        // Desativa o sink do PostgreSQL durante os testes de integração para evitar ruído e erros de dispose dos containers
+        if (builder.Environment.EnvironmentName != "Testing")
+        {
+            loggerConfig.WriteTo.PostgreSQL(
                 connectionString: connectionString,
                 tableName: "logs",
                 schemaName: "",
@@ -39,8 +43,10 @@ public static class LoggingExtensions
                     { "exception", new ExceptionColumnWriter() },
                     { "properties", new PropertiesColumnWriter() },
                     { "log_event", new LogEventSerializedColumnWriter() }
-                })
-            .CreateLogger();
+                });
+        }
+
+        Log.Logger = loggerConfig.CreateLogger();
 
         builder.Host.UseSerilog();
     }

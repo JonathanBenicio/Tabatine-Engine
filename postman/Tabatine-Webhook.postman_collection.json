@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "tabatine-webhook-collection",
     "name": "Tabatine - Omie Webhooks",
-    "description": "Collection para testar os endpoints de webhook Omie no Tabatine Engine.\n\nEndpoint único: POST /webhook/omie\n\nHandlers suportados:\n- ClienteFornecedor (Incluido, Alterado, Excluido)\n- VendaProduto (Incluida, Alterada, Cancelada, Devolvida, EtapaAlterada, Excluida, Faturada)\n- Produto (Incluido, Alterado, Excluido, MovimentacaoEstoque, AjusteEstoque)\n- Vendedor (Incluido, Alterado, Excluido)\n- Financas.ContaCorrente (Incluido, Alterado, Excluido)\n- NFe (NotaAutorizada, NotaCancelada, NotaDevolucaoAutorizada)\n- NFSe (NotaAutorizada, NotaCancelada, NotaSubstituida)\n- Faturamento.NotaFiscalEmitida (legado)\n- System.ManualSync (via /api/sync/trigger)",
+    "description": "Collection para testar os endpoints de webhook Omie no Tabatine Engine.\n\nEndpoint único: POST /webhook/omie\n\nHandlers suportados:\n- ClienteFornecedor (Incluido, Alterado, Excluido)\n- VendaProduto (Incluida, Alterada, Cancelada, Devolvida, EtapaAlterada, Excluida, Faturada)\n- Produto (Incluido, Alterado, Excluido, MovimentacaoEstoque, AjusteEstoque)\n- Vendedor (Incluido, Alterado, Excluido)\n- Financas.ContaCorrente (Incluido, Alterado, Excluido)\n- Financas.ContaPagar (Incluido, Alterado, Excluido)\n- Financas.ContaReceber (Incluido, Alterado, Excluido)\n- LocalEstoque (Incluido, Alterado, Excluido)\n- NFe (NotaAutorizada, NotaCancelada, NotaDevolucaoAutorizada)\n- NFSe (NotaAutorizada, NotaCancelada, NotaSubstituida)\n- Faturamento.NotaFiscalEmitida (legado)\n- System.ManualSync (via /api/sync/trigger)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -31,6 +31,63 @@
       "description": "Secret Token do Webhook do Telegram"
     }
   ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Gerar IDs dinâmicos para evitar duplicidade em testes sequenciais",
+          "if (!pm.variables.get(\"dynamic_omie_id\")) {",
+          "    pm.variables.set(\"dynamic_omie_id\", Math.floor(Math.random() * 1000000000));",
+          "}",
+          "if (!pm.variables.get(\"dynamic_venda_id\")) {",
+          "    pm.variables.set(\"dynamic_venda_id\", Math.floor(Math.random() * 1000000000));",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// ============================================================",
+          "// SCHEMA GLOBAL — Fase 4 / Issue #41",
+          "// Validações executadas em TODOS os requests da coleção.",
+          "// ============================================================",
+          "",
+          "pm.test(\"[Global] Status HTTP deve ser 200\", function () {",
+          "    pm.response.to.have.status(200);",
+          "});",
+          "",
+          "pm.test(\"[Global] Resposta não deve ultrapassar 2 segundos\", function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+          "});",
+          "",
+          "pm.test(\"[Global] Schema do corpo de resposta (quando JSON)\", function () {",
+          "    const responseText = pm.response.text();",
+          "    if (responseText && responseText.trim().length > 0) {",
+          "        // O Worker retorna 200 OK com corpo JSON opcional",
+          "        const schema = {",
+          "            \"type\": \"object\",",
+          "            \"additionalProperties\": true,",
+          "            \"properties\": {",
+          "                \"message\":  { \"type\": \"string\" },",
+          "                \"eventId\":  { \"type\": \"string\" },",
+          "                \"status\":   { \"type\": \"string\" }",
+          "            }",
+          "        };",
+          "        pm.response.to.have.jsonSchema(schema);",
+          "    } else {",
+          "        // Resposta vazia é aceitável (Fast Acknowledge)",
+          "        pm.expect(responseText.trim()).to.equal(\"\");",
+          "    }",
+          "});"
+        ]
+      }
+    }
+  ],
   "item": [
     {
       "name": "ClienteFornecedor",
@@ -38,12 +95,53 @@
       "item": [
         {
           "name": "ClienteFornecedor.Incluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Schema do payload enviado (validação do contrato Omie)",
+                  "const requestSchema = {",
+                  "    \"type\": \"object\",",
+                  "    \"required\": [\"appKey\", \"appHash\", \"event\", \"message\"],",
+                  "    \"properties\": {",
+                  "        \"appKey\":  { \"type\": \"string\" },",
+                  "        \"appHash\": { \"type\": \"string\" },",
+                  "        \"event\":   { \"type\": \"string\", \"const\": \"ClienteFornecedor.Incluido\" },",
+                  "        \"author\":  { \"type\": \"string\" },",
+                  "        \"message\": {",
+                  "            \"type\": \"object\",",
+                  "            \"required\": [\"codigo_cliente_omie\"],",
+                  "            \"properties\": {",
+                  "                \"codigo_cliente_omie\": { \"type\": \"number\" }",
+                  "            }",
+                  "        }",
+                  "    }",
+                  "};",
+                  "",
+                  "pm.test(\"[Schema] Request: campos obrigatórios e tipos corretos\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body).to.have.property(\"appKey\");",
+                  "    pm.expect(body).to.have.property(\"appHash\");",
+                  "    pm.expect(body.event).to.equal(\"ClienteFornecedor.Incluido\");",
+                  "    pm.expect(body.message).to.have.property(\"codigo_cliente_omie\");",
+                  "    pm.expect(body.message.codigo_cliente_omie).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: Fast Acknowledge (200 OK, corpo vazio ou JSON)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"ClienteFornecedor.Incluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_cliente_omie\": 123456789\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"ClienteFornecedor.Incluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_cliente_omie\": {{dynamic_omie_id}}\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -51,18 +149,37 @@
               "host": ["{{baseUrl}}"],
               "path": ["webhook", "omie"]
             },
-            "description": "Simula a inclusão de um novo Cliente/Fornecedor na Omie.\n\n1. Grava na tabela WebhookEvents (Pending)\n2. Retorna 200 OK (Fast Acknowledge)\n3. Background Worker chama ClienteSyncService.SyncByIdAsync\n4. Envia notificação 'Novo Cliente/Fornecedor'"
+            "description": "Simula a inclusão de um novo Cliente/Fornecedor na Omie."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "ClienteFornecedor.Alterado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: evento e código do cliente presentes\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"ClienteFornecedor.Alterado\");",
+                  "    pm.expect(body.message.codigo_cliente_omie).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"ClienteFornecedor.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_cliente_omie\": 123456789\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"ClienteFornecedor.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_cliente_omie\": {{dynamic_omie_id}}\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -76,12 +193,31 @@
         },
         {
           "name": "ClienteFornecedor.Excluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: evento ClienteFornecedor.Excluido e código numérico\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"ClienteFornecedor.Excluido\");",
+                  "    pm.expect(body.message.codigo_cliente_omie).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"ClienteFornecedor.Excluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_cliente_omie\": 123456789\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"ClienteFornecedor.Excluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_cliente_omie\": {{dynamic_omie_id}}\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -101,133 +237,248 @@
       "item": [
         {
           "name": "VendaProduto.Incluida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: campos obrigatórios do Pedido\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"VendaProduto.Incluida\");",
+                  "    pm.expect(body.message).to.have.property(\"codigo_pedido_omie\");",
+                  "    pm.expect(body.message).to.have.property(\"numero_pedido\");",
+                  "    pm.expect(body.message).to.have.property(\"codigo_cliente_omie\");",
+                  "    pm.expect(body.message).to.have.property(\"etapa\");",
+                  "    pm.expect(body.message).to.have.property(\"status_pedido\");",
+                  "    pm.expect(body.message.codigo_pedido_omie).to.be.a(\"number\");",
+                  "    pm.expect(body.message.codigo_cliente_omie).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK (Fast Acknowledge)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Incluida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"10\",\n    \"status_pedido\": \"Aberto\"\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Incluida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": {{dynamic_venda_id}},\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": {{dynamic_omie_id}},\n    \"etapa\": \"10\",\n    \"status_pedido\": \"Aberto\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
-            "description": "Simula a inclusão de um novo Pedido de Venda na Omie.\n\n1. Grava na tabela WebhookEvents (Pending)\n2. Retorna 200 OK (Fast Acknowledge)\n3. Background Worker chama PedidoSyncService.SyncByIdAsync\n4. Envia notificação 'Novo Pedido'"
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a inclusão de um novo Pedido de Venda na Omie."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "VendaProduto.Alterada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: VendaProduto.Alterada com campos obrigatórios\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"VendaProduto.Alterada\");",
+                  "    pm.expect(body.message.codigo_pedido_omie).to.be.a(\"number\");",
+                  "    pm.expect(body.message.etapa).to.be.a(\"string\");",
+                  "    pm.expect(body.message.status_pedido).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Alterada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"20\",\n    \"status_pedido\": \"Faturado\"\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Alterada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": {{dynamic_venda_id}},\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": {{dynamic_omie_id}},\n    \"etapa\": \"20\",\n    \"status_pedido\": \"Faturado\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula a alteração de um Pedido de Venda existente."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "VendaProduto.Faturada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: VendaProduto.Faturada com etapa '50'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"VendaProduto.Faturada\");",
+                  "    pm.expect(body.message.codigo_pedido_omie).to.be.a(\"number\");",
+                  "    pm.expect(body.message.status_pedido).to.equal(\"Faturado\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Faturada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"50\",\n    \"status_pedido\": \"Faturado\"\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Faturada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": {{dynamic_venda_id}},\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": {{dynamic_omie_id}},\n    \"etapa\": \"50\",\n    \"status_pedido\": \"Faturado\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula o faturamento de um Pedido de Venda."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "VendaProduto.Cancelada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: VendaProduto.Cancelada com status 'Cancelado'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"VendaProduto.Cancelada\");",
+                  "    pm.expect(body.message.status_pedido).to.equal(\"Cancelado\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Cancelada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"10\",\n    \"status_pedido\": \"Cancelado\"\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Cancelada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": {{dynamic_venda_id}},\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": {{dynamic_omie_id}},\n    \"etapa\": \"10\",\n    \"status_pedido\": \"Cancelado\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula o cancelamento de um Pedido de Venda."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "VendaProduto.EtapaAlterada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: VendaProduto.EtapaAlterada com etapa string\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"VendaProduto.EtapaAlterada\");",
+                  "    pm.expect(body.message.etapa).to.be.a(\"string\");",
+                  "    pm.expect(body.message.codigo_pedido_omie).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.EtapaAlterada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"30\",\n    \"status_pedido\": \"Aprovado\"\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.EtapaAlterada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": {{dynamic_venda_id}},\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": {{dynamic_omie_id}},\n    \"etapa\": \"30\",\n    \"status_pedido\": \"Aprovado\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
-            "description": "Simula a alteração de etapa de um Pedido de Venda (ex: de 10 para 30)."
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a alteração de etapa de um Pedido de Venda."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "VendaProduto.Devolvida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: VendaProduto.Devolvida com status 'Devolvido'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"VendaProduto.Devolvida\");",
+                  "    pm.expect(body.message.status_pedido).to.equal(\"Devolvido\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Devolvida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"50\",\n    \"status_pedido\": \"Devolvido\"\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Devolvida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": {{dynamic_venda_id}},\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": {{dynamic_omie_id}},\n    \"etapa\": \"50\",\n    \"status_pedido\": \"Devolvido\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula a devolução de um Pedido de Venda."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "VendaProduto.Excluida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: VendaProduto.Excluida com campos obrigatórios\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"VendaProduto.Excluida\");",
+                  "    pm.expect(body.message.codigo_pedido_omie).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Excluida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": 123456789,\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": 987654321,\n    \"etapa\": \"10\",\n    \"status_pedido\": \"Excluido\"\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Excluida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_pedido_omie\": {{dynamic_venda_id}},\n    \"numero_pedido\": \"000001\",\n    \"codigo_cliente_omie\": {{dynamic_omie_id}},\n    \"etapa\": \"10\",\n    \"status_pedido\": \"Excluido\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula a exclusão de um Pedido de Venda."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
@@ -240,6 +491,26 @@
       "item": [
         {
           "name": "Produto.Incluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: Produto.Incluido com codigo_produto numérico\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Produto.Incluido\");",
+                  "    pm.expect(body.message).to.have.property(\"codigo_produto\");",
+                  "    pm.expect(body.message.codigo_produto).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -248,17 +519,32 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Produto.Incluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_produto\": 111222333\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
-            "description": "Simula a inclusão de um novo Produto na Omie.\n\n1. Grava na tabela WebhookEvents (Pending)\n2. Retorna 200 OK (Fast Acknowledge)\n3. Background Worker chama ProdutoSyncService.SyncByIdAsync\n4. Envia notificação 'Novo Produto'"
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a inclusão de um novo Produto na Omie."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "Produto.Alterado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: Produto.Alterado com codigo_produto\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Produto.Alterado\");",
+                  "    pm.expect(body.message.codigo_produto).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -267,17 +553,32 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Produto.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_produto\": 111222333\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula a alteração de um Produto existente."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "Produto.Excluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: Produto.Excluido com codigo_produto\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Produto.Excluido\");",
+                  "    pm.expect(body.message.codigo_produto).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -286,17 +587,32 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Produto.Excluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_produto\": 111222333\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula a exclusão de um Produto."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "Produto.AjusteEstoque",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: Produto.AjusteEstoque com codigo_produto\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Produto.AjusteEstoque\");",
+                  "    pm.expect(body.message.codigo_produto).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -305,17 +621,32 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Produto.AjusteEstoque\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_produto\": 111222333\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula um ajuste de estoque para um Produto."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "Produto.MovimentacaoEstoque",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: Produto.MovimentacaoEstoque com codigo_produto\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Produto.MovimentacaoEstoque\");",
+                  "    pm.expect(body.message.codigo_produto).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -324,11 +655,7 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Produto.MovimentacaoEstoque\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_produto\": 111222333\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula uma movimentação de estoque para um Produto."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
@@ -341,6 +668,26 @@
       "item": [
         {
           "name": "Vendedor.Incluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: Vendedor.Incluido com campo 'codigo' numérico\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Vendedor.Incluido\");",
+                  "    pm.expect(body.message).to.have.property(\"codigo\");",
+                  "    pm.expect(body.message.codigo).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -349,17 +696,32 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Vendedor.Incluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo\": 444555666\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
-            "description": "Simula a inclusão de um novo Vendedor na Omie.\n\n1. Grava na tabela WebhookEvents (Pending)\n2. Retorna 200 OK (Fast Acknowledge)\n3. Background Worker chama VendedorSyncService.SyncByIdAsync\n4. Envia notificação 'Novo Vendedor'"
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a inclusão de um novo Vendedor na Omie."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "Vendedor.Alterado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: Vendedor.Alterado com campo 'codigo'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Vendedor.Alterado\");",
+                  "    pm.expect(body.message.codigo).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -368,17 +730,32 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Vendedor.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo\": 444555666\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula a alteração de um Vendedor existente."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "Vendedor.Excluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: Vendedor.Excluido com campo 'codigo'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Vendedor.Excluido\");",
+                  "    pm.expect(body.message.codigo).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -387,11 +764,7 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Vendedor.Excluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo\": 444555666\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula a exclusão de um Vendedor."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
@@ -404,6 +777,26 @@
       "item": [
         {
           "name": "Financas.ContaCorrente.Incluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: ContaCorrente.Incluido com 'nCodCC' numérico\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Financas.ContaCorrente.Incluido\");",
+                  "    pm.expect(body.message).to.have.property(\"nCodCC\");",
+                  "    pm.expect(body.message.nCodCC).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -412,17 +805,32 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Financas.ContaCorrente.Incluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"nCodCC\": 777888999\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
-            "description": "Simula a inclusão de uma nova Conta Corrente na Omie.\n\n1. Grava na tabela WebhookEvents (Pending)\n2. Retorna 200 OK (Fast Acknowledge)\n3. Background Worker chama ContaCorrenteSyncService.SyncByIdAsync\n4. Envia notificação 'Nova Conta Corrente'"
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a inclusão de uma nova Conta Corrente na Omie."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "Financas.ContaCorrente.Alterado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: ContaCorrente.Alterado com 'nCodCC'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Financas.ContaCorrente.Alterado\");",
+                  "    pm.expect(body.message.nCodCC).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -431,17 +839,32 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Financas.ContaCorrente.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"nCodCC\": 777888999\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula a alteração de uma Conta Corrente existente."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "Financas.ContaCorrente.Excluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: ContaCorrente.Excluido com 'nCodCC'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Financas.ContaCorrente.Excluido\");",
+                  "    pm.expect(body.message.nCodCC).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -450,11 +873,7 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Financas.ContaCorrente.Excluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"nCodCC\": 777888999\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula a exclusão de uma Conta Corrente."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
@@ -467,134 +886,577 @@
       "item": [
         {
           "name": "NFe.NotaAutorizada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: NFe.NotaAutorizada com campos obrigatórios\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"NFe.NotaAutorizada\");",
+                  "    pm.expect(body.message).to.have.property(\"codigo_nf\");",
+                  "    pm.expect(body.message).to.have.property(\"numero_nf\");",
+                  "    pm.expect(body.message).to.have.property(\"codigo_pedido_omie\");",
+                  "    pm.expect(body.message.codigo_nf).to.be.a(\"number\");",
+                  "    pm.expect(body.message.numero_nf).to.be.a(\"string\");",
+                  "    pm.expect(body.message.codigo_pedido_omie).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK (Fast Acknowledge)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFe.NotaAutorizada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000123\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFe.NotaAutorizada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000123\",\n    \"codigo_pedido_omie\": {{dynamic_venda_id}}\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
-            "description": "Simula a autorização de uma NF-e na Omie.\n\n1. Grava na tabela WebhookEvents (Pending)\n2. Retorna 200 OK (Fast Acknowledge)\n3. Background Worker chama NotaFiscalSyncService.SyncByIdAsync\n4. Envia notificação 'NF-e Autorizada'"
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a autorização de uma NF-e na Omie."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "NFe.NotaCancelada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: NFe.NotaCancelada com campos obrigatórios\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"NFe.NotaCancelada\");",
+                  "    pm.expect(body.message.codigo_nf).to.be.a(\"number\");",
+                  "    pm.expect(body.message.numero_nf).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFe.NotaCancelada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000123\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFe.NotaCancelada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000123\",\n    \"codigo_pedido_omie\": {{dynamic_venda_id}}\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula o cancelamento de uma NF-e."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "NFe.NotaDevolucaoAutorizada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: NFe.NotaDevolucaoAutorizada com campos obrigatórios\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"NFe.NotaDevolucaoAutorizada\");",
+                  "    pm.expect(body.message.codigo_nf).to.be.a(\"number\");",
+                  "    pm.expect(body.message.numero_nf).to.be.a(\"string\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFe.NotaDevolucaoAutorizada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000456\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFe.NotaDevolucaoAutorizada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000456\",\n    \"codigo_pedido_omie\": {{dynamic_venda_id}}\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula a autorização de uma NF-e de devolução."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "NFSe.NotaAutorizada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: NFSe.NotaAutorizada com campos obrigatórios\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"NFSe.NotaAutorizada\");",
+                  "    pm.expect(body.message.codigo_nf).to.be.a(\"number\");",
+                  "    pm.expect(body.message.numero_nf).to.be.a(\"string\");",
+                  "    pm.expect(body.message.codigo_pedido_omie).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFSe.NotaAutorizada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 888999000,\n    \"numero_nf\": \"000789\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFSe.NotaAutorizada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 888999000,\n    \"numero_nf\": \"000789\",\n    \"codigo_pedido_omie\": {{dynamic_venda_id}}\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula a autorização de uma NFS-e (Nota de Serviço)."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "NFSe.NotaCancelada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: NFSe.NotaCancelada com campos obrigatórios\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"NFSe.NotaCancelada\");",
+                  "    pm.expect(body.message.codigo_nf).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFSe.NotaCancelada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 888999000,\n    \"numero_nf\": \"000789\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFSe.NotaCancelada\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 888999000,\n    \"numero_nf\": \"000789\",\n    \"codigo_pedido_omie\": {{dynamic_venda_id}}\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula o cancelamento de uma NFS-e."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "NFSe.NotaSubstituida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: NFSe.NotaSubstituida com campos obrigatórios\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"NFSe.NotaSubstituida\");",
+                  "    pm.expect(body.message.codigo_nf).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFSe.NotaSubstituida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 888999000,\n    \"numero_nf\": \"000789\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"NFSe.NotaSubstituida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 888999000,\n    \"numero_nf\": \"000789\",\n    \"codigo_pedido_omie\": {{dynamic_venda_id}}\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Simula a substituição de uma NFS-e."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "Faturamento.NotaFiscalEmitida (legado)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: Faturamento.NotaFiscalEmitida (formato legado) com campos obrigatórios\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Faturamento.NotaFiscalEmitida\");",
+                  "    pm.expect(body.message.codigo_nf).to.be.a(\"number\");",
+                  "    pm.expect(body.message.numero_nf).to.be.a(\"string\");",
+                  "    pm.expect(body.message.codigo_pedido_omie).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Faturamento.NotaFiscalEmitida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000123\",\n    \"codigo_pedido_omie\": 123456789\n  }\n}",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Faturamento.NotaFiscalEmitida\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_nf\": 555666777,\n    \"numero_nf\": \"000123\",\n    \"codigo_pedido_omie\": {{dynamic_venda_id}}\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Formato legado de emissão de NF. Mapeado para NotaFiscalWebhookHandler."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        }
+      ]
+    },
+    {
+      "name": "Financas.ContasPagar",
+      "description": "Eventos de Conta a Pagar. Handler: ContasPagarWebhookHandler. Payload identificado por 'nCodLanc'.",
+      "item": [
+        {
+          "name": "Financas.ContaPagar.Incluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: ContaPagar.Incluido com 'nCodLanc' numérico\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Financas.ContaPagar.Incluido\");",
+                  "    pm.expect(body.message).to.have.property(\"nCodLanc\");",
+                  "    pm.expect(body.message.nCodLanc).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Financas.ContaPagar.Incluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"nCodLanc\": 112233445\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a inclusão de uma nova Conta a Pagar na Omie."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Financas.ContaPagar.Alterado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: ContaPagar.Alterado com 'nCodLanc'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Financas.ContaPagar.Alterado\");",
+                  "    pm.expect(body.message.nCodLanc).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Financas.ContaPagar.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"nCodLanc\": 112233445\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a alteração de uma Conta a Pagar existente na Omie."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Financas.ContaPagar.Excluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: ContaPagar.Excluido com 'nCodLanc'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Financas.ContaPagar.Excluido\");",
+                  "    pm.expect(body.message.nCodLanc).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Financas.ContaPagar.Excluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"nCodLanc\": 112233445\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a exclusão de uma Conta a Pagar. O handler chama CancelByIdAsync para marcar o registro como CANCELADO localmente."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        }
+      ]
+    },
+    {
+      "name": "Financas.ContasReceber",
+      "description": "Eventos de Conta a Receber. Handler: ContasReceberWebhookHandler. Payload identificado por 'nCodLanc'.",
+      "item": [
+        {
+          "name": "Financas.ContaReceber.Incluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: ContaReceber.Incluido com 'nCodLanc' numérico\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Financas.ContaReceber.Incluido\");",
+                  "    pm.expect(body.message).to.have.property(\"nCodLanc\");",
+                  "    pm.expect(body.message.nCodLanc).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Financas.ContaReceber.Incluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"nCodLanc\": 556677889\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a inclusão de uma nova Conta a Receber na Omie."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Financas.ContaReceber.Alterado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: ContaReceber.Alterado com 'nCodLanc'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Financas.ContaReceber.Alterado\");",
+                  "    pm.expect(body.message.nCodLanc).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Financas.ContaReceber.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"nCodLanc\": 556677889\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a alteração de uma Conta a Receber existente na Omie."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "Financas.ContaReceber.Excluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: ContaReceber.Excluido com 'nCodLanc'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"Financas.ContaReceber.Excluido\");",
+                  "    pm.expect(body.message.nCodLanc).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Financas.ContaReceber.Excluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"nCodLanc\": 556677889\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a exclusão de uma Conta a Receber. O handler chama CancelByIdAsync para marcar o registro como CANCELADO localmente."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        }
+      ]
+    },
+    {
+      "name": "LocalEstoque",
+      "description": "Eventos de Local de Estoque. Handler: LocalEstoqueWebhookHandler. Payload identificado por 'codigo_local_estoque'.",
+      "item": [
+        {
+          "name": "LocalEstoque.Incluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: LocalEstoque.Incluido com 'codigo_local_estoque' numérico\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"LocalEstoque.Incluido\");",
+                  "    pm.expect(body.message).to.have.property(\"codigo_local_estoque\");",
+                  "    pm.expect(body.message.codigo_local_estoque).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"LocalEstoque.Incluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_local_estoque\": 10\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a inclusão de um novo Local de Estoque na Omie."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "LocalEstoque.Alterado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: LocalEstoque.Alterado com 'codigo_local_estoque'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"LocalEstoque.Alterado\");",
+                  "    pm.expect(body.message.codigo_local_estoque).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"LocalEstoque.Alterado\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_local_estoque\": 10\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a alteração de um Local de Estoque existente."
+          },
+          "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
+        },
+        {
+          "name": "LocalEstoque.Excluido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: LocalEstoque.Excluido com 'codigo_local_estoque'\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body.event).to.equal(\"LocalEstoque.Excluido\");",
+                  "    pm.expect(body.message.codigo_local_estoque).to.be.a(\"number\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"LocalEstoque.Excluido\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"codigo_local_estoque\": 10\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
+            "description": "Simula a exclusão de um Local de Estoque na Omie."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         }
@@ -606,6 +1468,26 @@
       "item": [
         {
           "name": "Evento Desconhecido (ignorado)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[EdgeCase] Evento desconhecido: deve retornar 200 OK (Fast Acknowledge sem processamento)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"[EdgeCase] Evento desconhecido: body do request contém evento não mapeado\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    // Evento não mapeado não deve causar erro 4xx/5xx — apenas 200 OK",
+                  "    pm.expect(body.event).to.be.a(\"string\");",
+                  "    pm.expect([\"ClienteFornecedor.Incluido\", \"VendaProduto.Incluida\"]).to.not.include(body.event);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -614,17 +1496,32 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"Outro.Evento\",\n  \"author\": \"Omie\",\n  \"message\": {\n    \"dados\": \"quaisquer\"\n  }\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Evento não mapeado. O endpoint enfileira normalmente devolvendo 200 OK. O Worker irá retirá-lo da fila, ignorar o processamento (DefaultWebhookHandler) e marcá-lo como 'Processed'."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
         },
         {
           "name": "Mensagem Nula (ignorada)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[EdgeCase] Payload com message=null: deve retornar 200 OK sem enfileirar\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"[EdgeCase] Payload com message=null: body do request confirma message nulo\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    // O endpoint deve aceitar graciosamente e retornar 200 OK",
+                  "    pm.expect(body.message).to.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -633,11 +1530,7 @@
               "raw": "{\n  \"appKey\": \"{{appKey}}\",\n  \"appHash\": \"{{appHash}}\",\n  \"event\": \"VendaProduto.Incluida\",\n  \"author\": \"Omie\",\n  \"message\": null\n}",
               "options": { "raw": { "language": "json" } }
             },
-            "url": {
-              "raw": "{{baseUrl}}/webhook/omie",
-              "host": ["{{baseUrl}}"],
-              "path": ["webhook", "omie"]
-            },
+            "url": { "raw": "{{baseUrl}}/webhook/omie", "host": ["{{baseUrl}}"], "path": ["webhook", "omie"] },
             "description": "Testa o comportamento quando `message` é nulo. O endpoint retorna 200 OK imediatamente sem enfileirar."
           },
           "response": [{ "name": "200 OK", "status": "OK", "code": 200, "body": "" }]
@@ -645,104 +1538,66 @@
       ]
     },
     {
-      "name": "Admin - Webhooks",
-      "description": "Endpoints administrativos para gestão da Dead-Letter Queue (DLQ) de webhooks.",
-      "item": [
-        {
-          "name": "List Webhooks",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/webhooks?page=1&pageSize=20&status=Failed",
-              "host": ["{{baseUrl}}"],
-              "path": ["admin", "webhooks"],
-              "query": [
-                { "key": "page", "value": "1" },
-                { "key": "pageSize", "value": "20" },
-                { "key": "status", "value": "Failed", "description": "Filtro por status: Pending, Processed, Failed, DeadLetter" },
-                { "key": "eventType", "value": "", "description": "Filtro por tipo de evento (ex: ClienteFornecedor.Incluido)" }
-              ]
-            },
-            "description": "Retorna uma lista paginada de eventos de webhook com filtros opcionais."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Webhook Details",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/webhooks/{{webhookId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["admin", "webhooks", "{{webhookId}}"]
-            },
-            "description": "Retorna os detalhes completos de um webhook, incluindo o payload JSON original."
-          },
-          "response": []
-        },
-        {
-          "name": "Retry Webhook",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/webhooks/{{webhookId}}/retry",
-              "host": ["{{baseUrl}}"],
-              "path": ["admin", "webhooks", "{{webhookId}}", "retry"]
-            },
-            "description": "Reseta o contador de tentativas e coloca o webhook de volta na fila (status Pending) para processamento imediato."
-          },
-          "response": []
-        },
-        {
-          "name": "Dismiss Webhook",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/webhooks/{{webhookId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["admin", "webhooks", "{{webhookId}}"]
-            },
-            "description": "Remove um webhook da fila (Soft Delete / Marcar como Processado ou removido conforme lógica interna)."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Webhook Stats",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/webhooks/stats",
-              "host": ["{{baseUrl}}"],
-              "path": ["admin", "webhooks", "stats"]
-            },
-            "description": "Retorna estatísticas resumidas (counts por status) para o dashboard."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
       "name": "System",
-      "description": "Endpoints de sistema (sincronização manual, health, etc.)",
+      "description": "Endpoints de administração e controle do Worker.",
       "item": [
         {
-          "name": "Trigger Manual Sync",
+          "name": "Manual Sync Trigger",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Response: status deve ser 200 ou 202 (Accepted)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 202]);",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: corpo JSON com campos 'message' e 'eventId'\", function () {",
+                  "    const responseText = pm.response.text();",
+                  "    if (responseText && responseText.trim().length > 0) {",
+                  "        const json = pm.response.json();",
+                  "        pm.expect(json).to.have.property(\"message\");",
+                  "        pm.expect(json).to.have.property(\"eventId\");",
+                  "        pm.expect(json.message).to.be.a(\"string\");",
+                  "        pm.expect(json.message.length).to.be.above(0);",
+                  "        pm.expect(json.eventId).to.be.a(\"string\");",
+                  "        // Validar que eventId é um UUID v4",
+                  "        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;",
+                  "        pm.expect(json.eventId).to.match(uuidRegex);",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: não deve ultrapassar 3 segundos\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
             "url": {
               "raw": "{{baseUrl}}/api/sync/trigger",
               "host": ["{{baseUrl}}"],
               "path": ["api", "sync", "trigger"]
             },
-            "description": "Agenda uma sincronização completa (Full Sync) de todos os módulos Omie utilizando a infraestrutura de fila do PostgreSQL/Supabase.\n\nCria um evento 'System.ManualSync' na tabela WebhookEvents que será processado pelo SystemManualSyncWebhookHandler."
+            "description": "Agenda uma sincronização completa de todos os módulos Omie na Fila do Supabase."
           },
-          "response": []
+          "response": [
+            {
+              "name": "202 Accepted",
+              "status": "Accepted",
+              "code": 202,
+              "body": "{\n  \"message\": \"Sincronização completa (Manual Sync) foi agendada e será processada em background pela fila.\",\n  \"eventId\": \"00000000-0000-0000-0000-000000000000\"\n}"
+            }
+          ]
         }
       ]
     },
@@ -752,39 +1607,44 @@
       "item": [
         {
           "name": "Receber Update Telegram",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Request: Update do Telegram com campos obrigatórios\", function () {",
+                  "    const body = JSON.parse(pm.request.body.raw);",
+                  "    pm.expect(body).to.have.property(\"update_id\");",
+                  "    pm.expect(body).to.have.property(\"message\");",
+                  "    pm.expect(body.update_id).to.be.a(\"number\");",
+                  "    pm.expect(body.message).to.have.property(\"message_id\");",
+                  "    pm.expect(body.message).to.have.property(\"chat\");",
+                  "    pm.expect(body.message).to.have.property(\"text\");",
+                  "});",
+                  "",
+                  "pm.test(\"[Schema] Response: 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "X-Telegram-Bot-Api-Secret-Token",
-                "value": "{{telegramSecretToken}}",
-                "type": "text"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
+              { "key": "X-Telegram-Bot-Api-Secret-Token", "value": "{{telegramSecretToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"update_id\": 123456789,\n  \"message\": {\n    \"message_id\": 1,\n    \"from\": {\n      \"id\": 987654321,\n      \"is_bot\": false,\n      \"first_name\": \"John\",\n      \"last_name\": \"Doe\"\n    },\n    \"chat\": {\n      \"id\": 987654321,\n      \"first_name\": \"John\",\n      \"last_name\": \"Doe\",\n      \"type\": \"private\"\n    },\n    \"date\": 1712581200,\n    \"text\": \"/start 00000000-0000-0000-0000-000000000000\"\n  }\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
+              "options": { "raw": { "language": "json" } }
             },
             "url": {
               "raw": "{{baseUrl}}/api/webhooks/telegram",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "webhooks",
-                "telegram"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "webhooks", "telegram"]
             },
             "description": "Simula o recebimento de um webhook (update) do Telegram contendo um comando /start para vincular a conta."
           },
@@ -792,21 +1652,28 @@
         },
         {
           "name": "Setup Webhook (Telegram)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"[Schema] Response: Setup Webhook Telegram deve retornar 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/telegram/setup-webhook",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "telegram",
-                "setup-webhook"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "telegram", "setup-webhook"]
             },
-            "description": "Registra a URL do webhook na API do Telegram. Requer as configurações `Telegram:BotToken` e `Telegram:WebhookUrl`."
+            "description": "Registra a URL do webhook na API do Telegram."
           },
           "response": []
         }

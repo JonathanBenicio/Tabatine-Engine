@@ -29,6 +29,7 @@ builder.Services.AddOmieInfrastructure(builder.Configuration);
 builder.Services.AddOmieClient(builder.Configuration);
 builder.Services.AddCustomHealthChecks(builder.Configuration);
 builder.Services.AddOpenApi();
+builder.Services.AddMemoryCache();
 builder.Services.AddHostedService<Tabatine.Worker.Services.WebhookProcessorWorker>();
 
 var app = builder.Build();
@@ -45,7 +46,6 @@ app.MapScalarApiReference();
 // Modularized Mappings
 app.UseCustomHealthChecks();
 app.MapOmieWebhookEndpoints();
-app.MapAdminWebhookEndpoints();
 app.MapTelegramWebhookEndpoints();
 app.MapSyncEndpoints();
 app.ApplyMigrations();
@@ -63,3 +63,5 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+public partial class Program { }

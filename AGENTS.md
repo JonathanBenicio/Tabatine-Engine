@@ -26,9 +26,15 @@ dotnet ef migrations add <Name> --project src/Tabatine.Infrastructure --startup-
 
 # Run single test (when tests exist)
 dotnet test --filter "FullyQualifiedName~TestClassName.MethodName"
+
+# Run Mutation Tests (Stryker)
+dotnet tool restore
+dotnet stryker --project src/Tabatine.Infrastructure/Tabatine.Infrastructure.csproj
 ```
 
-> **Note**: This project currently has no test suite. Agents should create tests when implementing new features.
+> **Note**: This project has an integration test suite in `src/Tabatine.Worker.IntegrationTests/`.
+> Check `docs/test-audit.md` for entity coverage status and `docs/test-coverage-audit.md` for the coverage roadmap.
+> Before creating new tests, verify if a test for the entity/scenario already exists.
 
 ---
 
@@ -235,11 +241,18 @@ Reserve for critical infrastructure failures only (network, DB connection).
 - Handle empty responses (codes `Client-5113`, `Client-101`)
 
 ### Sync Pattern
-1. Get last sync date from `ISyncStateRepository`
-2. Fetch paginated data from Omie
-3. Upsert (check `OmieId` exists before insert)
-4. Compare `OmieUpdatedAt` to avoid redundant updates
-5. Save sync cursor
+1. **Identificação da Estratégia**:
+   - **Incremental**: Para Clientes, Produtos, Pedidos, Financeiro e NFs.
+   - **Full Sync**: Para tabelas de apoio (Bancos, Etapas, Formas, etc.).
+2. **Execução Incremental**:
+   - Obter última data de sincronização via `ISyncStateRepository`.
+   - Buscar dados filtrados na Omie (ex: `data_de` ou `exibir_apenas_alterados`).
+   - Salvar novo cursor de data.
+3. **Execução Full Sync**:
+   - Ignorar cursor de data.
+   - Percorrer todas as páginas da API (Página 1 até fim).
+4. **Upsert Geral**: Sempre verificar se `OmieId` existe antes de inserir para evitar duplicatas.
+5. **Diferença de Data**: Comparar `OmieUpdatedAt` (se disponível) para evitar regravações redundantes.
 
 ---
 
@@ -262,6 +275,15 @@ src/
 │   └── Services/           # Background workers
 └── Tabatine.ConnectionTester/
 ```
+
+---
+
+## Testing Standards
+
+- **Assertion Library**: Use native **xUnit Assert** (`Assert.Equal`, `Assert.NotNull`).
+- **Forbidden Library**: **FluentAssertions** is strictly prohibited due to licensing changes (v8+ costs).
+- **Mocking**: Use **NSubstitute** for dependencies.
+- **Async Testing**: Use `await` appropriately; ensure `CancellationToken` is passed where supported.
 
 ---
 

@@ -272,6 +272,11 @@ namespace Tabatine.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("omie_updated_at");
 
+                    b.Property<decimal>("SaldoInicial")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("saldo_inicial");
+
                     b.Property<string>("Tipo")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -712,6 +717,64 @@ namespace Tabatine.Infrastructure.Migrations
                     b.ToTable("itens_pedido", (string)null);
                 });
 
+            modelBuilder.Entity("Tabatine.Core.Entities.LocalEstoque", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("codigo");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("descricao");
+
+                    b.Property<bool>("Inativo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("inativo");
+
+                    b.Property<long>("OmieId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("omie_id");
+
+                    b.Property<DateTime?>("OmieUpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("omie_updated_at");
+
+                    b.Property<bool>("Padrao")
+                        .HasColumnType("boolean")
+                        .HasColumnName("padrao");
+
+                    b.Property<string>("Tipo")
+                        .HasMaxLength(1)
+                        .HasColumnType("character varying(1)")
+                        .HasColumnName("tipo");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_estoque_locais");
+
+                    b.HasIndex("OmieId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_estoque_locais_omie_id");
+
+                    b.ToTable("estoque_locais", (string)null);
+                });
+
             modelBuilder.Entity("Tabatine.Core.Entities.LogEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -884,6 +947,11 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Property<decimal>("IssqnBaseCalculo")
                         .HasColumnType("numeric")
                         .HasColumnName("issqn_base_calculo");
+
+                    b.Property<string>("LinkDanfe")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("link_danfe");
 
                     b.Property<string>("Modelo")
                         .HasColumnType("text")
@@ -1573,12 +1641,72 @@ namespace Tabatine.Infrastructure.Migrations
                     b.ToTable("produtos", (string)null);
                 });
 
+            modelBuilder.Entity("Tabatine.Core.Entities.ProdutoEstoque", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Cmc")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("cmc");
+
+                    b.Property<decimal>("EstoqueMinimo")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("estoque_minimo");
+
+                    b.Property<decimal>("Fisico")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("fisico");
+
+                    b.Property<Guid>("LocalEstoqueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("local_estoque_id");
+
+                    b.Property<decimal>("Pendente")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("pendente");
+
+                    b.Property<Guid>("ProdutoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("produto_id");
+
+                    b.Property<decimal>("Reservado")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("reservado");
+
+                    b.Property<decimal>("Saldo")
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("saldo");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_estoque_produtos");
+
+                    b.HasIndex("LocalEstoqueId")
+                        .HasDatabaseName("ix_estoque_produtos_local_estoque_id");
+
+                    b.HasIndex("ProdutoId", "LocalEstoqueId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_estoque_produtos_produto_id_local_estoque_id");
+
+                    b.ToTable("estoque_produtos", (string)null);
+                });
+
             modelBuilder.Entity("Tabatine.Core.Entities.SyncLock", b =>
                 {
                     b.Property<string>("LockKey")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("lock_key");
+
+                    b.Property<DateTime>("AcquiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("acquired_at");
 
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
@@ -1589,6 +1717,11 @@ namespace Tabatine.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("lock_token");
+
+                    b.Property<string>("Owner")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("owner");
 
                     b.HasKey("LockKey")
                         .HasName("pk_sync_locks");
@@ -2166,6 +2299,27 @@ namespace Tabatine.Infrastructure.Migrations
                     b.Navigation("FormaPagamento");
 
                     b.Navigation("Vendedor");
+                });
+
+            modelBuilder.Entity("Tabatine.Core.Entities.ProdutoEstoque", b =>
+                {
+                    b.HasOne("Tabatine.Core.Entities.LocalEstoque", "LocalEstoque")
+                        .WithMany()
+                        .HasForeignKey("LocalEstoqueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_estoque_produtos_estoque_locais_local_estoque_id");
+
+                    b.HasOne("Tabatine.Core.Entities.Produto", "Produto")
+                        .WithMany()
+                        .HasForeignKey("ProdutoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_estoque_produtos_produtos_produto_id");
+
+                    b.Navigation("LocalEstoque");
+
+                    b.Navigation("Produto");
                 });
 
             modelBuilder.Entity("Tabatine.Core.Entities.TituloPagar", b =>

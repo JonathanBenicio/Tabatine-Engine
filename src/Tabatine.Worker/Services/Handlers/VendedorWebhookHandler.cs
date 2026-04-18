@@ -26,7 +26,11 @@ public class VendedorWebhookHandler(VendedorSyncService vendedorSyncService, IEn
         var root = doc.RootElement;
         
         long? codigoVendedor = null;
-        if (root.TryGetProperty("idVendedor", out var el0) && el0.ValueKind == JsonValueKind.Number)
+        if (root.TryGetProperty("nCodVend", out var el_n) && el_n.ValueKind == JsonValueKind.Number)
+        {
+            codigoVendedor = el_n.GetInt64();
+        }
+        else if (root.TryGetProperty("idVendedor", out var el0) && el0.ValueKind == JsonValueKind.Number)
         {
             codigoVendedor = el0.GetInt64();
         }
@@ -37,6 +41,10 @@ public class VendedorWebhookHandler(VendedorSyncService vendedorSyncService, IEn
         else if (root.TryGetProperty("id_vendedor", out var el2) && el2.ValueKind == JsonValueKind.Number)
         {
             codigoVendedor = el2.GetInt64();
+        }
+        else if (root.TryGetProperty("codigo_vendedor", out var el3) && el3.ValueKind == JsonValueKind.Number)
+        {
+            codigoVendedor = el3.GetInt64();
         }
 
         if (codigoVendedor == null || codigoVendedor <= 0)

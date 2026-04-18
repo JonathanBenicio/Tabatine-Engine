@@ -15,10 +15,12 @@ using Tabatine.Omie.Client.Models.FormaPagamento;
 using Tabatine.Omie.Client.Models.Bancos;
 using Tabatine.Omie.Client.Models.Geral;
 using Tabatine.Omie.Client.Models.Financeiro;
+using Tabatine.Omie.Client.Models.Estoque;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -91,35 +93,73 @@ namespace Tabatine.Omie.Client
         public async Task<ListarClientesResponse> ListarClientesAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
             var param = new ListarClientesParam { Pagina = pagina };
+            if (filtrarDe.HasValue)
+            {
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+                param.FiltrarPorHoraDe = filtrarDe.Value.ToString("HH:mm:ss");
+            }
+            if (filtrarAte.HasValue)
+            {
+                param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
+                param.FiltrarPorHoraAte = filtrarAte.Value.ToString("HH:mm:ss");
+            }
             return await SendRequestAsync<ListarClientesParam, ListarClientesResponse>("geral/clientes/", "ListarClientes", param, cancellationToken);
         }
 
         public async Task<ListarProdutosResponse> ListarProdutosAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
             var param = new ListarProdutosParam { Pagina = pagina };
+            if (filtrarDe.HasValue)
+            {
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            }
+            if (filtrarAte.HasValue) param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
             return await SendRequestAsync<ListarProdutosParam, ListarProdutosResponse>("geral/produtos/", "ListarProdutos", param, cancellationToken);
         }
 
         public async Task<ListarPedidosResponse> ListarPedidosAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
             var param = new ListarPedidosParam { Pagina = pagina };
+            if (filtrarDe.HasValue)
+            {
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            }
+            if (filtrarAte.HasValue) param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
             return await SendRequestAsync<ListarPedidosParam, ListarPedidosResponse>("produtos/pedido/", "ListarPedidos", param, cancellationToken);
         }
 
         public async Task<ListarNotasFiscaisResponse> ListarNotasFiscaisAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
-            var param = new ListarNotasFiscaisParam { Pagina = pagina };
+            var param = new ListarNotasFiscaisParam
+            {
+                Pagina = pagina,
+                RegistrosPorPagina = 100
+            };
+
+            if (filtrarDe.HasValue)
+            {
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            }
+            if (filtrarAte.HasValue)
+            {
+                param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
+            }
             return await SendRequestAsync<ListarNotasFiscaisParam, ListarNotasFiscaisResponse>("produtos/nfconsultar/", "ListarNF", param, cancellationToken);
         }
 
         public async Task<ListarVendedoresResponse> ListarVendedoresAsync(int pagina = 1, DateTime? filtrarDe = null, DateTime? filtrarAte = null, CancellationToken cancellationToken = default)
         {
             var param = new ListarVendedoresParam { Pagina = pagina };
-            // if (filtrarDe.HasValue || filtrarAte.HasValue)
-            // {
-            //     param.FiltrarPorDataDe = filtrarDe?.ToString("dd/MM/yyyy");
-            //     param.FiltrarPorDataAte = filtrarAte?.ToString("dd/MM/yyyy");
-            // }
+            if (filtrarDe.HasValue)
+            {
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            }
+            if (filtrarAte.HasValue) param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
 
             return await SendRequestAsync<ListarVendedoresParam, ListarVendedoresResponse>("geral/vendedores/", "ListarVendedores", param, cancellationToken);
         }
@@ -177,6 +217,13 @@ namespace Tabatine.Omie.Client
             if (!string.IsNullOrEmpty(status))
                 param.FiltrarPorStatus = status;
 
+            if (filtrarDe.HasValue)
+            {
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            }
+            if (filtrarAte.HasValue) param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
+
             return await SendRequestAsync<ListarContasPagarParam, ListarContasPagarResponse>("financas/contapagar/", "ListarContasPagar", param, cancellationToken);
         }
 
@@ -192,7 +239,30 @@ namespace Tabatine.Omie.Client
             if (!string.IsNullOrEmpty(status))
                 param.FiltrarPorStatus = status;
 
+            if (filtrarDe.HasValue)
+            {
+                param.FiltrarApenasAlteracao = "S";
+                param.FiltrarPorDataDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            }
+            if (filtrarAte.HasValue) param.FiltrarPorDataAte = filtrarAte.Value.ToString("dd/MM/yyyy");
+
             return await SendRequestAsync<ListarContasReceberParam, ListarContasReceberResponse>("financas/contareceber/", "ListarContasReceber", param, cancellationToken);
+        }
+
+        public async Task<Tabatine.Omie.Client.Models.Financeiro.ListarMovimentosResponse> ListarMovimentosFinanceirosAsync(int pagina = 1, long? nCodCC = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, CancellationToken cancellationToken = default)
+        {
+            var param = new Tabatine.Omie.Client.Models.Financeiro.ListarMovimentosParam
+            {
+                Pagina = pagina,
+                RegistrosPorPagina = 100,
+                CodigoContaCorrente = nCodCC,
+                Status = status
+            };
+
+            if (filtrarDe.HasValue) param.DataAlteracaoDe = filtrarDe.Value.ToString("dd/MM/yyyy");
+            if (filtrarAte.HasValue) param.DataAlteracaoAte = filtrarAte.Value.ToString("dd/MM/yyyy");
+
+            return await SendRequestAsync<Tabatine.Omie.Client.Models.Financeiro.ListarMovimentosParam, Tabatine.Omie.Client.Models.Financeiro.ListarMovimentosResponse>("financas/mf/", "ListarMovimentos", param, cancellationToken);
         }
 
         public async Task<OmieCliente?> ConsultarClienteAsync(long codigoClienteOmie, CancellationToken cancellationToken = default)
@@ -214,6 +284,12 @@ namespace Tabatine.Omie.Client
             return response;
         }
 
+        public async Task<StatusPedidoResponse?> StatusPedidoAsync(long codigoPedidoOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new StatusPedidoRequest { CodigoPedido = codigoPedidoOmie };
+            return await SendRequestAsync<StatusPedidoRequest, StatusPedidoResponse>("produtos/pedido/", "StatusPedido", param, cancellationToken);
+        }
+
         public async Task<OmieNotaFiscal?> ConsultarNotaFiscalAsync(long codigoNfOmie, CancellationToken cancellationToken = default)
         {
             var param = new { codigo_nf = codigoNfOmie };
@@ -225,6 +301,270 @@ namespace Tabatine.Omie.Client
         {
             var param = new { codigo = codigoVendedorOmie };
             return await SendRequestAsync<object, OmieVendedor>("geral/vendedores/", "ConsultarVendedor", param, cancellationToken);
+        }
+
+        public async Task<OmieContaPagar?> ConsultarContaPagarAsync(long codigoLancamentoOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new { codigo_lancamento_omie = codigoLancamentoOmie };
+            return await SendRequestAsync<object, OmieContaPagar>("financas/contapagar/", "ConsultarContaPagar", param, cancellationToken);
+        }
+
+        public async Task<OmieContaReceber?> ConsultarContaReceberAsync(long codigoLancamentoOmie, CancellationToken cancellationToken = default)
+        {
+            var param = new { codigo_lancamento_omie = codigoLancamentoOmie };
+            return await SendRequestAsync<object, OmieContaReceber>("financas/contareceber/", "ConsultarContaReceber", param, cancellationToken);
+        }
+
+        // Streaming de Listagem
+
+        public async IAsyncEnumerable<OmieCliente> StreamClientesAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarClientesAsync(current, filtrarDe, filtrarAte, cancellationToken);
+                if (response == null || response.ClientesCadastro.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.ClientesCadastro) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieProduto> StreamProdutosAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarProdutosAsync(current, filtrarDe, filtrarAte, cancellationToken);
+                if (response == null || response.ProdutosCadastro.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.ProdutosCadastro) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmiePedido> StreamPedidosAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarPedidosAsync(current, filtrarDe, filtrarAte, cancellationToken);
+                if (response == null || response.PedidosVenda.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.PedidosVenda) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieNotaFiscal> StreamNotasFiscaisAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarNotasFiscaisAsync(current, filtrarDe, filtrarAte, cancellationToken);
+                if (response == null || response.NotasFiscais.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.NotasFiscais) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieVendedor> StreamVendedoresAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarVendedoresAsync(current, filtrarDe, filtrarAte, cancellationToken);
+                if (response == null || response.Vendedores.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.Vendedores) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieContaCorrente> StreamContasCorrentesAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarContasCorrentesAsync(current, filtrarDe, filtrarAte, cancellationToken);
+                if (response == null || response.ContasCorrentes.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.ContasCorrentes) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieOperacaoEtapa> StreamEtapasFaturamentoAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarEtapasFaturamentoAsync(current, cancellationToken);
+                if (response == null || response.Cadastros.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.Cadastros) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieFormaPagamento> StreamFormasPagVendasAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarFormasPagVendasAsync(current, cancellationToken);
+                if (response == null || response.FormasPagamento.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.FormasPagamento) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieBanco> StreamBancosAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarBancosAsync(current, cancellationToken);
+                if (response == null || response.Bancos.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.Bancos) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<ParcelaOmie> StreamParcelasAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarParcelasAsync(current, cancellationToken);
+                if (response == null || response.Cadastros.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.Cadastros) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieContaPagar> StreamContasPagarAsync(long? codigoVendedor = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarContasPagarAsync(current, codigoVendedor, filtrarDe, filtrarAte, status, cancellationToken);
+                if (response == null || response.ContasPagar.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.ContasPagar) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieContaReceber> StreamContasReceberAsync(DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarContasReceberAsync(current, filtrarDe, filtrarAte, status, cancellationToken);
+                if (response == null || response.ContasReceber.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.ContasReceber) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<OmieMovimento> StreamMovimentosFinanceirosAsync(long? nCodCC = null, DateTime? filtrarDe = null, DateTime? filtrarAte = null, string? status = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var response = await ListarMovimentosFinanceirosAsync(current, nCodCC, filtrarDe, filtrarAte, status, cancellationToken);
+                if (response == null || response.Movimentos.Count == 0) break;
+                total = response.TotalDePaginas;
+                foreach (var item in response.Movimentos) yield return item;
+                current++;
+            }
+        }
+
+        // Estoque
+
+        public async IAsyncEnumerable<LocalEstoqueDto> ListarLocaisEstoqueAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var request = new ListarLocaisEstoqueRequest { Pagina = current, RegPorPagina = 100 };
+                var response = await SendRequestAsync<ListarLocaisEstoqueRequest, ListarLocaisEstoqueResponse>("estoque/local/", "ListarLocaisEstoque", request, cancellationToken);
+                total = response.TotPaginas;
+                foreach (var item in response.Locais) yield return item;
+                current++;
+            }
+        }
+
+        public async Task<PosicaoEstoqueResponse> ConsultarPosicaoEstoqueAsync(PosicaoEstoqueRequest request, CancellationToken cancellationToken = default)
+        {
+            return await SendRequestAsync<PosicaoEstoqueRequest, PosicaoEstoqueResponse>("estoque/consulta/", "PosicaoEstoque", request, cancellationToken);
+        }
+
+        public async IAsyncEnumerable<ProdutoEstoqueDto> StreamPosicaoEstoqueAsync(ListarPosEstoqueRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var req = request with { Pagina = current, RegPorPagina = 100 };
+                var response = await SendRequestAsync<ListarPosEstoqueRequest, ListarPosEstoqueResponse>("estoque/consulta/", "ListarPosEstoque", req, cancellationToken);
+                total = response.TotPaginas;
+                foreach (var item in response.Produtos) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<MovimentoEstoqueDto> StreamMovimentoEstoqueAsync(ListarMovimentoEstoqueRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var req = request with { Pagina = current, RegPorPagina = 100 };
+                var response = await SendRequestAsync<ListarMovimentoEstoqueRequest, ListarMovimentoEstoqueResponse>("estoque/consulta/", "ListarMovimentoEstoque", req, cancellationToken);
+                total = response.TotPaginas;
+                foreach (var item in response.Movimentos) yield return item;
+                current++;
+            }
+        }
+
+        public async IAsyncEnumerable<MovimentoProdutoDto> StreamMovimentosAsync(Tabatine.Omie.Client.Models.Estoque.ListarMovimentosRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            int current = 1;
+            int total = 1;
+            while (current <= total)
+            {
+                var req = request with { Pagina = current, RegistrosPorPagina = 100 };
+                var response = await SendRequestAsync<Tabatine.Omie.Client.Models.Estoque.ListarMovimentosRequest, Tabatine.Omie.Client.Models.Estoque.ListarMovimentosResponse>("estoque/movestoque/", "ListarMovimentos", req, cancellationToken);
+                total = response.TotalPaginas;
+                foreach (var item in response.Cadastros) yield return item;
+                current++;
+            }
+        }
+
+        public async Task<ObterEstoqueProdutoResponse> ObterResumoEstoqueProdutoAsync(ObterEstoqueProdutoRequest request, CancellationToken cancellationToken = default)
+        {
+            return await SendRequestAsync<ObterEstoqueProdutoRequest, ObterEstoqueProdutoResponse>("estoque/resumo/", "ObterEstoqueProduto", request, cancellationToken);
         }
     }
 }

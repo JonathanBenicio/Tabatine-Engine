@@ -65,6 +65,23 @@ public class ClienteSyncService(IOmieClient omieClient, ILogger<ClienteSyncServi
   - `Error`: Falhas críticas que interrompem a sincronização de um registro ou processo.
 - **Table Logs**: Registros críticos de auditoria devem ser salvos na tabela `Logs` do banco de dados (usando `LogEntry`).
 
+### Regra do Caminho Nulo Crítico
+
+- **Regra:** Qualquer operação crítica (ex: update final de entidade, processamento de evento) que faça re-fetch (`FindAsync`, `FirstOrDefaultAsync`) DEVE logar em nível `Error` quando o retorno for `null`. O bloco `if (entity == null) { return; }` silencioso **é proibido** em processos críticos.
+
+```csharp
+// ✅ CORRETO: Log de erro + return explícito
+var dbEvent = await dbContext.WebhookEvents.FindAsync(id, ct);
+if (dbEvent == null)
+{
+    logger.LogError("WebhookEvent {Id} não encontrado. Evento pode ter sido perdido.", id);
+    return;
+}
+
+// ❌ PROIBIDO: Silêncio no caminho nulo crítico
+if (dbEvent != null) { /* processa */ } // O null não é logado
+```
+
 ---
 
 ## Estruturas de Dados e Payloads (DTOs)
@@ -130,9 +147,10 @@ public async IAsyncEnumerable<Cliente> FetchClientesAsync([EnumeratorCancellatio
 
 ---
 
-## Injeção de Dependência
+## Padrões de Teste
 
-- Sempre que uma nova interface/implementação for criada (ex: `IWebhookEventHandler`, `ISyncService`), o agente DEVE instruir a adição do registro no container de DI.
-- No projeto Worker, isso geralmente ocorre em `Extensions/ServiceCollectionExtensions.cs` ou `Program.cs`.
-- Usar `AddScoped` para serviços que dependem de `DbContext`.
-- Usar `AddSingleton` ou `AddTransient` para clientes HTTP ou serviços sem estado, dependendo da política do `IHttpClientFactory`.
+- **Framework de Testes**: Utilize **xUnit**.
+- **Asserções**: Utilize exclusivamente as asserções nativas do **xUnit** (`Assert.Equal`, `Assert.NotNull`, etc.).
+- **PROIBIÇÃO (FluentAssertions)**: O uso da biblioteca `FluentAssertions` é **ESTRITAMENTE PROIBIDO** devido a mudanças de licenciamento. NUNCA adicione este pacote ou utilize a sintaxe `.Should()`.
+- **Mocking**: Utilize **NSubstitute**.
+- **AAA Pattern**: Siga o padrão Arrange-Act-Assert em todos os testes.

@@ -10,7 +10,7 @@ namespace Tabatine.Omie.Client.Models.Financeiro
         public int Pagina { get; set; } = 1;
 
         [JsonPropertyName("registros_por_pagina")]
-        public int RegistrosPorPagina { get; set; } = 500;
+        public int RegistrosPorPagina { get; set; } = 100;
 
         [JsonPropertyName("filtrar_por_status")]
         public string? FiltrarPorStatus { get; set; }
@@ -23,6 +23,24 @@ namespace Tabatine.Omie.Client.Models.Financeiro
         
         [JsonPropertyName("exibir_obs")]
         public string ExibirObs { get; set; } = "S";
+
+        [JsonPropertyName("filtrar_por_data_de")]
+        public string? FiltrarPorDataDe { get; set; }
+
+        [JsonPropertyName("filtrar_por_data_ate")]
+        public string? FiltrarPorDataAte { get; set; }
+
+        [JsonPropertyName("filtrar_apenas_alteracao")]
+        public string? FiltrarApenasAlteracao { get; set; }
+
+        [JsonPropertyName("filtrar_apenas_inclusao")]
+        public string? FiltrarApenasInclusao { get; set; }
+
+        [JsonPropertyName("filtrar_por_registro_de")]
+        public string? FiltrarPorRegistroDe { get; set; }
+
+        [JsonPropertyName("filtrar_por_registro_ate")]
+        public string? FiltrarPorRegistroAte { get; set; }
     }
 
     public class OmieContaPagar
@@ -59,6 +77,18 @@ namespace Tabatine.Omie.Client.Models.Financeiro
 
         [JsonPropertyName("status_titulo")]
         public string? StatusTitulo { get; set; }
+
+        [JsonPropertyName("data_emissao")]
+        public string? DataEmissao { get; set; }
+
+        [JsonPropertyName("data_baixa")]
+        public string? DataBaixa { get; set; }
+
+        [JsonPropertyName("valor_pago")]
+        public decimal ValorPago { get; set; }
+
+        [JsonPropertyName("valor_saldo")]
+        public decimal ValorSaldo { get; set; }
 
         [JsonPropertyName("info")]
         public OmieContaPagarInfo? Info { get; set; }

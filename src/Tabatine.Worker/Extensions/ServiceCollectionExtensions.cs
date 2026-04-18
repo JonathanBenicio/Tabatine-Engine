@@ -40,6 +40,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IDistributedLockService, DbDistributedLockService>();
         services.AddScoped<ISyncStateRepository, SyncStateRepository>();
         services.AddScoped<INotificationService, SupabaseNotificationService>();
+        services.AddScoped<INotificationTemplateBuilder, NotificationTemplateBuilder>();
 
         // Telegram: registado como concreto (para o endpoint de webhook poder resolver directamente)
         // e também como INotificationService (para broadcast via ISyncService)
@@ -60,6 +61,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<MeioPagamentoSyncService>();
         services.AddScoped<ContasReceberSyncService>();
         services.AddScoped<ContasPagarSyncService>();
+        services.AddScoped<EstoqueSyncService>();
 
         // Webhook Handlers
         services.AddScoped<IWebhookEventHandler, PedidoWebhookHandler>();
@@ -69,6 +71,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IWebhookEventHandler, VendedorWebhookHandler>();
         services.AddScoped<IWebhookEventHandler, ContaCorrenteWebhookHandler>();
         services.AddScoped<IWebhookEventHandler, SystemManualSyncWebhookHandler>();
+        services.AddScoped<IWebhookEventHandler, ContasReceberWebhookHandler>();
+        services.AddScoped<IWebhookEventHandler, ContasPagarWebhookHandler>();
+        services.AddScoped<IWebhookEventHandler, LocalEstoqueWebhookHandler>();
         services.AddScoped<WebhookHandlerFactory>();
 
         services.AddScoped<ISyncService, SyncManager>();
@@ -95,7 +100,7 @@ public static class ServiceCollectionExtensions
                 Delay = TimeSpan.FromSeconds(3),
                 ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
                     .Handle<HttpRequestException>()
-                    .HandleResult(r => (int)r.StatusCode >= 500)
+                    .HandleResult(r => (int)r.StatusCode >= 500 || (int)r.StatusCode == 425 || (int)r.StatusCode == 429)
             });
 
             pipelineBuilder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions

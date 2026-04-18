@@ -116,3 +116,48 @@ Ao usar o Pooler do Supabase (Supavisor) com .NET/Npgsql (especialmente em Windo
 - **Seleção de Host**:
   - **Direto (`db.[REF].supabase.co`)**: Geralmente é **apenas IPv6**. Se a rede local não suportar IPv6, a conexão falhará com erro de DNS.
   - **Pooler (`[REGION].pooler.supabase.com`)**: Oferece **IPv4**. É a escolha recomendada para ambientes locais com suporte IPv6 limitado, desde que as flags acima sejam usadas.
+
+---
+
+## 8. Operações em Entidades Rastreadas — Add vs Update (CRÍTICO)
+
+- **Regra Crítica:** **NUNCA** chame `_dbContext.Set<T>().Add(entity)` em uma entidade que já está sendo rastreada pelo EF Core (obtida via `FindAsync`, `FirstOrDefaultAsync` sem `AsNoTracking()`).
+- **Comportamento**: O EF Core detecta automaticamente propriedades modificadas em entidades rastreadas. Basta alterar as propriedades e chamar `SaveChangesAsync()`.
+- **Risco:** Chamar `Add()` em entidade rastreada gera `InvalidOperationException` ou tentativa de INSERT duplicado (violação de PK/Unique).
+
+```csharp
+// ✅ CORRETO: EF Core rastreia automaticamente — apenas salve
+existing.RazaoSocial = dto.RazaoSocial;
+existing.UpdatedAt = DateTime.UtcNow;
+await dbContext.SaveChangesAsync(ct); // EF gera UPDATE automaticamente
+
+// ❌ PROIBIDO: Add() em entidade rastreada
+dbContext.Clientes.Add(existing); // NUNCA FAÇA ISSO
+await dbContext.SaveChangesAsync(ct);
+```
+
+---
+
+## 9. Raw SQL — Preferir EF Core para Atualizações Simples
+
+- **Diretriz:** Evite `ExecuteSqlInterpolatedAsync` para updates em registros únicos quando o EF Core pode gerenciar o rastreamento.
+- **Quando usar Raw SQL:**
+  - Bulk updates em lote (ex: `UPDATE table SET x = y WHERE batch_id = @id`)
+  - Operações que o EF Core não suporta eficientemente
+- **Risco:** Raw SQL com constantes de string (não variáveis interpoladas) gera SQL literal, contornando a parametrização.
+
+```csharp
+// ✅ PREFERÍVEL: EF Core gerencia rastreamento e parametrização
+var ev = await dbContext.WebhookEvents.FindAsync(id, ct);
+if (ev != null) { ev.Status = StatusProcessing; await dbContext.SaveChangesAsync(ct); }
+
+// ⚠️ USAR APENAS PARA BULK: Raw SQL com parâmetros
+await dbContext.Database.ExecuteSqlInterpolatedAsync(
+    $"UPDATE webhook_events SET status = {status} WHERE batch_id = {batchId}", ct);
+```
+
+---
+
+## Validação
+
+Estes padrões são verificados pelo checklist em [sync-service-patterns.md](sync-service-patterns.md) (checks #14, #15, #16) e pelo workflow `/pr-review`.

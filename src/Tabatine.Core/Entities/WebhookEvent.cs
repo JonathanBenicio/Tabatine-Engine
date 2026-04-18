@@ -2,6 +2,12 @@ namespace Tabatine.Core.Entities;
 
 public class WebhookEvent
 {
+    public const string StatusPending = "Pending";
+    public const string StatusProcessing = "Processing";
+    public const string StatusCompleted = "Completed";
+    public const string StatusFailed = "Failed";
+    public const string StatusDeadLetter = "DeadLetter";
+
     public Guid Id { get; set; } = Guid.NewGuid();
 
     public string AppKey { get; set; } = string.Empty;
@@ -10,7 +16,7 @@ public class WebhookEvent
 
     public string Payload { get; set; } = string.Empty;
 
-    public string Status { get; set; } = "Pending";
+    public string Status { get; set; } = StatusPending;
 
     public string? LastErrorDetail { get; set; }
 

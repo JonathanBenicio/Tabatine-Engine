@@ -19,8 +19,14 @@ public class SyncLockConfiguration : IEntityTypeConfiguration<SyncLock>
         builder.Property(e => e.LockToken)
             .IsRequired()
             .HasMaxLength(255);
+        
+        builder.Property(e => e.AcquiredAt)
+            .IsRequired();
 
         builder.Property(e => e.ExpiresAt)
             .IsRequired();
+
+        builder.Property(e => e.Owner)
+            .HasMaxLength(255);
     }
 }

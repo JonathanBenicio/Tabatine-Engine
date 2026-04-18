@@ -21,6 +21,7 @@ namespace Tabatine.Infrastructure.Data.Configurations
             builder.Property(c => c.Descricao).HasMaxLength(100).IsRequired();
             builder.Property(c => c.CodigoIntegracao).HasMaxLength(50);
             builder.Property(c => c.Tipo).HasMaxLength(20);
+            builder.Property(c => c.SaldoInicial).HasPrecision(18, 2);
         }
     }
 }

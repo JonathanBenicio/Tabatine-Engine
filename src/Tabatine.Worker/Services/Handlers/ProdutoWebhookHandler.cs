@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using Tabatine.Core.Entities;
 using Tabatine.Core.Interfaces;
 using Tabatine.Infrastructure.Services;
@@ -7,10 +8,16 @@ namespace Tabatine.Worker.Services.Handlers;
 
 /// <summary>
 /// Webhook handler for Produto events.
-/// Resolves event strings provided by Omie into actions over ProdutoSyncService.
+/// Resolves event strings provided by Omie into actions over ProdutoSyncService and EstoqueSyncService.
 /// </summary>
-public class ProdutoWebhookHandler(ProdutoSyncService produtoSyncService, IEnumerable<INotificationService> notificationServices) : IWebhookEventHandler
+public class ProdutoWebhookHandler(
+    ProdutoSyncService produtoSyncService, 
+    EstoqueSyncService estoqueSyncService,
+    IMemoryCache cache,
+    IEnumerable<INotificationService> notificationServices,
+    ILogger<ProdutoWebhookHandler> logger) : IWebhookEventHandler
 {
+    private static readonly TimeSpan DebounceOverride = TimeSpan.FromSeconds(10);
 
     public IEnumerable<string> SupportedEvents => new[]
     {
@@ -19,8 +26,6 @@ public class ProdutoWebhookHandler(ProdutoSyncService produtoSyncService, IEnume
         "Produto.Excluido",
         "Produto.MovimentacaoEstoque",
         "Produto.AjusteEstoque"
-        // Let's not include the marketplace or pdv specific events unless requested, 
-        // to show we map specifically only what we wish.
     };
 
     public async Task HandleAsync(WebhookEvent webhookEvent, CancellationToken cancellationToken)
@@ -39,33 +44,58 @@ public class ProdutoWebhookHandler(ProdutoSyncService produtoSyncService, IEnume
         {
             codigoProduto = el1.GetInt64();
         }
-
-        // Often Webhooks from omie just send the code directly as id_produto
-        if (codigoProduto == null && root.TryGetProperty("id_produto", out var el2) && el2.ValueKind == JsonValueKind.Number)
+        else if (root.TryGetProperty("id_produto", out var el2) && el2.ValueKind == JsonValueKind.Number)
         {
             codigoProduto = el2.GetInt64();
+        }
+        else if (root.TryGetProperty("nCodProd", out var el3) && el3.ValueKind == JsonValueKind.Number)
+        {
+            codigoProduto = el3.GetInt64();
         }
 
         if (codigoProduto == null || codigoProduto <= 0)
         {
-            return; // Needs an ID to sync
+            return;
         }
 
-        await produtoSyncService.SyncByIdAsync(codigoProduto.Value);
+        bool isStockEvent = webhookEvent.Event == "Produto.MovimentacaoEstoque" || 
+                           webhookEvent.Event == "Produto.AjusteEstoque";
+
+        if (isStockEvent)
+        {
+            // Debouncing logic for stock balance updates
+            var cacheKey = $"debounce_stock_sync_{codigoProduto.Value}";
+            if (cache.TryGetValue(cacheKey, out _))
+            {
+                logger.LogDebug("Debouncing stock sync for Produto OmieId {OmieId}. Skipping event {Event}.", codigoProduto.Value, webhookEvent.Event);
+                return;
+            }
+
+            cache.Set(cacheKey, true, DebounceOverride);
+            await estoqueSyncService.SyncByIdAsync(codigoProduto.Value, cancellationToken);
+        }
+        else
+        {
+            await produtoSyncService.SyncByIdAsync(codigoProduto.Value);
+        }
         
         string title = webhookEvent.Event switch 
         {
             "Produto.Incluido" => "Novo Produto",
             "Produto.Excluido" => "Produto Excluído",
             "Produto.AjusteEstoque" => "Ajuste de Estoque Realizado",
+            "Produto.MovimentacaoEstoque" => "Movimentação de Estoque",
             _ => "Produto Alterado"
         };
         
-        var summary = $"Produto ID {codigoProduto.Value} atualizado (Evento: {webhookEvent.Event}).";
+        var category = isStockEvent ? "ESTOQUE" : "PRODUTO";
+        var summary = isStockEvent 
+            ? $"Saldo de Estoque do Produto ID {codigoProduto.Value} atualizado."
+            : $"Produto ID {codigoProduto.Value} atualizado (Evento: {webhookEvent.Event}).";
         
         foreach (var service in notificationServices)
         {
-            await service.SendNotificationAsync(title, summary, "PRODUTO", codigoProduto.Value);
+            await service.SendNotificationAsync(title, summary, category, codigoProduto.Value);
         }
     }
 }

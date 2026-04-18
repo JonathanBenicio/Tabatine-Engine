@@ -4,138 +4,217 @@ using Tabatine.Worker.Services.Handlers;
 
 namespace Tabatine.Worker.Services;
 
-public partial class WebhookProcessorWorker(ILogger<WebhookProcessorWorker> logger, IServiceScopeFactory scopeFactory) : BackgroundService
+public partial class WebhookProcessorWorker(
+    ILogger<WebhookProcessorWorker> logger, 
+    IServiceScopeFactory scopeFactory,
+    IConfiguration configuration) : BackgroundService
 {
-    private const string StatusPending = "Pending";
-    private const string StatusProcessed = "Completed"; // De acordo com a spec
-    private const string StatusFailed = "Failed";
-    private const string StatusDeadLetter = "DeadLetter";
-
-    private readonly TimeSpan _pollingInterval = TimeSpan.FromSeconds(5);
+    private readonly TimeSpan _pollingInterval = TimeSpan.FromMilliseconds(
+        configuration.GetValue<int>("WebhookProcessor:PollingIntervalMs", 5000));
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (!configuration.GetValue<bool>("WebhookProcessor:Enabled", true))
+        {
+            logger.LogInformation("WebhookProcessorWorker está desativado via configuração.");
+            return;
+        }
+
         LogWorkerIniciado(logger);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                var processedAny = await ProcessNextMessageAsync(stoppingToken);
+                var (processedAny, hasMore) = await ProcessNextMessagesAsync(stoppingToken);
 
-                // Se não processou nenhuma mensagem, aguarda para não sobrecarregar o banco
-                if (!processedAny)
+                // Se não processou nenhuma mensagem e não há mais mensagens, aguarda
+                if (!processedAny && !hasMore)
                 {
                     await Task.Delay(_pollingInterval, stoppingToken);
                 }
             }
             catch (OperationCanceledException)
             {
-                // Worker parado
+                // Worker parado graciosamente
+                break;
+            }
+            catch (ObjectDisposedException)
+            {
+                // Significa que o app está fechando e o provider foi descartado
+                logger.LogWarning("WebhookProcessorWorker: Provider descartado. Encerrando worker.");
                 break;
             }
             catch (Exception ex)
             {
                 LogErroCritico(logger, ex);
-                await Task.Delay(_pollingInterval, stoppingToken);
+                try 
+                {
+                    await Task.Delay(_pollingInterval, stoppingToken);
+                }
+                catch (OperationCanceledException) { break; }
             }
         }
 
         LogWorkerFinalizado(logger);
     }
 
-    private async Task<bool> ProcessNextMessageAsync(CancellationToken cancellationToken)
+    public async Task<(bool Processed, bool HasMore)> ProcessNextMessagesAsync(CancellationToken cancellationToken)
     {
-        using var scope = scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        // 1. Fase de De-queue (Atômica e Rápida)
-        // Buscamos a mensagem e marcamos como 'Processing' imediatamente para liberar o banco.
-        var strategy = dbContext.Database.CreateExecutionStrategy();
-        var webhookEvent = await strategy.ExecuteAsync(async () =>
-        {
-            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-            try
-            {
-                var sql = $@"
-                    SELECT * FROM webhook_events 
-                    WHERE status = '{StatusPending}' 
-                       OR (status = '{StatusFailed}' AND next_retry_at <= NOW())
-                    ORDER BY created_at ASC 
-                    LIMIT 1 
-                    FOR UPDATE SKIP LOCKED";
-                
-                var ev = await dbContext.WebhookEvents
-                    .FromSqlRaw(sql)
-                    .FirstOrDefaultAsync(cancellationToken);
-
-                if (ev == null)
-                {
-                    await transaction.RollbackAsync(cancellationToken);
-                    return null;
-                }
-
-                ev.Status = "Processing";
-                await dbContext.SaveChangesAsync(cancellationToken);
-                await transaction.CommitAsync(cancellationToken);
-                
-                return ev;
-            }
-            catch (Exception)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                throw;
-            }
-        });
-
-        if (webhookEvent == null) return false;
-
-        // 2. Fase de Processamento (Fora da transação da fila)
-        LogProcessandoWebhook(logger, webhookEvent.Id, webhookEvent.Event);
-
+        IServiceScope? scope = null;
         try
         {
-            var handlerFactory = scope.ServiceProvider.GetRequiredService<WebhookHandlerFactory>();
-            var handler = handlerFactory.GetHandler(webhookEvent.Event);
-            
-            // Aqui o handler pode rodar por muito tempo (Sync total) sem travar o banco
-            await handler.HandleAsync(webhookEvent, cancellationToken);
+            scope = scopeFactory.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var strategy = dbContext.Database.CreateExecutionStrategy();
 
-            webhookEvent.Status = StatusProcessed;
-            webhookEvent.ProcessedAt = DateTime.UtcNow;
-            webhookEvent.LastAttemptAt = DateTime.UtcNow;
-            LogWebhookProcessado(logger, webhookEvent.Id, webhookEvent.Event);
+            // 1. Fase de De-queue (Atômica e Rápida)
+            var skipLocked = configuration.GetValue<bool>("WebhookProcessor:UseSkipLocked", true);
+            var skipLockedSql = skipLocked ? "FOR UPDATE SKIP LOCKED" : "FOR UPDATE";
+
+            WebhookEvent? webhookEvent = await strategy.ExecuteAsync(async () =>
+            {
+                if (cancellationToken.IsCancellationRequested) return null;
+
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+                try
+                {
+                    var sql = $@"
+                        SELECT * FROM webhook_events 
+                        WHERE status = '{WebhookEvent.StatusPending}' 
+                           OR (status = '{WebhookEvent.StatusFailed}' AND next_retry_at <= NOW() + INTERVAL '1 second')
+                        ORDER BY created_at ASC 
+                        LIMIT 1 
+                        {skipLockedSql}";
+                    
+                    var ev = await dbContext.WebhookEvents
+                        .FromSqlRaw(sql)
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                    if (ev == null)
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return null;
+                    }
+
+                    logger.LogDebug("Webhook encontrado: ID={Id}, Evento={Event}, Status={Status}", ev.Id, ev.Event, ev.Status);
+
+                    ev.Status = WebhookEvent.StatusProcessing;
+                    
+                    await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                        $"UPDATE webhook_events SET status = {WebhookEvent.StatusProcessing} WHERE id = {ev.Id}", 
+                        cancellationToken);
+
+                    await transaction.CommitAsync(cancellationToken);
+                    return ev;
+                }
+                catch
+                {
+                    try { if (dbContext.Database.CurrentTransaction != null) await transaction.RollbackAsync(cancellationToken); } catch { }
+                    throw;
+                }
+            });
+
+            if (webhookEvent == null) return (false, false);
+
+            // 2. Fase de Processamento (Fora da transação da fila)
+            LogProcessandoWebhook(logger, webhookEvent.Id, webhookEvent.Event);
+
+            try
+            {
+                var handlerFactory = scope.ServiceProvider.GetRequiredService<WebhookHandlerFactory>();
+                var handler = handlerFactory.GetHandler(webhookEvent.Event);
+                await handler.HandleAsync(webhookEvent, cancellationToken);
+
+                webhookEvent.Status = WebhookEvent.StatusCompleted;
+                webhookEvent.ProcessedAt = DateTime.UtcNow;
+                webhookEvent.LastAttemptAt = DateTime.UtcNow;
+                LogWebhookProcessado(logger, webhookEvent.Id, webhookEvent.Event);
+            }
+            catch (Exception ex)
+            {
+                webhookEvent.RetryCount++;
+                webhookEvent.LastErrorDetail = ex.ToString();
+                webhookEvent.LastAttemptAt = DateTime.UtcNow;
+
+                if (webhookEvent.RetryCount >= webhookEvent.MaxRetries)
+                {
+                    webhookEvent.Status = WebhookEvent.StatusDeadLetter;
+                    webhookEvent.NextRetryAt = null;
+                    LogErroProcessandoWebhook(logger, webhookEvent.Id, ex);
+                }
+                else
+                {
+                    webhookEvent.Status = WebhookEvent.StatusFailed;
+                    var delayMinutes = Math.Pow(2, webhookEvent.RetryCount);
+                    webhookEvent.NextRetryAt = DateTime.UtcNow.AddMinutes(delayMinutes);
+                    LogWebhookFalhouTentativa(logger, webhookEvent.Id, webhookEvent.RetryCount, webhookEvent.NextRetryAt.Value);
+                }
+            }
+
+            // 3. Atualização Final (Com retry de concorrência)
+            await strategy.ExecuteAsync(async () => {
+                if (cancellationToken.IsCancellationRequested) return;
+
+                int updateRetries = 0;
+                const int maxUpdateRetries = 3;
+
+                while (updateRetries < maxUpdateRetries)
+                {
+                    try
+                    {
+                        var dbEvent = await dbContext.WebhookEvents.FirstOrDefaultAsync(w => w.Id == webhookEvent.Id, cancellationToken);
+                        if (dbEvent != null)
+                        {
+                            dbEvent.Status = webhookEvent.Status;
+                            dbEvent.ProcessedAt = webhookEvent.ProcessedAt;
+                            dbEvent.LastAttemptAt = webhookEvent.LastAttemptAt;
+                            dbEvent.LastErrorDetail = webhookEvent.LastErrorDetail;
+                            dbEvent.RetryCount = webhookEvent.RetryCount;
+                            dbEvent.NextRetryAt = webhookEvent.NextRetryAt;
+
+                            await dbContext.SaveChangesAsync(cancellationToken);
+                            logger.LogTrace("Webhook {Id} atualizado para status {Status}.", webhookEvent.Id, webhookEvent.Status);
+                            break;
+                        }
+                        else
+                        {
+                            logger.LogWarning("Webhook {Id} não encontrado para atualização final (tentativa {Retry}).", webhookEvent.Id, updateRetries + 1);
+                            if (updateRetries >= maxUpdateRetries - 1) break;
+                        }
+                    }
+                    catch (DbUpdateConcurrencyException)
+                    {
+                        updateRetries++;
+                        if (updateRetries >= maxUpdateRetries) throw;
+                        logger.LogWarning("Concorrência ao atualizar webhook {Id}. Tentativa {Retry} de {Max}.", webhookEvent.Id, updateRetries, maxUpdateRetries);
+                        await Task.Delay(Random.Shared.Next(50, 200), cancellationToken);
+                    }
+                }
+            });
+
+            // Verificar se há mais mensagens pendentes para notificar o loop principal
+            var hasMore = await dbContext.WebhookEvents
+                .AnyAsync(w => w.Status == WebhookEvent.StatusPending 
+                            || (w.Status == WebhookEvent.StatusFailed && w.NextRetryAt <= DateTime.UtcNow), 
+                          cancellationToken);
+
+            return (true, hasMore);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            webhookEvent.RetryCount++;
-            webhookEvent.LastErrorDetail = ex.ToString(); // Stacktrace completo para o Admin
-            webhookEvent.LastAttemptAt = DateTime.UtcNow;
-
-            if (webhookEvent.RetryCount >= webhookEvent.MaxRetries)
-            {
-                webhookEvent.Status = StatusDeadLetter;
-                webhookEvent.NextRetryAt = null;
-                LogErroProcessandoWebhook(logger, webhookEvent.Id, ex);
-            }
-            else
-            {
-                webhookEvent.Status = StatusFailed;
-                // Backoff Exponencial: 2, 4, 8, 16, 32 minutos
-                var delayMinutes = Math.Pow(2, webhookEvent.RetryCount);
-                webhookEvent.NextRetryAt = DateTime.UtcNow.AddMinutes(delayMinutes);
-                LogWebhookFalhouTentativa(logger, webhookEvent.Id, webhookEvent.RetryCount, webhookEvent.NextRetryAt.Value);
-            }
+            logger.LogError(ex, "Erro no loop de processamento de webhooks: {Message}", ex.Message);
+            return (false, false);
         }
-
-        // 3. Atualização Final
-        // Usamos a strategy novamente para garantir resiliência no update final
-        await strategy.ExecuteAsync(async () => {
-            dbContext.Update(webhookEvent);
-            await dbContext.SaveChangesAsync(cancellationToken);
-        });
-
-        return true;
+        catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
+        {
+            return (false, false);
+        }
+        finally
+        {
+            scope?.Dispose();
+        }
     }
 
     #region High-Performance Logging (LoggerMessage source generators)

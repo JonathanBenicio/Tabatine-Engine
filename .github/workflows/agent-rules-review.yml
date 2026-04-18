@@ -1,0 +1,100 @@
+name: "🔍 Agent Rules Review — Detectar Mudanças em .agents/"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  detect-rules-change:
+    name: "Verificar Mudanças em Regras de Agentes"
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Listar Arquivos Alterados
+        id: changed
+        run: |
+          FILES=$(git diff --name-only origin/${{ github.base_ref || 'main' }}...HEAD -- \
+            '.agents/rules/' \
+            '.agents/skills/' \
+            '.agents/workflows/' \
+            'AGENTS.md' \
+            'GEMINI.md' \
+          | sort)
+
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          RULES_COUNT=$(echo "$FILES" | grep -c '.agents/rules/' || true)
+          SKILLS_COUNT=$(echo "$FILES" | grep -c '.agents/skills/' || true)
+          WORKFLOWS_COUNT=$(echo "$FILES" | grep -c '.agents/workflows/' || true)
+          ROOT_COUNT=$(echo "$FILES" | grep -cE '(AGENTS|GEMINI)\.md' || true)
+
+          echo "rules_count=$RULES_COUNT" >> $GITHUB_OUTPUT
+          echo "skills_count=$SKILLS_COUNT" >> $GITHUB_OUTPUT
+          echo "workflows_count=$WORKFLOWS_COUNT" >> $GITHUB_OUTPUT
+          echo "root_count=$ROOT_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Comentar no PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const files = `${{ steps.changed.outputs.files }}`;
+            const rulesCount = parseInt('${{ steps.changed.outputs.rules_count }}') || 0;
+            const skillsCount = parseInt('${{ steps.changed.outputs.skills_count }}') || 0;
+            const workflowsCount = parseInt('${{ steps.changed.outputs.workflows_count }}') || 0;
+            const rootCount = parseInt('${{ steps.changed.outputs.root_count }}') || 0;
+
+            if (!files.trim()) {
+              console.log('Nenhum arquivo de agentes alterado.');
+              return;
+            }
+
+            const fileList = files.trim().split('\n').map(f => `- \`${f}\``).join('\n');
+
+            const body = [
+              '## 🔍 Mudanças Detectadas em Regras de Agentes',
+              '',
+              '> **Este PR modifica documentação que governa o comportamento dos agentes AI.**',
+              '> Verifique se as alterações abaixo são consistentes com o restante da documentação.',
+              '',
+              '### Arquivos Alterados',
+              fileList,
+              '',
+              '### Resumo',
+              '| Categoria | Quantidade |',
+              '|---|---|',
+              `| Rules (\`.agents/rules/\`) | ${rulesCount} |`,
+              `| Skills (\`.agents/skills/\`) | ${skillsCount} |`,
+              `| Workflows (\`.agents/workflows/\`) | ${workflowsCount} |`,
+              `| Root (AGENTS/GEMINI.md) | ${rootCount} |`,
+              '',
+              '### ⚠️ Checklist de Revisão Obrigatório',
+              '',
+              '- [ ] As regras alteradas **não contradizem** outros documentos em `.agents/rules/`?',
+              '- [ ] Se uma nova regra foi adicionada, ela tem seção `## Validação` com referência cruzada?',
+              '- [ ] Se um padrão de `SyncService` foi alterado, o `sync-service-patterns.md` foi atualizado?',
+              '- [ ] Se as regras de EF Core mudaram, o `code-review-checklist/SKILL.md` reflete a mudança?',
+              '- [ ] O `AGENTS.md` na raiz do projeto está atualizado com as novas regras/skills?',
+              '',
+              '---',
+              '*Gerado automaticamente por `.github/workflows/agent-rules-review.yml` — [Epic #48](../../issues/48)*'
+            ].join('\n');
+
+            if (context.issue.number) {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            } else {
+              console.log('Não é um contexto de PR. Comentário não enviado.');
+              console.log(body);
+            }

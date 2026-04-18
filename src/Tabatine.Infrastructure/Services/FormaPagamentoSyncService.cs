@@ -13,33 +13,22 @@ using Tabatine.Omie.Client.Models.FormaPagamento;
 
 namespace Tabatine.Infrastructure.Services
 {
-    public class FormaPagamentoSyncService : ISyncService
+    public class FormaPagamentoSyncService(
+        IOmieClient omieClient, 
+        AppDbContext dbContext, 
+        ISyncStateRepository syncState,
+        ILogger<FormaPagamentoSyncService> logger) : ISyncService
     {
-        private readonly IOmieClient _omieClient;
-        private readonly AppDbContext _dbContext;
-        private readonly ISyncStateRepository _syncState;
-        private readonly ILogger<FormaPagamentoSyncService> _logger;
-
-        public FormaPagamentoSyncService(IOmieClient omieClient, AppDbContext dbContext, ISyncStateRepository syncState, ILogger<FormaPagamentoSyncService> logger)
-        {
-            _omieClient = omieClient;
-            _dbContext = dbContext;
-            _syncState = syncState;
-            _logger = logger;
-        }
-
         public async Task SyncAllAsync(CancellationToken ct = default)
         {
-            _logger.LogInformation("Iniciando sincronização de Formas de Pagamento...");
-            
-            var syncStartTime = DateTime.UtcNow;
+            logger.LogInformation("Iniciando sincronização de Formas de Pagamento...");
 
             int pagina = 1;
             bool temMais = true;
 
             while (temMais && !ct.IsCancellationRequested)
             {
-                var response = await _omieClient.ListarFormasPagVendasAsync(pagina, ct);
+                var response = await omieClient.ListarFormasPagVendasAsync(pagina, ct);
                 
                 if (response == null) break;
 
@@ -47,7 +36,7 @@ namespace Tabatine.Infrastructure.Services
                 var processedCodes = new HashSet<string>();
 
                 var codigos = rawFormas.Where(f => !string.IsNullOrWhiteSpace(f.Codigo)).Select(f => f.Codigo).ToList();
-                var existingFormas = await _dbContext.FormasPagamento
+                var existingFormas = await dbContext.FormasPagamento
                     .Where(f => codigos.Contains(f.Codigo))
                     .ToDictionaryAsync(f => f.Codigo, ct);
 
@@ -56,7 +45,7 @@ namespace Tabatine.Infrastructure.Services
                     if (string.IsNullOrWhiteSpace(omieForma.Codigo)) continue;
                     if (!processedCodes.Add(omieForma.Codigo))
                     {
-                        _logger.LogWarning("Forma de Pagamento Código {Cod} duplicado na resposta da Omie. Pulando.", omieForma.Codigo);
+                        logger.LogWarning("Forma de Pagamento Código {Cod} duplicado na resposta da Omie. Pulando.", omieForma.Codigo);
                         continue;
                     }
 
@@ -76,7 +65,7 @@ namespace Tabatine.Infrastructure.Services
                             UpdatedAt = DateTime.UtcNow,
                             OmieId = 0
                         };
-                        _dbContext.FormasPagamento.Add(nova);
+                        dbContext.FormasPagamento.Add(nova);
                         existingFormas[omieForma.Codigo] = nova;
                     }
                     else
@@ -89,20 +78,25 @@ namespace Tabatine.Infrastructure.Services
                     }
                 }
 
-                await _dbContext.SaveChangesAsync(ct);
-                _logger.LogInformation("Página {Pagina} de {Total} de formas de pagamento sincronizada.", pagina, response.TotalDePaginas);
+                await dbContext.SaveChangesAsync(ct);
+                logger.LogInformation("Página {Pagina} de {Total} de formas de pagamento sincronizada.", pagina, response.TotalDePaginas);
                 temMais = pagina < response.TotalDePaginas;
                 pagina++;
             }
 
-            await _syncState.SetLastSyncDateAsync("FormasPagamento", syncStartTime, ct);
-            _logger.LogInformation("Sincronização de Formas de Pagamento finalizada.");
+            if (!ct.IsCancellationRequested)
+            {
+                await syncState.SetLastSyncDateAsync("FormaPagamento", DateTime.UtcNow, ct);
+            }
+            logger.LogInformation("Sincronização de Formas de Pagamento finalizada.");
         }
 
         public async Task SyncByIdAsync(long omieId, CancellationToken ct = default)
         {
-            _logger.LogWarning("SyncById solicitado para FormaPagamento OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
+            logger.LogWarning("SyncById solicitado para FormaPagamento OmieId={OmieId}. A Omie não possui endpoint de consulta individual para esta entidade. Requisição ignorada.", omieId);
             await Task.CompletedTask;
         }
+
+        public Task CancelByIdAsync(long omieId, CancellationToken ct = default) => Task.CompletedTask;
     }
 }

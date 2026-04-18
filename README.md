@@ -1,5 +1,8 @@
 # Tabatine Engine - Omie Sync Service
 
+![Build Status](https://github.com/JonathanBenicio/Tabatine-Engine/actions/workflows/main_tabatine-worker.yml/badge.svg)
+![Coverage Report](https://github.com/JonathanBenicio/Tabatine-Engine/actions/workflows/main_tabatine-worker.yml/badge.svg?branch=main&event=push)
+
 O **Tabatine Engine** é o núcleo de processamento e sincronização de dados entre o **Omie ERP** e o banco de dados local (Supabase/PostgreSQL). Desenvolvido em **.NET 10**, ele garante que as informações de vendas, clientes, produtos, notas fiscais, vendedores, contas correntes e outros 10+ módulos vitais estejam sempre atualizadas para consumo rápido pelo frontend.
 
 ## 🏗️ Arquitetura da Solução
@@ -34,6 +37,27 @@ graph TD
     Queue -->|Polling SKIP LOCKED| Processor[WebhookProcessorWorker]
     Processor -->|Trigger| ISyncService
 ```
+
+## ⛓️ Esteira de CI/CD (Pipeline)
+
+O projeto utiliza uma esteira modularizada no GitHub Actions para garantir a qualidade e resiliência de cada release. O fluxo é dividido em jobs independentes:
+
+```mermaid
+graph LR
+    Build[🛡️ Build] --> Test[🧪 Tests]
+    Build --> Stryker[🧬 Stryker]
+    Test --> Publish[📦 Publish]
+    Publish --> Deploy[🚀 Deploy]
+    Stryker --> Deploy
+```
+
+1.  **🛡️ Build**: Validação de compilação de todos os projetos da solução.
+2.  **🧪 Tests**: Execução de testes integrados e unitários com relatórios de cobertura (Code Coverage).
+3.  **🧬 Stryker**: Testes de mutação para assegurar a eficácia da suíte de testes.
+4.  **📦 Publish**: Preparação do artefato final para o ambiente de runtime.
+5.  **🚀 Deploy**: Implantação automatizada no Azure Web App (somente via branch `main`).
+
+Para mais detalhes sobre a evolução deste fluxo, consulte a [Issue #46](https://github.com/JonathanBenicio/Tabatine-Engine/issues/46).
 
 ## 🛠️ Como Iniciar
 
@@ -72,6 +96,26 @@ graph TD
    dotnet run --project src/Tabatine.Worker
    ```
 
+## 🧪 Testes de Integração (Pré-requisito: Docker)
+
+O projeto utiliza **Testcontainers** para garantir a integridade da sincronização com um banco de dados PostgreSQL real em um ambiente isolado.
+
+- **Requisito**: O [Docker Desktop](https://www.docker.com/products/docker-desktop/) deve estar instalado e **em execução** para rodar a suíte de testes.
+- **Timeouts**: Devido à complexidade da rota de sincronização global (14 módulos), os testes de integração possuem um timeout estendido de **5 minutos**.
+  ```bash
+  dotnet test src/TabatineEngine.sln --collect:"XPlat Code Coverage"
+  ```
+
+### 🧬 Testes de Mutação (Stryker.NET)
+
+O projeto utiliza o **Stryker.NET** para avaliar a qualidade da suíte de testes através de mutações no código-fonte.
+- **Execução**:
+  ```bash
+  dotnet tool restore
+  dotnet stryker --project src/Tabatine.Infrastructure/Tabatine.Infrastructure.csproj
+  ```
+- **Threshold**: O pipeline de CI exige uma pontuação de mutação superior a **50%**.
+
 ## 📖 Documentação Interativa (Scalar)
 
 O Engine expõe uma interface **Scalar** moderna para exploração da API em vez do Swagger tradicional.
@@ -83,7 +127,14 @@ O Engine expõe uma interface **Scalar** moderna para exploração da API em vez
 O Worker expõe o endpoint `/webhook/omie` para receber notificações em tempo real do Omie.
 Para respeitar o curto *timeout* da Omie de 7 segundos e evitar o bloqueio da fila original:
 1. **Ingestão (Fast Acknowledge)**: O endpoint apenas valida a estrutura, insere o payload bruto na tabela `WebhookEvents` do banco de dados e retorna `200 OK` instantaneamente.
-2. **Processamento (Background Worker)**: O serviço especializado `WebhookProcessorWorker` varre a fila no banco de dados com concorrência segura (`SELECT ... FOR UPDATE SKIP LOCKED`), processando os eventos de **Vendas**, **Notas Fiscais**, **Clientes**, **Produtos**, **Vendedores** e **Contas Correntes**, alterando o status para `Processed` ou `Failed` sem derrubar a aplicação.
+2. **Processamento (Background Worker)**: O serviço especializado `WebhookProcessorWorker` varre a fila no banco de dados com concorrência segura (`SELECT ... FOR UPDATE SKIP LOCKED`), processando os eventos de **Vendas**, **Notas Fiscais**, **Clientes**, **Produtos**, **Vendedores** e **Contas Correntes**.
+3. **Debouncing de Estoque**: Para prevenir sobrecarga em movimentações massivas, as notificações de `MovimentacaoEstoque` e `AjusteEstoque` possuem um **agrupamento (debouncing) de 10 segundos**. Múltiplas alterações no mesmo produto dentro desta janela são consolidadas em uma única sincronização.
+4. **De-queue Dinâmico**: O worker implementa uma lógica de "Vazão Máxima", onde ignora o intervalo de polling se houver carga pendente no banco, garantindo que a fila seja drenada o mais rápido possível através da propriedade `hasMore`.
+5. **Retry com Backoff Exponencial**: Mensagens que falham (ex: erro temporário de rede ou trava de registro) são colocadas em estado `Failed` com um `NextRetryAt` calculado por exponenciação (2^tentativa minutos), até o limite de 3 tentativas, quando movem para `DeadLetter`.
+6. **Resiliência de Clock Drift**: O polling utiliza uma margem de segurança de 1 segundo (`NOW() + INTERVAL '1 second'`) para compensar possíveis dessincronizações de relógio entre o Host e o container de banco de dados.
+
+> [!NOTE]
+> Consulte a [Documentação de Status dos Webhooks](docs/omie-webhooks-status.md) para a lista completa de tópicos suportados.
 
 ## 🔄 Gatilho de Sincronização Manual (Force Sync)
 
